@@ -93,36 +93,43 @@ async function loadTotaalBoetes() {
 }
 
 async function loadRecentBoetes() {
-  toggleLoading(true);
   try {
     const fines = await fetchAPI('/recent-boetes');
-    const table = document.createElement('table');
-    table.innerHTML = `
-      <thead>
+    const recentBoetes = document.getElementById('recentBoetes');
+    if (!recentBoetes) {
+      console.error('Recent boetes element not found');
+      return;
+    }
+    
+    if (fines.length === 0) {
+      recentBoetes.innerHTML = `
         <tr>
-          <th>Speler</th>
-          <th>Datum</th>
-          <th>Bedrag</th>
-          <th>Reden</th>
+          <td colspan="4" class="text-center">Geen recente boetes gevonden</td>
         </tr>
-      </thead>
-      <tbody>
-        ${fines.map(fine => `
-          <tr>
-            <td>${fine.speler}</td>
-            <td>${formatDate(fine.datum)}</td>
-            <td>${formatCurrency(fine.bedrag)}</td>
-            <td>${fine.reden}</td>
-          </tr>
-        `).join('')}
-      </tbody>
-    `;
-    document.getElementById('recentBoetes').innerHTML = '';
-    document.getElementById('recentBoetes').appendChild(table);
+      `;
+      return;
+    }
+    
+    recentBoetes.innerHTML = fines.map(fine => `
+      <tr>
+        <td>${fine.players?.name || 'Onbekend'}</td>
+        <td>${fine.reasons?.description || 'Onbekend'}</td>
+        <td>€${fine.amount.toFixed(2)}</td>
+        <td>${formatDate(fine.date)}</td>
+      </tr>
+    `).join('');
   } catch (error) {
-    showToast('Fout bij laden recente boetes: ' + error.message, true);
-  } finally {
-    toggleLoading(false);
+    console.error('Error loading recent fines:', error);
+    const recentBoetes = document.getElementById('recentBoetes');
+    if (recentBoetes) {
+      recentBoetes.innerHTML = `
+        <tr>
+          <td colspan="4" class="text-center text-danger">
+            Er is een fout opgetreden bij het laden van de recente boetes
+          </td>
+        </tr>
+      `;
+    }
   }
 }
 
@@ -329,6 +336,12 @@ $(document).ready(function() {
   loadDropdownOptions();
 });
 
+// Remove duplicate initialization
+document.addEventListener('DOMContentLoaded', () => {
+  console.log('Initializing application...');
+  // These functions are already called in $(document).ready
+});
+
 // Load all data when the page loads
 document.addEventListener('DOMContentLoaded', () => {
   console.log('Initializing application...');
@@ -350,48 +363,6 @@ async function loadTotalFines() {
     }
   } catch (error) {
     console.error('Error loading total fines:', error);
-  }
-}
-
-// Load recent fines
-async function loadRecentFines() {
-  try {
-    const fines = await fetchAPI('/recent-boetes');
-    const recentFinesList = document.getElementById('recentFines');
-    if (!recentFinesList) {
-      console.error('Recent fines list element not found');
-      return;
-    }
-    
-    if (fines.length === 0) {
-      recentFinesList.innerHTML = `
-        <tr>
-          <td colspan="4" class="text-center">Geen recente boetes gevonden</td>
-        </tr>
-      `;
-      return;
-    }
-    
-    recentFinesList.innerHTML = fines.map(fine => `
-      <tr>
-        <td>${fine.players?.name || 'Onbekend'}</td>
-        <td>${fine.reasons?.description || 'Onbekend'}</td>
-        <td>€${fine.amount.toFixed(2)}</td>
-        <td>${formatDate(fine.date)}</td>
-      </tr>
-    `).join('');
-  } catch (error) {
-    console.error('Error loading recent fines:', error);
-    const recentFinesList = document.getElementById('recentFines');
-    if (recentFinesList) {
-      recentFinesList.innerHTML = `
-        <tr>
-          <td colspan="4" class="text-center text-danger">
-            Er is een fout opgetreden bij het laden van de recente boetes
-          </td>
-        </tr>
-      `;
-    }
   }
 }
 
