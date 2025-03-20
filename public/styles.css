@@ -354,4 +354,107 @@ body {
   .custom-table {
     font-size: 0.875rem;
   }
+}
+
+/* Admin Grid */
+.admin-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.admin-form {
+  padding: 1.5rem;
+}
+
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+.form-control, .form-select {
+  height: 48px;
+  border-color: var(--border-color);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  transition: var(--transition);
+}
+
+.form-control:focus, .form-select:focus {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
+.input-group-text {
+  background-color: var(--card-background);
+  border-color: var(--border-color);
+  color: var(--text-color);
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+}
+
+.btn {
+  height: 48px;
+  padding: 0 1.5rem;
+  border-radius: 8px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition: var(--transition);
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent-color), #2563eb);
+  border: none;
+  color: white;
+}
+
+.btn-primary:hover {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  transform: translateY(-1px);
+}
+
+.back-link {
+  color: var(--text-color);
+  text-decoration: none;
+  padding: 0.5rem;
+  margin-right: 0.5rem;
+  border-radius: 8px;
+  transition: var(--transition);
+}
+
+.back-link:hover {
+  background-color: var(--border-color);
+  color: var(--text-color);
+}
+
+/* Dark mode adjustments */
+body.dark .form-control,
+body.dark .form-select,
+body.dark .input-group-text {
+  background-color: var(--card-background);
+  border-color: var(--border-color);
+  color: var(--text-color);
+}
+
+body.dark .form-control::placeholder {
+  color: var(--secondary-color);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .admin-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .admin-form {
+    padding: 1rem;
+  }
+  
+  .form-control, .form-select, .btn {
+    height: 42px;
+  }
 } 

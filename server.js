@@ -173,13 +173,28 @@ app.use((err, req, res, next) => {
 });
 
 // Start server
-const port = process.env.PORT || 3000;
-app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
-  console.log('Environment:', {
-    nodeEnv: process.env.NODE_ENV,
-    supabaseUrl: process.env.SUPABASE_URL ? 'Present' : 'Missing',
-    supabaseKey: process.env.SUPABASE_ANON_KEY ? 'Present' : 'Missing',
-    port
-  });
-}); 
+const startServer = async () => {
+  const port = process.env.PORT || 3000;
+  try {
+    app.listen(port, () => {
+      console.log(`Server running on port ${port}`);
+      console.log('Environment:', {
+        nodeEnv: process.env.NODE_ENV,
+        supabaseUrl: process.env.SUPABASE_URL ? 'Present' : 'Missing',
+        supabaseKey: process.env.SUPABASE_ANON_KEY ? 'Present' : 'Missing',
+        port
+      });
+    });
+  } catch (error) {
+    if (error.code === 'EADDRINUSE') {
+      console.log(`Port ${port} is busy, trying port ${port + 1}`);
+      process.env.PORT = port + 1;
+      startServer();
+    } else {
+      console.error('Failed to start server:', error);
+      process.exit(1);
+    }
+  }
+};
+
+startServer();

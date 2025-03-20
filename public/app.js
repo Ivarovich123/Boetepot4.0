@@ -96,22 +96,29 @@ async function loadTotalFines() {
     }
     
     const total = parseFloat(data.total || 0);
-    const countUp = new CountUp('totalAmount', total, {
-      prefix: '€',
-      decimal: ',',
-      decimals: 2,
-      duration: 2.5,
-      useEasing: true,
-      useGrouping: true,
-      separator: '.',
-    });
     
-    if (!countUp.error) {
-      countUp.start();
-    } else {
-      console.error('[Total] Error starting counter:', countUp.error);
-      totalElement.textContent = formatCurrency(total);
+    // Simple animation fallback if CountUp fails
+    const duration = 2000;
+    const start = 0;
+    const end = total;
+    const startTime = performance.now();
+    
+    function updateCounter(currentTime) {
+      const elapsed = currentTime - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      
+      // Easing function for smooth animation
+      const easeOutQuart = 1 - Math.pow(1 - progress, 4);
+      const current = start + (end - start) * easeOutQuart;
+      
+      totalElement.textContent = formatCurrency(current);
+      
+      if (progress < 1) {
+        requestAnimationFrame(updateCounter);
+      }
     }
+    
+    requestAnimationFrame(updateCounter);
   } catch (error) {
     console.error('[Total] Error loading total:', error);
     showToast('Fout bij laden van totaal bedrag', true);
