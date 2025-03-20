@@ -3,49 +3,79 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Boetepot - Heren 8</title>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <title>Boetepot</title>
+  
+  <!-- Bootstrap CSS -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css">
+  <!-- Font Awesome -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  <!-- Select2 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
+  <!-- Custom CSS -->
+  <link href="styles.css" rel="stylesheet">
 </head>
 <body>
-  <nav class="navbar">
+  <header class="bg-primary text-white py-3 mb-4">
     <div class="container">
-      <span class="navbar-brand">Boetepot Heren 8</span>
-      <a href="admin.html" class="nav-link">
-        <i class="fas fa-user-shield"></i>
-        <span>Admin</span>
-      </a>
+      <h1 class="mb-0">Boetepot</h1>
     </div>
-  </nav>
+  </header>
 
-  <div class="hero-section">
-    <div class="container">
-      <div class="stats-container">
-        <div class="stat-card fine-count">
-          <div class="stat-icon">
-            <i class="fas fa-receipt"></i>
+  <div class="container">
+    <!-- Loading Spinner -->
+    <div id="loadingSpinner" class="d-none justify-content-center mb-4">
+      <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Laden...</span>
+      </div>
+    </div>
+
+    <!-- Toast Messages -->
+    <div id="toast" class="toast position-fixed top-0 end-0 m-3" role="alert" style="display: none;">
+      <div class="toast-body"></div>
+    </div>
+
+    <div class="row">
+      <!-- Total Amount -->
+      <div class="col-md-4 mb-4">
+        <div class="card h-100">
+          <div class="card-body text-center">
+            <h5 id="totalLabel" class="card-title">Totaal</h5>
+            <p id="totalAmount" class="display-4 mb-0">€0.00</p>
           </div>
-          <div class="stat-content">
-            <h3>Aantal Boetes</h3>
-            <h2 id="numberOfFines">0</h2>
+        </div>
+      </div>
+
+      <!-- Leaderboard -->
+      <div class="col-md-8 mb-4">
+        <div class="card h-100">
+          <div class="card-body">
+            <h5 class="card-title">Top 5 Spelers</h5>
+            <div class="table-responsive">
+              <table class="table table-hover">
+                <thead>
+                  <tr>
+                    <th>Speler</th>
+                    <th>Totaal</th>
+                  </tr>
+                </thead>
+                <tbody id="leaderboard">
+                  <tr><td colspan="2">Laden...</td></tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>
     </div>
-  </div>
 
-  <div class="main-content">
-    <div class="container">
-      <div class="content-grid">
-        <div class="recent-fines-section">
-          <div class="section-card">
-            <div class="card-header">
-              <h2><i class="fas fa-history"></i> Recente Boetes</h2>
-            </div>
+    <div class="row">
+      <!-- Recent Fines -->
+      <div class="col-md-6 mb-4">
+        <div class="card h-100">
+          <div class="card-body">
+            <h5 class="card-title">Recente Boetes</h5>
             <div class="table-responsive">
-              <table class="custom-table">
+              <table class="table table-hover">
                 <thead>
                   <tr>
                     <th>Speler</th>
@@ -54,61 +84,38 @@
                     <th>Datum</th>
                   </tr>
                 </thead>
-                <tbody id="recentFines"></tbody>
+                <tbody id="recentFines">
+                  <tr><td colspan="4">Laden...</td></tr>
+                </tbody>
               </table>
             </div>
           </div>
         </div>
+      </div>
 
-        <div class="player-totals-section">
-          <div class="section-card">
-            <div class="card-header">
-              <h2><i class="fas fa-trophy"></i> Speler Totalen</h2>
+      <!-- Player History -->
+      <div class="col-md-6 mb-4">
+        <div class="card h-100">
+          <div class="card-body">
+            <h5 class="card-title">Speler Historie</h5>
+            <div class="mb-3">
+              <select id="playerSelect" class="form-control" style="width: 100%;">
+                <option></option>
+              </select>
             </div>
             <div class="table-responsive">
-              <table class="custom-table">
+              <table class="table table-hover">
                 <thead>
                   <tr>
-                    <th>Speler</th>
-                    <th>Totaal</th>
+                    <th>Datum</th>
+                    <th>Reden</th>
+                    <th>Bedrag</th>
                   </tr>
                 </thead>
-                <tbody id="playerTotals"></tbody>
+                <tbody id="playerHistory">
+                  <tr><td colspan="3">Selecteer een speler...</td></tr>
+                </tbody>
               </table>
-            </div>
-          </div>
-        </div>
-
-        <div class="player-history-section">
-          <div class="section-card">
-            <div class="card-header">
-              <h2><i class="fas fa-search"></i> Zoek Speler Historie</h2>
-            </div>
-            <div class="card-body">
-              <div class="row mb-4">
-                <div class="col-md-6">
-                  <select class="form-select" id="playerSelect">
-                    <option value="">Selecteer speler</option>
-                  </select>
-                </div>
-                <div class="col-md-4">
-                  <button class="btn btn-primary w-100" onclick="loadPlayerHistory()">
-                    <i class="fas fa-search me-2"></i>Zoeken
-                  </button>
-                </div>
-              </div>
-              <div class="table-responsive">
-                <table class="custom-table" id="playerHistoryTable">
-                  <thead>
-                    <tr>
-                      <th>Datum</th>
-                      <th>Bedrag</th>
-                      <th>Reden</th>
-                    </tr>
-                  </thead>
-                  <tbody id="playerHistory"></tbody>
-                </table>
-              </div>
             </div>
           </div>
         </div>
@@ -116,18 +123,10 @@
     </div>
   </div>
 
-  <footer class="footer">
-    <div class="container">
-      <p>© 2024 Boetepot Heren 8</p>
-    </div>
-  </footer>
-
-  <div id="toast" class="toast"></div>
-  <div id="loadingSpinner">
-    <div class="spinner"></div>
-  </div>
-
+  <!-- Scripts -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
   <script src="app.js"></script>
 </body>
 </html> 

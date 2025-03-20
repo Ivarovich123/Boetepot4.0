@@ -19,21 +19,19 @@ function showToast(message, isError = false) {
   }
 }
 
-function formatDate(dateString) {
-  if (!dateString) return 'Unknown';
+function formatDate(dateString, includeYear = false) {
+  if (!dateString) return 'Onbekend';
   try {
     const date = new Date(dateString);
-    if (isNaN(date.getTime())) return 'Invalid Date';
-    return date.toLocaleString('nl-NL', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    if (isNaN(date.getTime())) return 'Ongeldige datum';
+    
+    const months = ['Januari', 'Februari', 'Maart', 'April', 'Mei', 'Juni', 'Juli', 'Augustus', 'September', 'Oktober', 'November', 'December'];
+    return includeYear 
+      ? `${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`
+      : `${date.getDate()} ${months[date.getMonth()]}`;
   } catch (error) {
     console.error('Error formatting date:', error);
-    return 'Invalid Date';
+    return 'Ongeldige datum';
   }
 }
 
@@ -92,6 +90,10 @@ async function loadTotaalBoetes() {
     
     const totalElement = document.getElementById('totalAmount');
     if (totalElement) {
+      const totalLabel = document.getElementById('totalLabel');
+      if (totalLabel) {
+        totalLabel.textContent = 'Totaal';
+      }
       animateCounter(totalElement, 0, total || 0, 2000);
     }
   } catch (error) {
@@ -148,7 +150,12 @@ async function loadLeaderboard() {
       return;
     }
     
-    const rows = totals.map(player => `
+    // Sort by total amount and take top 5
+    const topPlayers = totals
+      .sort((a, b) => b.total_amount - a.total_amount)
+      .slice(0, 5);
+    
+    const rows = topPlayers.map(player => `
       <tr>
         <td>${player.player_name || 'Onbekend'}</td>
         <td>${formatCurrency(player.total_amount || 0)}</td>
@@ -162,13 +169,84 @@ async function loadLeaderboard() {
   }
 }
 
+async function loadPlayerHistory(playerId) {
+  try {
+    console.log('[History] Loading player history...');
+    const history = await fetchAPI(`/player-history/${playerId}`);
+    
+    const historyElement = document.getElementById('playerHistory');
+    if (!historyElement) {
+      console.error('[History] Element not found');
+      return;
+    }
+    
+    if (!Array.isArray(history) || history.length === 0) {
+      historyElement.innerHTML = '<tr><td colspan="3">Geen boetes gevonden</td></tr>';
+      return;
+    }
+    
+    const total = history.reduce((sum, fine) => sum + (fine.amount || 0), 0);
+    
+    const rows = history.map(fine => `
+      <tr>
+        <td>${formatDate(fine.date, true)}</td>
+        <td>${fine.reason_description || 'Onbekend'}</td>
+        <td>${formatCurrency(fine.amount || 0)}</td>
+      </tr>
+    `).join('');
+    
+    historyElement.innerHTML = rows + `
+      <tr class="table-info">
+        <td colspan="2"><strong>Totaal</strong></td>
+        <td><strong>${formatCurrency(total)}</strong></td>
+      </tr>
+    `;
+  } catch (error) {
+    console.error('[History] Error:', error);
+    showToast('Fout bij laden speler historie', true);
+  }
+}
+
+// Player search functionality
+async function initializePlayerSearch() {
+  try {
+    console.log('[Search] Initializing player search...');
+    const players = await fetchAPI('/players');
+    
+    const playerSelect = document.getElementById('playerSelect');
+    if (!playerSelect) {
+      console.error('[Search] Player select not found');
+      return;
+    }
+    
+    // Initialize select2 for better search
+    $(playerSelect).select2({
+      placeholder: 'Zoek een speler...',
+      allowClear: true,
+      data: players.map(player => ({
+        id: player.id,
+        text: player.name
+      }))
+    }).on('change', function() {
+      const playerId = $(this).val();
+      if (playerId) {
+        loadPlayerHistory(playerId);
+      }
+    });
+  } catch (error) {
+    console.error('[Search] Error:', error);
+    showToast('Fout bij initialiseren speler zoeken', true);
+  }
+}
+
 // Theme Toggle
 function toggleTheme() {
   document.body.classList.toggle('dark');
+  localStorage.setItem('theme', document.body.classList.contains('dark') ? 'dark' : 'light');
+  
   const icon = document.getElementById('theme-icon');
   if (icon) {
-    icon.classList.toggle('fa-moon');
-    icon.classList.toggle('fa-sun');
+    icon.className = document.body.classList.contains('dark') ? 'fas fa-sun' : 'fas fa-moon';
   }
 }
 
@@ -181,10 +259,24 @@ document.addEventListener('DOMContentLoaded', () => {
   loadRecentFines();
   loadLeaderboard();
   
-  // Initialize theme toggle
-  const themeToggle = document.getElementById('themeToggle');
-  if (themeToggle) {
-    themeToggle.addEventListener('change', toggleTheme);
+  // Initialize player search
+  initializePlayerSearch();
+  
+  // Initialize theme
+  const savedTheme = localStorage.getItem('theme');
+  if (savedTheme === 'dark') {
+    document.body.classList.add('dark');
+  }
+  
+  // Add theme toggle button to header
+  const header = document.querySelector('header');
+  if (header) {
+    const themeButton = document.createElement('button');
+    themeButton.className = 'btn btn-link position-absolute end-0 me-3';
+    themeButton.innerHTML = `<i id="theme-icon" class="fas ${savedTheme === 'dark' ? 'fa-sun' : 'fa-moon'} fs-4"></i>`;
+    themeButton.onclick = toggleTheme;
+    header.style.position = 'relative';
+    header.appendChild(themeButton);
   }
   
   console.log('[Init] Initialization complete');

@@ -11,38 +11,37 @@ async function loadAllData() {
 
 async function loadPlayers() {
     try {
-        const response = await fetch('/api/admin/players');
+        const response = await fetch('/api/players');
         const players = await response.json();
         
         // Update player select
         const playerSelect = document.getElementById('playerSelect');
         playerSelect.innerHTML = '<option value="">Selecteer speler</option>';
         players.forEach(player => {
-            if (player.name !== 'Admin') {
-                playerSelect.innerHTML += `<option value="${player.id}">${player.name}</option>`;
-            }
+            playerSelect.innerHTML += `<option value="${player.id}">${player.name}</option>`;
         });
 
         // Update players list
         const playersList = document.getElementById('playersList');
-        playersList.innerHTML = '';
-        players.forEach(player => {
-            if (player.name !== 'Admin') {
+        if (playersList) {
+            playersList.innerHTML = '';
+            players.forEach(player => {
                 playersList.innerHTML += `
                     <div class="list-group-item d-flex justify-content-between align-items-center">
                         ${player.name}
                     </div>
                 `;
-            }
-        });
+            });
+        }
     } catch (error) {
         console.error('Error loading players:', error);
+        showToast('Fout bij laden spelers', true);
     }
 }
 
 async function loadReasons() {
     try {
-        const response = await fetch('/api/admin/reasons');
+        const response = await fetch('/api/reasons');
         const reasons = await response.json();
         
         // Update reason select
@@ -54,49 +53,50 @@ async function loadReasons() {
 
         // Update reasons list
         const reasonsList = document.getElementById('reasonsList');
-        reasonsList.innerHTML = '';
-        reasons.forEach(reason => {
-            reasonsList.innerHTML += `
-                <div class="list-group-item d-flex justify-content-between align-items-center">
-                    ${reason.description}
-                </div>
-            `;
-        });
+        if (reasonsList) {
+            reasonsList.innerHTML = '';
+            reasons.forEach(reason => {
+                reasonsList.innerHTML += `
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                        ${reason.description}
+                    </div>
+                `;
+            });
+        }
     } catch (error) {
         console.error('Error loading reasons:', error);
+        showToast('Fout bij laden redenen', true);
     }
 }
 
 async function loadFines() {
     try {
-        const response = await fetch('/api/admin/fines');
+        const response = await fetch('/api/recent-fines');
         const fines = await response.json();
         
         const finesList = document.getElementById('finesList');
-        finesList.innerHTML = '';
-        fines.forEach(fine => {
-            const date = new Date(fine.date).toLocaleString('nl-NL');
-            finesList.innerHTML += `
-                <tr>
-                    <td>${fine.player_name}</td>
-                    <td>${fine.reason_description}</td>
-                    <td>€${fine.amount.toFixed(2)}</td>
-                    <td>${date}</td>
-                    <td>
-                        <button class="btn btn-danger btn-sm" onclick="deleteFine(${fine.id})">
-                            Verwijderen
-                        </button>
-                    </td>
-                </tr>
-            `;
-        });
+        if (finesList) {
+            finesList.innerHTML = '';
+            fines.forEach(fine => {
+                const date = formatDate(fine.date);
+                finesList.innerHTML += `
+                    <tr>
+                        <td>${fine.player_name || 'Onbekend'}</td>
+                        <td>${fine.reason_description || 'Onbekend'}</td>
+                        <td>€${fine.amount.toFixed(2)}</td>
+                        <td>${date}</td>
+                    </tr>
+                `;
+            });
+        }
     } catch (error) {
         console.error('Error loading fines:', error);
+        showToast('Fout bij laden boetes', true);
     }
 }
 
 // Add fine form handler
-document.getElementById('addFineForm').addEventListener('submit', async (e) => {
+document.getElementById('addFineForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const playerId = document.getElementById('playerSelect').value;
     const reasonId = document.getElementById('reasonSelect').value;
@@ -108,7 +108,7 @@ document.getElementById('addFineForm').addEventListener('submit', async (e) => {
     }
 
     try {
-        const response = await fetch('/api/admin/fines', {
+        const response = await fetch('/api/fines', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -122,7 +122,11 @@ document.getElementById('addFineForm').addEventListener('submit', async (e) => {
 
         if (response.ok) {
             document.getElementById('addFineForm').reset();
-            await loadFines();
+            await Promise.all([
+                loadFines(),
+                loadTotalFines(),
+                loadLeaderboard()
+            ]);
             showToast('Boete succesvol toegevoegd!');
         } else {
             const error = await response.json();
@@ -136,12 +140,12 @@ document.getElementById('addFineForm').addEventListener('submit', async (e) => {
 });
 
 // Add player form handler
-document.getElementById('addPlayerForm').addEventListener('submit', async (e) => {
+document.getElementById('addPlayerForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const name = document.getElementById('newPlayer').value;
 
     try {
-        const response = await fetch('/api/admin/players', {
+        const response = await fetch('/api/players', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -151,23 +155,24 @@ document.getElementById('addPlayerForm').addEventListener('submit', async (e) =>
 
         if (response.ok) {
             document.getElementById('newPlayer').value = '';
-            loadPlayers();
+            await loadPlayers();
+            showToast('Speler succesvol toegevoegd!');
         } else {
-            alert('Er is een fout opgetreden bij het toevoegen van de speler');
+            showToast('Er is een fout opgetreden bij het toevoegen van de speler', true);
         }
     } catch (error) {
         console.error('Error adding player:', error);
-        alert('Er is een fout opgetreden bij het toevoegen van de speler');
+        showToast('Er is een fout opgetreden bij het toevoegen van de speler', true);
     }
 });
 
 // Add reason form handler
-document.getElementById('addReasonForm').addEventListener('submit', async (e) => {
+document.getElementById('addReasonForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const description = document.getElementById('newReason').value;
 
     try {
-        const response = await fetch('/api/admin/reasons', {
+        const response = await fetch('/api/reasons', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -177,42 +182,35 @@ document.getElementById('addReasonForm').addEventListener('submit', async (e) =>
 
         if (response.ok) {
             document.getElementById('newReason').value = '';
-            loadReasons();
+            await loadReasons();
+            showToast('Reden succesvol toegevoegd!');
         } else {
-            alert('Er is een fout opgetreden bij het toevoegen van de reden');
+            showToast('Er is een fout opgetreden bij het toevoegen van de reden', true);
         }
     } catch (error) {
         console.error('Error adding reason:', error);
-        alert('Er is een fout opgetreden bij het toevoegen van de reden');
+        showToast('Er is een fout opgetreden bij het toevoegen van de reden', true);
     }
 });
 
-async function deleteFine(id) {
-    if (!confirm('Weet je zeker dat je deze boete wilt verwijderen?')) {
-        return;
-    }
-
+function formatDate(dateString) {
+    if (!dateString) return 'Onbekend';
     try {
-        const response = await fetch(`/api/admin/fines/${id}`, {
-            method: 'DELETE'
-        });
-
-        if (response.ok) {
-            await loadFines();
-            showToast('Boete succesvol verwijderd!');
-        } else {
-            const error = await response.json();
-            console.error('Server error:', error);
-            showToast(error.error || 'Er is een fout opgetreden bij het verwijderen van de boete', true);
-        }
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) return 'Ongeldige datum';
+        
+        const months = ['Januari', 'Februari', 'Maart', 'April', 'Mei', 'Juni', 'Juli', 'Augustus', 'September', 'Oktober', 'November', 'December'];
+        return `${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`;
     } catch (error) {
-        console.error('Error deleting fine:', error);
-        showToast('Er is een fout opgetreden bij het verwijderen van de boete', true);
+        console.error('Error formatting date:', error);
+        return 'Ongeldige datum';
     }
 }
 
 function showToast(message, isError = false) {
     const toast = document.getElementById('toast');
+    if (!toast) return;
+    
     toast.className = `toast ${isError ? 'bg-danger' : 'bg-success'} text-white`;
     toast.textContent = message;
     toast.style.display = 'block';
