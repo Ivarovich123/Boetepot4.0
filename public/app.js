@@ -274,4 +274,72 @@ $(document).ready(function() {
   loadRecentBoetes();
   loadLeaderboard();
   loadDropdownOptions();
-}); 
+});
+
+// Load all data when the page loads
+document.addEventListener('DOMContentLoaded', () => {
+    loadTotalFines();
+    loadRecentFines();
+    loadPlayerTotals();
+});
+
+// Load total fines
+async function loadTotalFines() {
+    try {
+        const response = await fetch('/api/totaal-boetes');
+        const data = await response.json();
+        document.getElementById('totalFines').textContent = `€${data.total.toFixed(2)}`;
+    } catch (error) {
+        console.error('Error loading total fines:', error);
+    }
+}
+
+// Load recent fines
+async function loadRecentFines() {
+    try {
+        const response = await fetch('/api/recent-boetes');
+        const fines = await response.json();
+        
+        const recentFines = document.getElementById('recentFines');
+        recentFines.innerHTML = '';
+        
+        fines.forEach(fine => {
+            const date = new Date(fine.date).toLocaleString('nl-NL');
+            recentFines.innerHTML += `
+                <tr>
+                    <td>${fine.player_name}</td>
+                    <td>${fine.reason_description}</td>
+                    <td>€${fine.amount.toFixed(2)}</td>
+                    <td>${date}</td>
+                </tr>
+            `;
+        });
+
+        // Update number of fines
+        document.getElementById('numberOfFines').textContent = fines.length;
+    } catch (error) {
+        console.error('Error loading recent fines:', error);
+    }
+}
+
+// Load player totals
+async function loadPlayerTotals() {
+    try {
+        const response = await fetch('/api/player-totals');
+        const players = await response.json();
+        
+        const playerTotals = document.getElementById('playerTotals');
+        playerTotals.innerHTML = '';
+        
+        players.forEach(player => {
+            playerTotals.innerHTML += `
+                <tr>
+                    <td>${player.name}</td>
+                    <td>€${(player.total || 0).toFixed(2)}</td>
+                </tr>
+            `;
+        });
+    } catch (error) {
+        console.error('Error loading player totals:', error);
+    }
+} 
