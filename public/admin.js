@@ -145,12 +145,25 @@ async function loadFines() {
     }
 }
 
+// Logout function
+function logoutAdmin() {
+    localStorage.removeItem('adminToken');
+    adminToken = null;
+    document.getElementById('loginForm').classList.remove('d-none');
+    document.getElementById('adminPanel').classList.add('d-none');
+}
+
 // Add fine form handler
 document.getElementById('addFineForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const playerId = document.getElementById('playerSelect').value;
     const reasonId = document.getElementById('reasonSelect').value;
     const amount = document.getElementById('amount').value;
+
+    if (!playerId || !reasonId || !amount) {
+        showToast('Vul alle velden in', true);
+        return;
+    }
 
     try {
         const response = await fetch('/api/admin/fines', {
@@ -168,13 +181,15 @@ document.getElementById('addFineForm').addEventListener('submit', async (e) => {
 
         if (response.ok) {
             document.getElementById('addFineForm').reset();
-            loadFines();
+            await loadFines();
+            showToast('Boete succesvol toegevoegd!');
         } else {
-            alert('Er is een fout opgetreden bij het toevoegen van de boete');
+            const error = await response.json();
+            showToast(error.error || 'Er is een fout opgetreden bij het toevoegen van de boete', true);
         }
     } catch (error) {
         console.error('Error adding fine:', error);
-        alert('Er is een fout opgetreden bij het toevoegen van de boete');
+        showToast('Er is een fout opgetreden bij het toevoegen van de boete', true);
     }
 });
 
@@ -281,4 +296,21 @@ document.getElementById('resetButton').addEventListener('click', async () => {
         console.error('Error resetting database:', error);
         alert('Er is een fout opgetreden bij het resetten van de database');
     }
-}); 
+});
+
+// Toast notification function
+function showToast(message, isError = false) {
+    const toast = document.createElement('div');
+    toast.className = `toast ${isError ? 'bg-danger' : 'bg-success'}`;
+    toast.textContent = message;
+    document.body.appendChild(toast);
+
+    // Show the toast
+    setTimeout(() => toast.style.display = 'block', 100);
+
+    // Remove the toast after 3 seconds
+    setTimeout(() => {
+        toast.style.display = 'none';
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+} 
