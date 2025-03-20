@@ -22,7 +22,7 @@ app.get('/api/totaal-boetes', async (req, res) => {
     res.json({ total });
   } catch (error) {
     console.error('[API] Error getting total fines:', error);
-    res.status(500).json({ error: 'Failed to get total fines' });
+    res.status(500).json({ error: 'Failed to get total fines', details: error.message });
   }
 });
 
@@ -34,7 +34,7 @@ app.get('/api/recent-fines', async (req, res) => {
     res.json(fines);
   } catch (error) {
     console.error('[API] Error getting recent fines:', error);
-    res.status(500).json({ error: 'Failed to get recent fines' });
+    res.status(500).json({ error: 'Failed to get recent fines', details: error.message });
   }
 });
 
@@ -46,8 +46,17 @@ app.get('/api/player-totals', async (req, res) => {
     res.json(totals);
   } catch (error) {
     console.error('[API] Error getting player totals:', error);
-    res.status(500).json({ error: 'Failed to get player totals' });
+    res.status(500).json({ error: 'Failed to get player totals', details: error.message });
   }
+});
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error('Global error handler:', err);
+  res.status(500).json({ 
+    error: 'Internal server error', 
+    details: err.message 
+  });
 });
 
 // Start server
@@ -57,7 +66,7 @@ app.listen(port, () => {
   console.log('Environment:', {
     nodeEnv: process.env.NODE_ENV,
     supabaseUrl: process.env.SUPABASE_URL ? 'Present' : 'Missing',
-    supabaseKey: process.env.SUPABASE_KEY ? 'Present' : 'Missing',
+    supabaseKey: process.env.SUPABASE_ANON_KEY ? 'Present' : 'Missing',
     port
   });
 }); 
