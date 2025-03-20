@@ -92,50 +92,32 @@ async function loadTotaalBoetes() {
   }
 }
 
-async function loadRecentBoetes() {
+async function loadRecentFines() {
   try {
     console.log('Loading recent fines...');
-    const fines = await fetchAPI('/recent-boetes');
+    const response = await fetchAPI('/api/recent-boetes');
+    const fines = await response.json();
+    
     console.log('Received fines:', fines);
     
-    const recentBoetes = document.getElementById('recentBoetes');
-    if (!recentBoetes) {
-      console.error('Recent boetes element not found');
+    if (!Array.isArray(fines) || fines.length === 0) {
+      console.log('No recent fines found');
+      document.getElementById('recent-fines').innerHTML = '<p>Geen recente boetes gevonden.</p>';
       return;
     }
     
-    if (!fines || fines.length === 0) {
-      recentBoetes.innerHTML = `
-        <tr>
-          <td colspan="4" class="text-center">Geen recente boetes gevonden</td>
-        </tr>
-      `;
-      return;
-    }
+    const finesHtml = fines.map(fine => `
+      <div class="fine-item">
+        <p><strong>${fine.player_name}</strong> - ${fine.reason_description}</p>
+        <p>€${fine.amount.toFixed(2)} - ${fine.date}</p>
+      </div>
+    `).join('');
     
-    recentBoetes.innerHTML = fines.map(fine => {
-      console.log('Processing fine:', fine);
-      return `
-        <tr>
-          <td>${fine.player_name || 'Onbekend'}</td>
-          <td>${fine.reason_description || 'Onbekend'}</td>
-          <td>€${fine.amount.toFixed(2)}</td>
-          <td>${formatDate(fine.date)}</td>
-        </tr>
-      `;
-    }).join('');
+    document.getElementById('recent-fines').innerHTML = finesHtml;
+    console.log('Recent fines loaded successfully');
   } catch (error) {
     console.error('Error loading recent fines:', error);
-    const recentBoetes = document.getElementById('recentBoetes');
-    if (recentBoetes) {
-      recentBoetes.innerHTML = `
-        <tr>
-          <td colspan="4" class="text-center text-danger">
-            Er is een fout opgetreden bij het laden van de recente boetes
-          </td>
-        </tr>
-      `;
-    }
+    document.getElementById('recent-fines').innerHTML = '<p>Er is een fout opgetreden bij het laden van de boetes.</p>';
   }
 }
 
@@ -338,7 +320,7 @@ $(document).ready(function() {
   console.log('Initializing application...');
   $('.chosen-select').chosen();
   loadTotaalBoetes();
-  loadRecentBoetes();
+  loadRecentFines();
   loadPlayerTotals();
   loadPlayers();
 });
@@ -350,7 +332,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Load all data when the page loads
 document.addEventListener('DOMContentLoaded', () => {
-  console.log('Initializing application...');
+  console.log('DOM loaded, initializing...');
   loadTotalFines();
   loadRecentFines();
   loadPlayerTotals();
