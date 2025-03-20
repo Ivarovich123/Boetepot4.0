@@ -15,7 +15,9 @@ function showToast(message, isError = false) {
 }
 
 function formatDate(dateString) {
-  return new Date(dateString).toLocaleString('nl-NL');
+  const date = new Date(dateString);
+  const months = ['Januari', 'Februari', 'Maart', 'April', 'Mei', 'Juni', 'Juli', 'Augustus', 'September', 'Oktober', 'November', 'December'];
+  return `${months[date.getMonth()]} ${date.getDate()}`;
 }
 
 function formatCurrency(amount) {
@@ -107,7 +109,7 @@ async function loadRecentBoetes() {
 }
 
 async function loadPlayerHistory() {
-  const playerSelect = document.getElementById('playerInput');
+  const playerSelect = document.getElementById('playerSelect');
   const selectedPlayer = playerSelect.value;
   
   if (!selectedPlayer) {
@@ -117,29 +119,34 @@ async function loadPlayerHistory() {
   
   toggleLoading(true);
   try {
-    const history = await fetchAPI(`/player-history/${encodeURIComponent(selectedPlayer)}`);
-    const table = document.createElement('table');
-    table.innerHTML = `
-      <thead>
+    const response = await fetch(`/api/player-history/${selectedPlayer}`);
+    if (!response.ok) {
+      throw new Error('Failed to load player history');
+    }
+    const history = await response.json();
+    
+    const tbody = document.getElementById('playerHistory');
+    tbody.innerHTML = '';
+    
+    if (history.length === 0) {
+      tbody.innerHTML = `
         <tr>
-          <th>Datum</th>
-          <th>Bedrag</th>
-          <th>Reden</th>
+          <td colspan="3" class="text-center">Geen boetes gevonden voor deze speler</td>
         </tr>
-      </thead>
-      <tbody>
-        ${history.map(fine => `
+      `;
+    } else {
+      history.forEach(fine => {
+        tbody.innerHTML += `
           <tr>
-            <td>${formatDate(fine.datum)}</td>
-            <td>${formatCurrency(fine.bedrag)}</td>
-            <td>${fine.reden}</td>
+            <td>${formatDate(fine.date)}</td>
+            <td>€${fine.amount.toFixed(2)}</td>
+            <td>${fine.reason_description}</td>
           </tr>
-        `).join('')}
-      </tbody>
-    `;
-    document.getElementById('playerHistory').innerHTML = '';
-    document.getElementById('playerHistory').appendChild(table);
+        `;
+      });
+    }
   } catch (error) {
+    console.error('Error loading player history:', error);
     showToast('Fout bij laden speler historie: ' + error.message, true);
   } finally {
     toggleLoading(false);
@@ -234,30 +241,44 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
 
 document.getElementById('addFineForm').addEventListener('submit', async (e) => {
   e.preventDefault();
-  const speler = document.getElementById('playerAdminInput').value;
-  const bedrag = document.getElementById('amount').value;
-  const reden = document.getElementById('reasonAdminInput').value;
+  const playerId = document.getElementById('playerSelect').value;
+  const reasonId = document.getElementById('reasonSelect').value;
+  const amount = document.getElementById('amount').value;
   
-  if (!speler || !bedrag || !reden) {
+  if (!playerId || !reasonId || !amount) {
     showToast('Vul alle velden in', true);
     return;
   }
   
   toggleLoading(true);
   try {
-    await fetchAPI('/add-fine', {
+    const response = await fetch('/api/admin/fines', {
       method: 'POST',
-      body: JSON.stringify({ speler, bedrag, reden })
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('adminToken')}`
+      },
+      body: JSON.stringify({
+        player_id: parseInt(playerId),
+        reason_id: parseInt(reasonId),
+        amount: parseFloat(amount)
+      })
     });
-    
-    showToast('Boete succesvol toegevoegd!');
-    document.getElementById('addFineForm').reset();
-    loadAllFines();
-    loadTotaalBoetes();
-    loadRecentBoetes();
-    loadLeaderboard();
+
+    if (response.ok) {
+      showToast('Boete succesvol toegevoegd!');
+      document.getElementById('addFineForm').reset();
+      await loadFines();
+      await loadRecentFines();
+      await loadPlayerTotals();
+    } else {
+      const error = await response.json();
+      console.error('Server error:', error);
+      showToast(error.error || 'Er is een fout opgetreden bij het toevoegen van de boete', true);
+    }
   } catch (error) {
-    showToast('Fout bij toevoegen boete: ' + error.message, true);
+    console.error('Error adding fine:', error);
+    showToast('Er is een fout opgetreden bij het toevoegen van de boete', true);
   } finally {
     toggleLoading(false);
   }
@@ -295,6 +316,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loadTotalFines();
     loadRecentFines();
     loadPlayerTotals();
+    loadPlayers();
 });
 
 // Load total fines
@@ -355,5 +377,24 @@ async function loadPlayerTotals() {
         });
     } catch (error) {
         console.error('Error loading player totals:', error);
+    }
+}
+
+// Load players for the dropdown
+async function loadPlayers() {
+    try {
+        const response = await fetch('/api/admin/players');
+        const players = await response.json();
+        
+        const playerSelect = document.getElementById('playerSelect');
+        playerSelect.innerHTML = '<option value="">Selecteer speler</option>';
+        players.forEach(player => {
+            if (player.name !== 'Admin') {
+                playerSelect.innerHTML += `<option value="${player.id}">${player.name}</option>`;
+            }
+        });
+    } catch (error) {
+        console.error('Error loading players:', error);
+        showToast('Fout bij laden spelers: ' + error.message, true);
     }
 } 
