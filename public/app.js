@@ -15,9 +15,18 @@ function showToast(message, isError = false) {
 }
 
 function formatDate(dateString) {
-  const date = new Date(dateString);
-  const months = ['Januari', 'Februari', 'Maart', 'April', 'Mei', 'Juni', 'Juli', 'Augustus', 'September', 'Oktober', 'November', 'December'];
-  return `${months[date.getMonth()]} ${date.getDate()}`;
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) {
+      console.error('Invalid date:', dateString);
+      return 'Ongeldige datum';
+    }
+    const months = ['Januari', 'Februari', 'Maart', 'April', 'Mei', 'Juni', 'Juli', 'Augustus', 'September', 'Oktober', 'November', 'December'];
+    return `${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`;
+  } catch (error) {
+    console.error('Error formatting date:', error);
+    return 'Ongeldige datum';
+  }
 }
 
 function formatCurrency(amount) {
@@ -348,7 +357,7 @@ async function loadTotalFines() {
 async function loadRecentFines() {
   try {
     const fines = await fetchAPI('/recent-boetes');
-    const recentFinesList = document.getElementById('recentFinesList');
+    const recentFinesList = document.getElementById('recentFines');
     if (!recentFinesList) {
       console.error('Recent fines list element not found');
       return;
@@ -373,7 +382,7 @@ async function loadRecentFines() {
     `).join('');
   } catch (error) {
     console.error('Error loading recent fines:', error);
-    const recentFinesList = document.getElementById('recentFinesList');
+    const recentFinesList = document.getElementById('recentFines');
     if (recentFinesList) {
       recentFinesList.innerHTML = `
         <tr>
