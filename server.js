@@ -16,7 +16,18 @@ app.use(express.static('public'));
 // PostgreSQL Connection
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+  ssl: {
+    rejectUnauthorized: false
+  }
+});
+
+// Test database connection
+pool.query('SELECT NOW()', (err, res) => {
+  if (err) {
+    console.error('Database connection error:', err);
+  } else {
+    console.log('Database connected successfully');
+  }
 });
 
 // Initialize database
@@ -51,13 +62,22 @@ async function initializeDatabase() {
       );
     `);
 
+    // Create admin settings table for password
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS admin_settings (
+        id SERIAL PRIMARY KEY,
+        password_hash VARCHAR(255) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
     // Insert default admin password if not exists
     const hashedPassword = await bcrypt.hash('Mandje123', 10);
     await pool.query(`
-      INSERT INTO players (name) 
-      VALUES ('Admin') 
-      ON CONFLICT (name) DO NOTHING;
-    `);
+      INSERT INTO admin_settings (password_hash)
+      SELECT $1
+      WHERE NOT EXISTS (SELECT 1 FROM admin_settings);
+    `, [hashedPassword]);
 
     console.log('Database initialized successfully');
   } catch (error) {
@@ -90,15 +110,28 @@ const authenticateAdmin = async (req, res, next) => {
 app.post('/api/admin/login', async (req, res) => {
   try {
     const { password } = req.body;
-    const isValid = await bcrypt.compare(password, 'Mandje123');
+    
+    // Get stored password hash from database
+    const result = await pool.query('SELECT password_hash FROM admin_settings LIMIT 1');
+    if (result.rows.length === 0) {
+      return res.status(500).json({ error: 'Admin password not set' });
+    }
+
+    const storedHash = result.rows[0].password_hash;
+    const isValid = await bcrypt.compare(password, storedHash);
     
     if (isValid) {
-      const token = jwt.sign({ role: 'admin' }, process.env.JWT_SECRET || 'your-secret-key', { expiresIn: '24h' });
+      const token = jwt.sign(
+        { role: 'admin' }, 
+        process.env.JWT_SECRET || 'your-secret-key', 
+        { expiresIn: '24h' }
+      );
       res.json({ token });
     } else {
       res.status(401).json({ error: 'Invalid password' });
     }
   } catch (error) {
+    console.error('Login error:', error);
     res.status(500).json({ error: error.message });
   }
 });

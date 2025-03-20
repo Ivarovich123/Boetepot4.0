@@ -4,49 +4,57 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Boetepot - Heren 8</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <header class="header">
-    <h1>Boetepot Heren 8</h1>
-  </header>
-
-  <div class="container">
-    <div class="row mb-4">
-      <div class="col-12 text-end">
-        <a href="admin.html" class="btn btn-primary">
-          <i class="fas fa-user-shield me-2"></i>Admin Panel
-        </a>
-      </div>
+  <nav class="navbar">
+    <div class="container">
+      <span class="navbar-brand">Boetepot Heren 8</span>
+      <a href="admin.html" class="nav-link">
+        <i class="fas fa-user-shield"></i>
+        <span>Admin</span>
+      </a>
     </div>
+  </nav>
 
-    <div class="row mb-4">
-      <div class="col-md-6 mb-4">
-        <div class="stats-card">
-          <h5>Totaal Boetes</h5>
-          <h2 id="totalFines">€0.00</h2>
+  <div class="hero-section">
+    <div class="container">
+      <div class="stats-container">
+        <div class="stat-card total-fines">
+          <div class="stat-icon">
+            <i class="fas fa-coins"></i>
+          </div>
+          <div class="stat-content">
+            <h3>Totaal Boetes</h3>
+            <h2 id="totalFines">€0.00</h2>
+          </div>
+        </div>
+        <div class="stat-card fine-count">
+          <div class="stat-icon">
+            <i class="fas fa-receipt"></i>
+          </div>
+          <div class="stat-content">
+            <h3>Aantal Boetes</h3>
+            <h2 id="numberOfFines">0</h2>
+          </div>
         </div>
       </div>
-      <div class="col-md-6 mb-4">
-        <div class="stats-card">
-          <h5>Aantal Boetes</h5>
-          <h2 id="numberOfFines">0</h2>
-        </div>
-      </div>
     </div>
+  </div>
 
-    <div class="row">
-      <div class="col-md-8 mb-4">
-        <div class="card fade-in">
-          <div class="card-body">
-            <h3 class="card-title">
-              <i class="fas fa-history me-2"></i>Recente Boetes
-            </h3>
+  <div class="main-content">
+    <div class="container">
+      <div class="content-grid">
+        <div class="recent-fines-section">
+          <div class="section-card">
+            <div class="card-header">
+              <h2><i class="fas fa-history"></i> Recente Boetes</h2>
+            </div>
             <div class="table-responsive">
-              <table class="table">
+              <table class="custom-table">
                 <thead>
                   <tr>
                     <th>Speler</th>
@@ -60,15 +68,14 @@
             </div>
           </div>
         </div>
-      </div>
-      <div class="col-md-4 mb-4">
-        <div class="card fade-in">
-          <div class="card-body">
-            <h3 class="card-title">
-              <i class="fas fa-trophy me-2"></i>Speler Totaal
-            </h3>
+
+        <div class="player-totals-section">
+          <div class="section-card">
+            <div class="card-header">
+              <h2><i class="fas fa-trophy"></i> Speler Totalen</h2>
+            </div>
             <div class="table-responsive">
-              <table class="table">
+              <table class="custom-table">
                 <thead>
                   <tr>
                     <th>Speler</th>
@@ -84,94 +91,17 @@
     </div>
   </div>
 
-  <button class="theme-toggle" onclick="toggleTheme()">
-    <i class="fas fa-moon"></i>
-  </button>
-
-  <div id="toast" class="toast"></div>
-  <div id="loadingSpinner">
-    <div class="spinner"></div>
-  </div>
-
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-  <div class="container mt-5">
-    <div class="row justify-content-center">
-      <div class="col-md-8">
-        <div class="card">
-          <div class="card-body">
-            <h1 class="card-title text-center mb-4">Boetepot Heren 8</h1>
-            
-            <div class="text-end mb-4">
-              <a href="admin.html" class="btn btn-primary">Admin Panel</a>
-            </div>
-
-            <div class="row mb-4">
-              <div class="col-md-6">
-                <div class="card bg-primary text-white">
-                  <div class="card-body">
-                    <h5 class="card-title">Totaal Boetes</h5>
-                    <h2 class="mb-0" id="totalFines">€0.00</h2>
-                  </div>
-                </div>
-              </div>
-              <div class="col-md-6">
-                <div class="card bg-success text-white">
-                  <div class="card-body">
-                    <h5 class="card-title">Aantal Boetes</h5>
-                    <h2 class="mb-0" id="numberOfFines">0</h2>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="card mb-4">
-              <div class="card-body">
-                <h3>Recente Boetes</h3>
-                <div class="table-responsive">
-                  <table class="table">
-                    <thead>
-                      <tr>
-                        <th>Speler</th>
-                        <th>Reden</th>
-                        <th>Bedrag</th>
-                        <th>Datum</th>
-                      </tr>
-                    </thead>
-                    <tbody id="recentFines"></tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-
-            <div class="card">
-              <div class="card-body">
-                <h3>Speler Totaal</h3>
-                <div class="table-responsive">
-                  <table class="table">
-                    <thead>
-                      <tr>
-                        <th>Speler</th>
-                        <th>Totaal</th>
-                      </tr>
-                    </thead>
-                    <tbody id="playerTotals"></tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+  <footer class="footer">
+    <div class="container">
+      <p>© 2024 Boetepot Heren 8</p>
     </div>
-  </div>
+  </footer>
 
   <div id="toast" class="toast"></div>
   <div id="loadingSpinner">
     <div class="spinner"></div>
   </div>
 
-  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/chosen/1.8.7/chosen.jquery.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script src="app.js"></script>
 </body>
