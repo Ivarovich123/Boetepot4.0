@@ -94,14 +94,17 @@ async function loadTotaalBoetes() {
 
 async function loadRecentBoetes() {
   try {
+    console.log('Loading recent fines...');
     const fines = await fetchAPI('/recent-boetes');
+    console.log('Received fines:', fines);
+    
     const recentBoetes = document.getElementById('recentBoetes');
     if (!recentBoetes) {
       console.error('Recent boetes element not found');
       return;
     }
     
-    if (fines.length === 0) {
+    if (!fines || fines.length === 0) {
       recentBoetes.innerHTML = `
         <tr>
           <td colspan="4" class="text-center">Geen recente boetes gevonden</td>
@@ -110,14 +113,17 @@ async function loadRecentBoetes() {
       return;
     }
     
-    recentBoetes.innerHTML = fines.map(fine => `
-      <tr>
-        <td>${fine.players?.name || 'Onbekend'}</td>
-        <td>${fine.reasons?.description || 'Onbekend'}</td>
-        <td>€${fine.amount.toFixed(2)}</td>
-        <td>${formatDate(fine.date)}</td>
-      </tr>
-    `).join('');
+    recentBoetes.innerHTML = fines.map(fine => {
+      console.log('Processing fine:', fine);
+      return `
+        <tr>
+          <td>${fine.player_name || 'Onbekend'}</td>
+          <td>${fine.reason_description || 'Onbekend'}</td>
+          <td>€${fine.amount.toFixed(2)}</td>
+          <td>${formatDate(fine.date)}</td>
+        </tr>
+      `;
+    }).join('');
   } catch (error) {
     console.error('Error loading recent fines:', error);
     const recentBoetes = document.getElementById('recentBoetes');
@@ -329,17 +335,17 @@ function toggleTheme() {
 
 // Initialize
 $(document).ready(function() {
+  console.log('Initializing application...');
   $('.chosen-select').chosen();
   loadTotaalBoetes();
   loadRecentBoetes();
-  loadLeaderboard();
-  loadDropdownOptions();
+  loadPlayerTotals();
+  loadPlayers();
 });
 
-// Remove duplicate initialization
+// Remove duplicate initializations
 document.addEventListener('DOMContentLoaded', () => {
-  console.log('Initializing application...');
-  // These functions are already called in $(document).ready
+  // Already handled by $(document).ready
 });
 
 // Load all data when the page loads
