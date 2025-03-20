@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <title>Boetepot Heren 8</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Montserrat:wght@500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/chosen/1.8.7/chosen.min.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="header">
+    <h1>Boetepot Heren 8</h1>
+    <button class="theme-toggle" onclick="toggleTheme()">
+      <i id="theme-icon" class="fas fa-moon"></i>
+    </button>
+  </div>
+
+  <div class="total-fine-counter">
+    <div class="fine-card">
+      <div class="fine-content">
+        <small>Total Fines</small>
+        <span id="totaalBoetes">0.00€</span>
+      </div>
+      <i class="fas fa-coins"></i>
+    </div>
+  </div>
+
+  <div class="content">
+    <div class="section" id="playerHistorySection">
+      <h2>Speler historie</h2>
+      <select id="playerInput" class="chosen-select" data-placeholder="Selecteer speler">
+        <option value=""></option>
+      </select>
+      <button onclick="loadPlayerHistory()"><i class="fas fa-history"></i> Toon historie</button>
+      <div class="table-wrapper" id="playerHistory"></div>
+      <div id="playerTotal" style="margin-top: 10px;"></div>
+      <div class="leaderboard" id="leaderboard">
+        <h3>Leaderboard</h3>
+        <div id="leaderboardTable">Loading leaderboard...</div>
+      </div>
+    </div>
+    <div class="section" id="recentFinesSection">
+      <h2>Recente boetes</h2>
+      <div class="table-wrapper" id="recentBoetes">Loading...</div>
+    </div>
+    <div class="section" id="adminPanel" style="display: none;">
+      <a href="#" class="back-link" onclick="logoutAdmin(); return false;">Terug naar overzicht</a>
+      <h2>Admin Dashboard</h2>
+      <div class="admin-form">
+        <form id="addFineForm">
+          <div class="form-group">
+            <label for="playerAdminInput">Speler</label>
+            <select id="playerAdminInput" class="admin-input chosen-select" data-placeholder="Selecteer speler"></select>
+          </div>
+          <div class="form-group">
+            <label for="amount">Bedrag</label>
+            <input type="number" id="amount" class="admin-input" step="0.01" required>
+          </div>
+          <div class="form-group">
+            <label for="reasonAdminInput">Reden</label>
+            <select id="reasonAdminInput" class="admin-input chosen-select" data-placeholder="Selecteer reden"></select>
+          </div>
+          <button type="submit">Boete toevoegen</button>
+        </form>
+        <div id="addFineMessage"></div>
+      </div>
+      <div class="admin-fines">
+        <h3>Alle boetes</h3>
+        <input type="text" id="fineSearch" placeholder="Zoek op speler of reden" style="margin-bottom: 15px;">
+        <div class="table-wrapper" id="allFines">Loading...</div>
+        <div id="pagination" class="pagination"></div>
+      </div>
+    </div>
+    <div class="section" id="loginSection">
+      <h2>Admin Login</h2>
+      <form id="loginForm">
+        <input type="password" id="password" placeholder="Wachtwoord" required>
+        <button type="submit"><i class="fas fa-sign-in-alt"></i> Log in</button>
+      </form>
+      <div id="loginMessage"></div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+  <div id="loadingSpinner">
+    <div class="spinner"></div>
+  </div>
+
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/chosen/1.8.7/chosen.jquery.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html> 
