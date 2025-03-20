@@ -16,11 +16,10 @@ function showToast(message, isError = false) {
 
 function formatDate(dateString) {
   const date = new Date(dateString);
-  return date.toLocaleString('nl-NL', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
-  });
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = date.getFullYear();
+  return `${day}-${month}-${year}`;
 }
 
 function formatCurrency(amount) {
@@ -97,10 +96,10 @@ async function loadRecentFines() {
         const reasonIcon = getReasonIcon(fine.reasons.description);
         tbody.innerHTML += `
           <tr>
-            <td>${fine.players.name}</td>
+            <td>${fine.players ? fine.players.name : 'Onbekend'}</td>
             <td>
               <i class="${reasonIcon} reason-icon"></i>
-              ${fine.reasons.description}
+              ${fine.reasons ? fine.reasons.description : 'Onbekend'}
             </td>
             <td>${formatCurrency(fine.amount)}</td>
             <td>${formatDate(fine.date)}</td>
@@ -218,6 +217,7 @@ async function loadPlayerHistory() {
 
 // Initialize the page
 document.addEventListener('DOMContentLoaded', () => {
+  console.log('Page loaded, initializing...');
   loadTotalFines();
   loadRecentFines();
   loadPlayerTotals();
