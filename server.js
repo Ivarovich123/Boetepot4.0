@@ -7,8 +7,10 @@ const path = require('path');
 const { 
   getPlayers, 
   addPlayer,
+  deletePlayer,
   getReasons, 
   addReason,
+  deleteReason,
   getFines, 
   addFine, 
   deleteFine, 
@@ -31,25 +33,42 @@ const authenticateAdmin = async (req, res, next) => {
 // Admin Routes
 app.get('/api/admin/players', authenticateAdmin, async (req, res) => {
   try {
+    console.log('Fetching players...');
     const players = await getPlayers();
+    console.log(`Successfully fetched ${players.length} players`);
     res.json(players);
   } catch (error) {
-    console.error('Error getting players:', error);
-    res.status(500).json({ error: error.message });
+    console.error('Error getting players:', {
+      message: error.message,
+      stack: error.stack
+    });
+    res.status(500).json({ 
+      error: error.message,
+      details: error.details || 'No additional details available'
+    });
   }
 });
 
 app.post('/api/admin/players', authenticateAdmin, async (req, res) => {
   try {
     const { name } = req.body;
+    console.log('Adding player:', { name });
     if (!name) {
       return res.status(400).json({ error: 'Name is required' });
     }
     const player = await addPlayer(name);
+    console.log('Successfully added player:', player);
     res.json(player);
   } catch (error) {
-    console.error('Error adding player:', error);
-    res.status(500).json({ error: error.message });
+    console.error('Error adding player:', {
+      message: error.message,
+      stack: error.stack,
+      body: req.body
+    });
+    res.status(500).json({ 
+      error: error.message,
+      details: error.details || 'No additional details available'
+    });
   }
 });
 
@@ -107,6 +126,26 @@ app.post('/api/admin/reasons', authenticateAdmin, async (req, res) => {
     res.json(reason);
   } catch (error) {
     console.error('Error adding reason:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete('/api/admin/players/:id', authenticateAdmin, async (req, res) => {
+  try {
+    await deletePlayer(req.params.id);
+    res.json({ message: 'Player deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting player:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete('/api/admin/reasons/:id', authenticateAdmin, async (req, res) => {
+  try {
+    await deleteReason(req.params.id);
+    res.json({ message: 'Reason deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting reason:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -178,9 +217,19 @@ app.post('/api/admin/login', async (req, res) => {
 
 // Catch-all route to serve index.html
 app.get('*', (req, res) => {
+  console.log('Request received:', {
+    path: req.path,
+    method: req.method,
+    headers: req.headers
+  });
+  
   // If it's an API route, return 404
   if (req.path.startsWith('/api/')) {
-    return res.status(404).json({ error: 'API endpoint not found' });
+    console.log('API route not found:', req.path);
+    return res.status(404).json({ 
+      error: 'API endpoint not found',
+      path: req.path
+    });
   }
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
@@ -192,6 +241,7 @@ app.listen(PORT, () => {
     nodeEnv: process.env.NODE_ENV,
     supabaseUrl: process.env.SUPABASE_URL ? 'Present' : 'Missing',
     supabaseKey: process.env.SUPABASE_ANON_KEY ? 'Present' : 'Missing',
-    jwtSecret: process.env.JWT_SECRET ? 'Present' : 'Missing'
+    jwtSecret: process.env.JWT_SECRET ? 'Present' : 'Missing',
+    port: PORT
   });
 }); 
