@@ -185,6 +185,7 @@ document.getElementById('addFineForm').addEventListener('submit', async (e) => {
             showToast('Boete succesvol toegevoegd!');
         } else {
             const error = await response.json();
+            console.error('Server error:', error);
             showToast(error.error || 'Er is een fout opgetreden bij het toevoegen van de boete', true);
         }
     } catch (error) {
