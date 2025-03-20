@@ -15,29 +15,18 @@ function showToast(message, isError = false) {
 }
 
 function formatDate(dateString) {
-  try {
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) {
-      console.error('Invalid date:', dateString);
-      return 'Ongeldige datum';
-    }
-    const months = ['Januari', 'Februari', 'Maart', 'April', 'Mei', 'Juni', 'Juli', 'Augustus', 'September', 'Oktober', 'November', 'December'];
-    return `${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`;
-  } catch (error) {
-    console.error('Error formatting date:', error);
-    return 'Ongeldige datum';
-  }
+  const date = new Date(dateString);
+  const months = ['Januari', 'Februari', 'Maart', 'April', 'Mei', 'Juni', 'Juli', 'Augustus', 'September', 'Oktober', 'November', 'December'];
+  return `${months[date.getMonth()]} ${date.getDate()}`;
 }
 
 function formatCurrency(amount) {
-  return parseFloat(amount).toFixed(2) + '€';
+  return `€${parseFloat(amount).toFixed(2)}`;
 }
 
 // API Functions
 async function fetchAPI(endpoint, options = {}) {
-  toggleLoading(true);
   try {
-    console.log(`Fetching ${endpoint}...`);
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       ...options,
       headers: {
@@ -46,21 +35,14 @@ async function fetchAPI(endpoint, options = {}) {
       }
     });
     
-    const data = await response.json();
-    
     if (!response.ok) {
-      console.error(`API Error (${response.status}):`, data);
-      throw new Error(data.error || `HTTP error! status: ${response.status}`);
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
     
-    console.log(`${endpoint} response:`, data);
-    return data;
+    return await response.json();
   } catch (error) {
     console.error('API Error:', error);
-    showToast(error.message || 'Er is een fout opgetreden', true);
     throw error;
-  } finally {
-    toggleLoading(false);
   }
 }
 
@@ -95,29 +77,39 @@ async function loadTotaalBoetes() {
 async function loadRecentFines() {
   try {
     console.log('Loading recent fines...');
-    const response = await fetchAPI('/api/recent-boetes');
-    const fines = await response.json();
+    const fines = await fetchAPI('/recent-boetes');
     
     console.log('Received fines:', fines);
     
+    // Update number of fines with euro symbol
+    const totalAmount = fines.reduce((sum, fine) => sum + fine.amount, 0);
+    document.getElementById('numberOfFines').textContent = `€${totalAmount.toFixed(2)}`;
+    
+    const recentFines = document.getElementById('recent-fines');
+    if (!recentFines) {
+      console.error('Recent fines element not found');
+      return;
+    }
+    
     if (!Array.isArray(fines) || fines.length === 0) {
-      console.log('No recent fines found');
-      document.getElementById('recent-fines').innerHTML = '<p>Geen recente boetes gevonden.</p>';
+      recentFines.innerHTML = '<p>Geen recente boetes gevonden.</p>';
       return;
     }
     
     const finesHtml = fines.map(fine => `
       <div class="fine-item">
-        <p><strong>${fine.player_name}</strong> - ${fine.reason_description}</p>
+        <p><strong>${fine.players?.name || 'Onbekend'}</strong> - ${fine.reasons?.description || 'Onbekend'}</p>
         <p>€${fine.amount.toFixed(2)} - ${fine.date}</p>
       </div>
     `).join('');
     
-    document.getElementById('recent-fines').innerHTML = finesHtml;
-    console.log('Recent fines loaded successfully');
+    recentFines.innerHTML = finesHtml;
   } catch (error) {
     console.error('Error loading recent fines:', error);
-    document.getElementById('recent-fines').innerHTML = '<p>Er is een fout opgetreden bij het laden van de boetes.</p>';
+    const recentFines = document.getElementById('recent-fines');
+    if (recentFines) {
+      recentFines.innerHTML = '<p>Er is een fout opgetreden bij het laden van de boetes.</p>';
+    }
   }
 }
 
@@ -130,39 +122,47 @@ async function loadPlayerHistory() {
     return;
   }
   
-  toggleLoading(true);
   try {
-    const response = await fetch(`/api/player-history/${selectedPlayer}`);
-    if (!response.ok) {
-      throw new Error('Failed to load player history');
-    }
-    const history = await response.json();
+    console.log('Loading history for player:', selectedPlayer);
+    const history = await fetchAPI(`/player-history/${selectedPlayer}`);
+    console.log('Received player history:', history);
     
     const tbody = document.getElementById('playerHistory');
-    tbody.innerHTML = '';
+    if (!tbody) {
+      console.error('Player history tbody element not found');
+      return;
+    }
     
-    if (history.length === 0) {
+    if (!Array.isArray(history) || history.length === 0) {
       tbody.innerHTML = `
         <tr>
           <td colspan="3" class="text-center">Geen boetes gevonden voor deze speler</td>
         </tr>
       `;
-    } else {
-      history.forEach(fine => {
-        tbody.innerHTML += `
-          <tr>
-            <td>${formatDate(fine.date)}</td>
-            <td>€${fine.amount.toFixed(2)}</td>
-            <td>${fine.reason_description}</td>
-          </tr>
-        `;
-      });
+      return;
     }
+    
+    tbody.innerHTML = history.map(fine => `
+      <tr>
+        <td>${fine.date}</td>
+        <td>€${fine.amount.toFixed(2)}</td>
+        <td>${fine.reasons?.description || 'Onbekend'}</td>
+      </tr>
+    `).join('');
   } catch (error) {
     console.error('Error loading player history:', error);
     showToast('Fout bij laden speler historie: ' + error.message, true);
-  } finally {
-    toggleLoading(false);
+    
+    const tbody = document.getElementById('playerHistory');
+    if (tbody) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="3" class="text-center text-danger">
+            Er is een fout opgetreden bij het laden van de historie
+          </td>
+        </tr>
+      `;
+    }
   }
 }
 
@@ -316,21 +316,6 @@ function toggleTheme() {
 }
 
 // Initialize
-$(document).ready(function() {
-  console.log('Initializing application...');
-  $('.chosen-select').chosen();
-  loadTotaalBoetes();
-  loadRecentFines();
-  loadPlayerTotals();
-  loadPlayers();
-});
-
-// Remove duplicate initializations
-document.addEventListener('DOMContentLoaded', () => {
-  // Already handled by $(document).ready
-});
-
-// Load all data when the page loads
 document.addEventListener('DOMContentLoaded', () => {
   console.log('DOM loaded, initializing...');
   loadTotalFines();
@@ -342,15 +327,24 @@ document.addEventListener('DOMContentLoaded', () => {
 // Load total fines
 async function loadTotalFines() {
   try {
+    console.log('Loading total fines...');
     const { total } = await fetchAPI('/totaal-boetes');
+    console.log('Received total:', total);
+    
     const totalElement = document.getElementById('totalFines');
-    if (totalElement) {
-      animateCounter(totalElement, 0, total, 2000);
-    } else {
+    if (!totalElement) {
       console.error('Total fines element not found');
+      return;
     }
+    
+    // Animate the counter from 0 to total
+    animateCounter(totalElement, 0, total, 2000);
   } catch (error) {
     console.error('Error loading total fines:', error);
+    const totalElement = document.getElementById('totalFines');
+    if (totalElement) {
+      totalElement.textContent = 'Error';
+    }
   }
 }
 
@@ -358,22 +352,22 @@ async function loadTotalFines() {
 async function loadPlayerTotals() {
   try {
     const totals = await fetchAPI('/player-totals');
-    const playerTotalsList = document.getElementById('playerTotalsList');
+    console.log('Received player totals:', totals);
+    
+    const playerTotalsList = document.getElementById('playerTotals');
     if (!playerTotalsList) {
-      console.error('Player totals list element not found');
+      console.error('Player totals element not found');
       return;
     }
     
-    if (totals.length === 0) {
-      playerTotalsList.innerHTML = `
-        <tr>
-          <td colspan="2" class="text-center">Geen speler totalen gevonden</td>
-        </tr>
-      `;
+    if (!Array.isArray(totals) || totals.length === 0) {
+      playerTotalsList.innerHTML = '<tr><td colspan="2">Geen speler totalen gevonden</td></tr>';
       return;
     }
     
+    // Sort totals by amount descending
     const sortedTotals = totals.sort((a, b) => b.total - a.total);
+    
     playerTotalsList.innerHTML = sortedTotals.map(player => `
       <tr>
         <td>${player.name || 'Onbekend'}</td>
@@ -382,34 +376,31 @@ async function loadPlayerTotals() {
     `).join('');
   } catch (error) {
     console.error('Error loading player totals:', error);
-    const playerTotalsList = document.getElementById('playerTotalsList');
+    const playerTotalsList = document.getElementById('playerTotals');
     if (playerTotalsList) {
-      playerTotalsList.innerHTML = `
-        <tr>
-          <td colspan="2" class="text-center text-danger">
-            Er is een fout opgetreden bij het laden van de speler totalen
-          </td>
-        </tr>
-      `;
+      playerTotalsList.innerHTML = '<tr><td colspan="2">Er is een fout opgetreden bij het laden van de totalen</td></tr>';
     }
   }
 }
 
 // Load players for the dropdown
 async function loadPlayers() {
-    try {
-        const response = await fetch('/api/admin/players');
-        const players = await response.json();
-        
-        const playerSelect = document.getElementById('playerSelect');
-        playerSelect.innerHTML = '<option value="">Selecteer speler</option>';
-        players.forEach(player => {
-            if (player.name !== 'Admin') {
-                playerSelect.innerHTML += `<option value="${player.id}">${player.name}</option>`;
-            }
-        });
-    } catch (error) {
-        console.error('Error loading players:', error);
-        showToast('Fout bij laden spelers: ' + error.message, true);
+  try {
+    const players = await fetchAPI('/players');
+    console.log('Received players:', players);
+    
+    const playerSelect = document.getElementById('playerSelect');
+    if (!playerSelect) {
+      console.error('Player select element not found');
+      return;
     }
+    
+    playerSelect.innerHTML = '<option value="">Selecteer speler</option>';
+    players.forEach(player => {
+      playerSelect.innerHTML += `<option value="${player.id}">${player.name}</option>`;
+    });
+  } catch (error) {
+    console.error('Error loading players:', error);
+    showToast('Fout bij laden spelers: ' + error.message, true);
+  }
 } 

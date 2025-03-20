@@ -1,19 +1,4 @@
 require('dotenv').config();
-
-// Verify environment variables are loaded
-const requiredEnvVars = [
-  'SUPABASE_URL',
-  'SUPABASE_ANON_KEY',
-  'SUPABASE_SERVICE_ROLE_KEY',
-  'JWT_SECRET'
-];
-
-const missingEnvVars = requiredEnvVars.filter(varName => !process.env[varName]);
-if (missingEnvVars.length > 0) {
-  console.error('Missing required environment variables:', missingEnvVars);
-  process.exit(1);
-}
-
 const express = require('express');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
@@ -175,6 +160,15 @@ app.get('/api/totaal-boetes', async (req, res) => {
     console.log('Fetching total fines...');
     const total = await getTotalFines();
     console.log('Total fines:', total);
+    
+    if (typeof total !== 'number') {
+      console.error('Invalid total returned:', total);
+      return res.status(500).json({ 
+        error: 'Invalid total returned from database',
+        details: 'The total amount is not a number'
+      });
+    }
+    
     res.json({ 
       total,
       formatted: `€${total.toFixed(2)}`
@@ -193,40 +187,24 @@ app.get('/api/totaal-boetes', async (req, res) => {
 
 app.get('/api/recent-boetes', async (req, res) => {
   try {
-    console.log('Fetching recent fines...');
     const fines = await getPublicFines();
-    console.log(`Found ${fines.length} recent fines`);
     res.json(fines.slice(0, 10));
   } catch (error) {
-    console.error('Error getting recent fines:', {
-      error: error.message,
-      stack: error.stack
-    });
-    res.status(500).json({ 
-      error: 'Failed to get recent fines',
-      details: error.message 
-    });
+    console.error('Error getting recent fines:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 
 app.get('/api/player-totals', async (req, res) => {
   try {
-    console.log('Fetching player totals...');
     const totals = await getPlayerTotals();
-    console.log(`Found totals for ${totals.length} players`);
     res.json(totals.map(player => ({
       ...player,
       formatted: `€${player.total.toFixed(2)}`
     })));
   } catch (error) {
-    console.error('Error getting player totals:', {
-      error: error.message,
-      stack: error.stack
-    });
-    res.status(500).json({ 
-      error: 'Failed to get player totals',
-      details: error.message 
-    });
+    console.error('Error getting player totals:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 
@@ -285,25 +263,6 @@ app.post('/api/admin/login', async (req, res) => {
   }
 });
 
-// Add error handling middleware
-app.use((err, req, res, next) => {
-  console.error('Unhandled error:', err);
-  res.status(500).json({ 
-    error: 'Internal server error', 
-    message: err.message,
-    path: req.path
-  });
-});
-
-// Add request logging middleware
-app.use((req, res, next) => {
-  console.log(`${req.method} ${req.path}`, {
-    query: req.query,
-    body: req.method === 'POST' ? req.body : undefined
-  });
-  next();
-});
-
 // Catch-all route to serve index.html
 app.get('*', (req, res) => {
   console.log('Request received:', {
@@ -328,9 +287,8 @@ app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log('Environment:', {
     nodeEnv: process.env.NODE_ENV,
-    supabaseUrl: process.env.SUPABASE_URL ? `${process.env.SUPABASE_URL.substring(0, 10)}...` : 'Missing',
-    supabaseAnonKey: process.env.SUPABASE_ANON_KEY ? 'Present' : 'Missing',
-    supabaseServiceKey: process.env.SUPABASE_SERVICE_ROLE_KEY ? 'Present' : 'Missing',
+    supabaseUrl: process.env.SUPABASE_URL ? 'Present' : 'Missing',
+    supabaseKey: process.env.SUPABASE_ANON_KEY ? 'Present' : 'Missing',
     jwtSecret: process.env.JWT_SECRET ? 'Present' : 'Missing',
     port: PORT
   });
