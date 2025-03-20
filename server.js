@@ -153,9 +153,9 @@ app.post('/api/admin/login', async (req, res) => {
 
 // Catch-all route to serve index.html
 app.get('*', (req, res) => {
-  // If it's an API route, skip
+  // If it's an API route, return 404
   if (req.path.startsWith('/api/')) {
-    return next();
+    return res.status(404).json({ error: 'API endpoint not found' });
   }
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
