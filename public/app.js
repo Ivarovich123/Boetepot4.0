@@ -3,7 +3,10 @@ const API_BASE_URL = '/api';
 
 // Utility Functions
 function toggleLoading(show) {
-  document.getElementById('loadingSpinner').style.display = show ? 'flex' : 'none';
+  const spinner = document.getElementById('loadingSpinner');
+  if (spinner) {
+    spinner.style.display = show ? 'flex' : 'none';
+  }
 }
 
 function showToast(message, isError = false) {
@@ -27,6 +30,7 @@ function formatCurrency(amount) {
 // API Functions
 async function fetchAPI(endpoint, options = {}) {
   try {
+    console.log(`[API] Fetching ${endpoint}...`);
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       ...options,
       headers: {
@@ -36,12 +40,16 @@ async function fetchAPI(endpoint, options = {}) {
     });
     
     if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error(`[API] HTTP error! status: ${response.status}`, errorData);
       throw new Error(`HTTP error! status: ${response.status}`);
     }
     
-    return await response.json();
+    const data = await response.json();
+    console.log(`[API] ${endpoint} response:`, data);
+    return data;
   } catch (error) {
-    console.error('API Error:', error);
+    console.error(`[API] Error fetching ${endpoint}:`, error);
     throw error;
   }
 }
@@ -78,32 +86,38 @@ async function loadTotaalBoetes() {
 
 async function loadRecentFines() {
   try {
-    console.log('Loading recent fines...');
+    console.log('[Recent Fines] Loading...');
     const fines = await fetchAPI('/recent-boetes');
-    
-    console.log('Received fines:', fines);
+    console.log('[Recent Fines] Data received:', fines);
     
     const recentFines = document.getElementById('recentFines');
     if (!recentFines) {
-      console.error('Recent fines element not found');
+      console.error('[Recent Fines] Element not found');
       return;
     }
     
     if (!Array.isArray(fines) || fines.length === 0) {
+      console.log('[Recent Fines] No fines found');
       recentFines.innerHTML = '<tr><td colspan="4" class="text-center">Geen recente boetes gevonden.</td></tr>';
       return;
     }
     
-    recentFines.innerHTML = fines.map(fine => `
-      <tr>
-        <td>${fine.player}</td>
-        <td>${fine.reason}</td>
-        <td>€${fine.amount.toFixed(2)}</td>
-        <td>${fine.date}</td>
-      </tr>
-    `).join('');
+    const finesHtml = fines.map(fine => {
+      console.log('[Recent Fines] Processing fine:', fine);
+      return `
+        <tr>
+          <td>${fine.player || 'Onbekend'}</td>
+          <td>${fine.reason || 'Onbekend'}</td>
+          <td>€${(fine.amount || 0).toFixed(2)}</td>
+          <td>${fine.date || 'Onbekend'}</td>
+        </tr>
+      `;
+    }).join('');
+    
+    console.log('[Recent Fines] Setting HTML:', finesHtml);
+    recentFines.innerHTML = finesHtml;
   } catch (error) {
-    console.error('Error loading recent fines:', error);
+    console.error('[Recent Fines] Error:', error);
     const recentFines = document.getElementById('recentFines');
     if (recentFines) {
       recentFines.innerHTML = '<tr><td colspan="4" class="text-center text-danger">Er is een fout opgetreden bij het laden van de boetes.</td></tr>';
@@ -325,7 +339,7 @@ function toggleTheme() {
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
-  console.log('Document loaded, initializing...');
+  console.log('[Init] Document loaded, initializing...');
   loadTotalFines();
   loadRecentFines();
   loadPlayerTotals();
@@ -335,20 +349,21 @@ document.addEventListener('DOMContentLoaded', () => {
 // Load total fines
 async function loadTotalFines() {
   try {
-    console.log('Loading total fines...');
+    console.log('[Total Fines] Loading...');
     const total = await fetchAPI('/totaal-boetes');
-    console.log('Received total:', total);
+    console.log('[Total Fines] Data received:', total);
     
     const totalElement = document.getElementById('totalFines');
     if (!totalElement) {
-      console.error('Total fines element not found');
+      console.error('[Total Fines] Element not found');
       return;
     }
     
-    const formattedTotal = `€${total.toFixed(2)}`;
-    animateCounter(totalElement, 0, total, 2000, formattedTotal);
+    const formattedTotal = `€${(total || 0).toFixed(2)}`;
+    console.log('[Total Fines] Setting formatted total:', formattedTotal);
+    animateCounter(totalElement, 0, total || 0, 2000, formattedTotal);
   } catch (error) {
-    console.error('Error loading total fines:', error);
+    console.error('[Total Fines] Error:', error);
     const totalElement = document.getElementById('totalFines');
     if (totalElement) {
       totalElement.textContent = 'Error';
@@ -359,29 +374,36 @@ async function loadTotalFines() {
 // Load player totals
 async function loadPlayerTotals() {
   try {
-    console.log('Loading player totals...');
+    console.log('[Player Totals] Loading...');
     const totals = await fetchAPI('/player-totals');
-    console.log('Received player totals:', totals);
+    console.log('[Player Totals] Data received:', totals);
     
     const playerTotalsList = document.getElementById('playerTotals');
     if (!playerTotalsList) {
-      console.error('Player totals element not found');
+      console.error('[Player Totals] Element not found');
       return;
     }
     
     if (!Array.isArray(totals) || totals.length === 0) {
+      console.log('[Player Totals] No totals found');
       playerTotalsList.innerHTML = '<tr><td colspan="2" class="text-center">Geen speler totalen gevonden</td></tr>';
       return;
     }
     
-    playerTotalsList.innerHTML = totals.map(player => `
-      <tr>
-        <td>${player.name}</td>
-        <td>${player.formatted}</td>
-      </tr>
-    `).join('');
+    const totalsHtml = totals.map(player => {
+      console.log('[Player Totals] Processing player:', player);
+      return `
+        <tr>
+          <td>${player.name || 'Onbekend'}</td>
+          <td>${player.formatted || `€${(player.total || 0).toFixed(2)}`}</td>
+        </tr>
+      `;
+    }).join('');
+    
+    console.log('[Player Totals] Setting HTML:', totalsHtml);
+    playerTotalsList.innerHTML = totalsHtml;
   } catch (error) {
-    console.error('Error loading player totals:', error);
+    console.error('[Player Totals] Error:', error);
     const playerTotalsList = document.getElementById('playerTotals');
     if (playerTotalsList) {
       playerTotalsList.innerHTML = '<tr><td colspan="2" class="text-center text-danger">Er is een fout opgetreden bij het laden van de totalen.</td></tr>';

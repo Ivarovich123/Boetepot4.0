@@ -167,69 +167,36 @@ app.delete('/api/admin/reasons/:id', authenticateAdmin, async (req, res) => {
 // Public Routes
 app.get('/api/totaal-boetes', async (req, res) => {
   try {
-    console.log('Fetching total fines...');
+    console.log('[Route] GET /api/totaal-boetes');
     const total = await getTotalFines();
-    console.log('Total fines:', total);
-    
-    if (typeof total !== 'number') {
-      console.error('Invalid total returned:', total);
-      return res.status(500).json({ 
-        error: 'Invalid total returned from database',
-        details: 'The total amount is not a number'
-      });
-    }
-    
+    console.log('[Route] Total fines:', total);
     res.json(total);
   } catch (error) {
-    console.error('Error getting total fines:', {
-      error: error.message,
-      stack: error.stack
-    });
-    res.status(500).json({ 
-      error: 'Failed to get total fines',
-      details: error.message 
-    });
+    console.error('[Route] Error getting total fines:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 
 app.get('/api/recent-boetes', async (req, res) => {
   try {
-    console.log('Fetching recent fines...');
+    console.log('[Route] GET /api/recent-boetes');
     const fines = await getPublicFines();
-    console.log('Recent fines:', fines);
-    
-    if (!Array.isArray(fines)) {
-      console.error('Invalid fines data returned:', fines);
-      return res.status(500).json({ 
-        error: 'Invalid data returned from database',
-        details: 'The fines data is not an array'
-      });
-    }
-    
+    console.log('[Route] Recent fines:', fines);
     res.json(fines);
   } catch (error) {
-    console.error('Error getting recent fines:', error);
+    console.error('[Route] Error getting recent fines:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
 app.get('/api/player-totals', async (req, res) => {
   try {
-    console.log('Fetching player totals...');
+    console.log('[Route] GET /api/player-totals');
     const totals = await getPlayerTotals();
-    console.log('Player totals:', totals);
-    
-    if (!Array.isArray(totals)) {
-      console.error('Invalid totals data returned:', totals);
-      return res.status(500).json({ 
-        error: 'Invalid data returned from database',
-        details: 'The totals data is not an array'
-      });
-    }
-    
+    console.log('[Route] Player totals:', totals);
     res.json(totals);
   } catch (error) {
-    console.error('Error getting player totals:', error);
+    console.error('[Route] Error getting player totals:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -249,10 +216,12 @@ app.get('/api/player-history/:playerId', async (req, res) => {
 
 app.get('/api/players', async (req, res) => {
   try {
+    console.log('[Route] GET /api/players');
     const players = await getPublicPlayers();
+    console.log('[Route] Players:', players);
     res.json(players);
   } catch (error) {
-    console.error('Error getting players:', error);
+    console.error('[Route] Error getting players:', error);
     res.status(500).json({ error: error.message });
   }
 });
