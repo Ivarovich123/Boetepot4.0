@@ -6,6 +6,7 @@ const bcrypt = require('bcrypt');
 const path = require('path');
 const { 
   getPlayers, 
+  addPlayer,
   getReasons, 
   getFines, 
   addFine, 
@@ -18,7 +19,7 @@ const {
 const app = express();
 app.use(cors());
 app.use(express.json());
-app.use(express.static('public'));
+app.use(express.static(path.join(__dirname, 'public')));
 
 // Temporarily disable admin authentication middleware
 const authenticateAdmin = async (req, res, next) => {
@@ -40,13 +41,11 @@ app.get('/api/admin/players', authenticateAdmin, async (req, res) => {
 app.post('/api/admin/players', authenticateAdmin, async (req, res) => {
   try {
     const { name } = req.body;
-    const { data, error } = await supabase
-      .from('players')
-      .insert([{ name }])
-      .select();
-    
-    if (error) throw error;
-    res.json(data[0]);
+    if (!name) {
+      return res.status(400).json({ error: 'Name is required' });
+    }
+    const player = await addPlayer(name);
+    res.json(player);
   } catch (error) {
     console.error('Error adding player:', error);
     res.status(500).json({ error: error.message });
@@ -56,6 +55,9 @@ app.post('/api/admin/players', authenticateAdmin, async (req, res) => {
 app.post('/api/admin/fines', authenticateAdmin, async (req, res) => {
   try {
     const { player_id, reason_id, amount } = req.body;
+    if (!player_id || !reason_id || !amount) {
+      return res.status(400).json({ error: 'All fields are required' });
+    }
     const fine = await addFine({ player_id, reason_id, amount });
     res.json(fine);
   } catch (error) {
@@ -149,8 +151,12 @@ app.post('/api/admin/login', async (req, res) => {
   }
 });
 
-// Serve static files
-app.get('/', (req, res) => {
+// Catch-all route to serve index.html
+app.get('*', (req, res) => {
+  // If it's an API route, skip
+  if (req.path.startsWith('/api/')) {
+    return next();
+  }
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
