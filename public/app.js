@@ -16,12 +16,17 @@ function showToast(message, isError = false) {
 
 function formatDate(dateString) {
   const date = new Date(dateString);
-  const months = ['Januari', 'Februari', 'Maart', 'April', 'Mei', 'Juni', 'Juli', 'Augustus', 'September', 'Oktober', 'November', 'December'];
-  return `${months[date.getMonth()]} ${date.getDate()}`;
+  return date.toLocaleString('nl-NL', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
 }
 
 function formatCurrency(amount) {
-  return parseFloat(amount).toFixed(2) + '€';
+  return `€${parseFloat(amount).toFixed(2)}`;
 }
 
 // API Functions
@@ -61,11 +66,11 @@ function animateCounter(element, start, end, duration) {
   requestAnimationFrame(step);
 }
 
-async function loadTotaalBoetes() {
+async function loadTotalFines() {
   toggleLoading(true);
   try {
     const { total } = await fetchAPI('/totaal-boetes');
-    const counterElement = document.getElementById('totaalBoetes');
+    const counterElement = document.getElementById('numberOfFines');
     animateCounter(counterElement, 0, total, 2000);
   } catch (error) {
     showToast('Fout bij laden totaal boetes: ' + error.message, true);
@@ -74,37 +79,79 @@ async function loadTotaalBoetes() {
   }
 }
 
-async function loadRecentBoetes() {
+async function loadRecentFines() {
   toggleLoading(true);
   try {
     const fines = await fetchAPI('/recent-boetes');
-    const table = document.createElement('table');
-    table.innerHTML = `
-      <thead>
+    const tbody = document.getElementById('recentFines');
+    tbody.innerHTML = '';
+    
+    if (fines.length === 0) {
+      tbody.innerHTML = `
         <tr>
-          <th>Speler</th>
-          <th>Datum</th>
-          <th>Bedrag</th>
-          <th>Reden</th>
+          <td colspan="4" class="text-center">Geen recente boetes gevonden</td>
         </tr>
-      </thead>
-      <tbody>
-        ${fines.map(fine => `
+      `;
+    } else {
+      fines.forEach(fine => {
+        tbody.innerHTML += `
           <tr>
-            <td>${fine.speler}</td>
-            <td>${formatDate(fine.datum)}</td>
-            <td>${formatCurrency(fine.bedrag)}</td>
-            <td>${fine.reden}</td>
+            <td>${fine.players.name}</td>
+            <td>${fine.reasons.description}</td>
+            <td>${formatCurrency(fine.amount)}</td>
+            <td>${fine.date}</td>
           </tr>
-        `).join('')}
-      </tbody>
-    `;
-    document.getElementById('recentBoetes').innerHTML = '';
-    document.getElementById('recentBoetes').appendChild(table);
+        `;
+      });
+    }
   } catch (error) {
     showToast('Fout bij laden recente boetes: ' + error.message, true);
   } finally {
     toggleLoading(false);
+  }
+}
+
+async function loadPlayerTotals() {
+  toggleLoading(true);
+  try {
+    const totals = await fetchAPI('/player-totals');
+    const tbody = document.getElementById('playerTotals');
+    tbody.innerHTML = '';
+    
+    if (totals.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="2" class="text-center">Geen spelers gevonden</td>
+        </tr>
+      `;
+    } else {
+      totals.forEach(player => {
+        tbody.innerHTML += `
+          <tr>
+            <td>${player.name}</td>
+            <td>${player.formatted}</td>
+          </tr>
+        `;
+      });
+    }
+  } catch (error) {
+    showToast('Fout bij laden speler totalen: ' + error.message, true);
+  } finally {
+    toggleLoading(false);
+  }
+}
+
+async function loadPlayers() {
+  try {
+    const players = await fetchAPI('/players');
+    const playerSelect = document.getElementById('playerSelect');
+    playerSelect.innerHTML = '<option value="">Selecteer speler</option>';
+    
+    players.forEach(player => {
+      playerSelect.innerHTML += `<option value="${player.id}">${player.name}</option>`;
+    });
+  } catch (error) {
+    showToast('Fout bij laden spelers: ' + error.message, true);
   }
 }
 
@@ -119,12 +166,7 @@ async function loadPlayerHistory() {
   
   toggleLoading(true);
   try {
-    const response = await fetch(`/api/player-history/${selectedPlayer}`);
-    if (!response.ok) {
-      throw new Error('Failed to load player history');
-    }
-    const history = await response.json();
-    
+    const history = await fetchAPI(`/player-history/${selectedPlayer}`);
     const tbody = document.getElementById('playerHistory');
     tbody.innerHTML = '';
     
@@ -138,9 +180,9 @@ async function loadPlayerHistory() {
       history.forEach(fine => {
         tbody.innerHTML += `
           <tr>
-            <td>${formatDate(fine.date)}</td>
-            <td>€${fine.amount.toFixed(2)}</td>
-            <td>${fine.reason_description}</td>
+            <td>${fine.date}</td>
+            <td>${fine.formatted}</td>
+            <td>${fine.reasons.description}</td>
           </tr>
         `;
       });
@@ -153,6 +195,15 @@ async function loadPlayerHistory() {
   }
 }
 
+// Initialize the page
+document.addEventListener('DOMContentLoaded', () => {
+  loadTotalFines();
+  loadRecentFines();
+  loadPlayerTotals();
+  loadPlayers();
+});
+
+// Load leaderboard
 async function loadLeaderboard() {
   toggleLoading(true);
   try {
@@ -184,6 +235,7 @@ async function loadLeaderboard() {
   }
 }
 
+// Load dropdown options
 async function loadDropdownOptions() {
   try {
     const { spelers } = await fetchAPI('/dropdown-options');
@@ -305,96 +357,6 @@ function toggleTheme() {
 // Initialize
 $(document).ready(function() {
   $('.chosen-select').chosen();
-  loadTotaalBoetes();
-  loadRecentBoetes();
   loadLeaderboard();
   loadDropdownOptions();
-});
-
-// Load all data when the page loads
-document.addEventListener('DOMContentLoaded', () => {
-    loadTotalFines();
-    loadRecentFines();
-    loadPlayerTotals();
-    loadPlayers();
-});
-
-// Load total fines
-async function loadTotalFines() {
-    try {
-        const response = await fetch('/api/totaal-boetes');
-        const data = await response.json();
-        document.getElementById('totalFines').textContent = `€${data.total.toFixed(2)}`;
-    } catch (error) {
-        console.error('Error loading total fines:', error);
-    }
-}
-
-// Load recent fines
-async function loadRecentFines() {
-    try {
-        const response = await fetch('/api/recent-boetes');
-        const fines = await response.json();
-        
-        const recentFines = document.getElementById('recentFines');
-        recentFines.innerHTML = '';
-        
-        fines.forEach(fine => {
-            const date = new Date(fine.date).toLocaleString('nl-NL');
-            recentFines.innerHTML += `
-                <tr>
-                    <td>${fine.player_name}</td>
-                    <td>${fine.reason_description}</td>
-                    <td>€${fine.amount.toFixed(2)}</td>
-                    <td>${date}</td>
-                </tr>
-            `;
-        });
-
-        // Update number of fines
-        document.getElementById('numberOfFines').textContent = fines.length;
-    } catch (error) {
-        console.error('Error loading recent fines:', error);
-    }
-}
-
-// Load player totals
-async function loadPlayerTotals() {
-    try {
-        const response = await fetch('/api/player-totals');
-        const players = await response.json();
-        
-        const playerTotals = document.getElementById('playerTotals');
-        playerTotals.innerHTML = '';
-        
-        players.forEach(player => {
-            playerTotals.innerHTML += `
-                <tr>
-                    <td>${player.name}</td>
-                    <td>€${(player.total || 0).toFixed(2)}</td>
-                </tr>
-            `;
-        });
-    } catch (error) {
-        console.error('Error loading player totals:', error);
-    }
-}
-
-// Load players for the dropdown
-async function loadPlayers() {
-    try {
-        const response = await fetch('/api/admin/players');
-        const players = await response.json();
-        
-        const playerSelect = document.getElementById('playerSelect');
-        playerSelect.innerHTML = '<option value="">Selecteer speler</option>';
-        players.forEach(player => {
-            if (player.name !== 'Admin') {
-                playerSelect.innerHTML += `<option value="${player.id}">${player.name}</option>`;
-            }
-        });
-    } catch (error) {
-        console.error('Error loading players:', error);
-        showToast('Fout bij laden spelers: ' + error.message, true);
-    }
-} 
+}); 
