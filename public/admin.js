@@ -40,7 +40,7 @@ function formatCurrency(amount) {
 // API Functions
 async function fetchAPI(endpoint, options = {}) {
   try {
-    console.log(`[API] Fetching ${endpoint}...`);
+    console.log(`[API] Fetching ${endpoint}...`, options);
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       ...options,
       headers: {
@@ -49,15 +49,17 @@ async function fetchAPI(endpoint, options = {}) {
       }
     });
     
+    const data = await response.json();
+    
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      throw new Error(data.error || `HTTP error! status: ${response.status}`);
     }
     
-    const data = await response.json();
     console.log(`[API] Response from ${endpoint}:`, data);
     return data;
   } catch (error) {
     console.error(`[API] Error fetching ${endpoint}:`, error);
+    showToast(error.message || 'Er is een fout opgetreden', true);
     throw error;
   }
 }
@@ -162,7 +164,7 @@ async function handleAddPlayer(event) {
   
   try {
     toggleLoading(true);
-    await fetchAPI('/players', {
+    const response = await fetchAPI('/players', {
       method: 'POST',
       body: JSON.stringify({ name })
     });
@@ -172,7 +174,6 @@ async function handleAddPlayer(event) {
     await loadPlayers();
   } catch (error) {
     console.error('[Add Player] Error:', error);
-    showToast('Fout bij toevoegen speler', true);
   } finally {
     toggleLoading(false);
   }
@@ -192,7 +193,7 @@ async function handleAddReason(event) {
   
   try {
     toggleLoading(true);
-    await fetchAPI('/reasons', {
+    const response = await fetchAPI('/reasons', {
       method: 'POST',
       body: JSON.stringify({ description })
     });
@@ -202,7 +203,6 @@ async function handleAddReason(event) {
     await loadReasons();
   } catch (error) {
     console.error('[Add Reason] Error:', error);
-    showToast('Fout bij toevoegen reden', true);
   } finally {
     toggleLoading(false);
   }
@@ -228,9 +228,13 @@ async function handleAddFine(event) {
   
   try {
     toggleLoading(true);
-    await fetchAPI('/fines', {
+    const response = await fetchAPI('/fines', {
       method: 'POST',
-      body: JSON.stringify({ player_id, reason_id, amount })
+      body: JSON.stringify({ 
+        player_id: parseInt(player_id), 
+        reason_id: parseInt(reason_id), 
+        amount: parseFloat(amount.toFixed(2))
+      })
     });
     
     showToast('Boete toegevoegd');
@@ -243,7 +247,6 @@ async function handleAddFine(event) {
     await loadRecentFines();
   } catch (error) {
     console.error('[Add Fine] Error:', error);
-    showToast('Fout bij toevoegen boete', true);
   } finally {
     toggleLoading(false);
   }

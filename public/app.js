@@ -83,22 +83,38 @@ function animateCounter(element, start, end, duration) {
   requestAnimationFrame(updateCounter);
 }
 
-async function loadTotaalBoetes() {
+async function loadTotalFines() {
   try {
     console.log('[Total] Loading total fines...');
-    const { total } = await fetchAPI('/totaal-boetes');
+    const data = await fetchAPI('/totaal-boetes');
+    console.log('[Total] Received total:', data);
     
     const totalElement = document.getElementById('totalAmount');
-    if (totalElement) {
-      const totalLabel = document.getElementById('totalLabel');
-      if (totalLabel) {
-        totalLabel.textContent = 'Totaal';
-      }
-      animateCounter(totalElement, 0, total || 0, 2000);
+    if (!totalElement) {
+      console.error('[Total] Total amount element not found');
+      return;
+    }
+    
+    const total = parseFloat(data.total || 0);
+    const countUp = new CountUp('totalAmount', total, {
+      prefix: '€',
+      decimal: ',',
+      decimals: 2,
+      duration: 2.5,
+      useEasing: true,
+      useGrouping: true,
+      separator: '.',
+    });
+    
+    if (!countUp.error) {
+      countUp.start();
+    } else {
+      console.error('[Total] Error starting counter:', countUp.error);
+      totalElement.textContent = formatCurrency(total);
     }
   } catch (error) {
-    console.error('[Total] Error:', error);
-    showToast('Fout bij laden totaal boetes', true);
+    console.error('[Total] Error loading total:', error);
+    showToast('Fout bij laden van totaal bedrag', true);
   }
 }
 
@@ -255,7 +271,7 @@ document.addEventListener('DOMContentLoaded', () => {
   console.log('[Init] Document loaded, initializing...');
   
   // Load all data
-  loadTotaalBoetes();
+  loadTotalFines();
   loadRecentFines();
   loadLeaderboard();
   
