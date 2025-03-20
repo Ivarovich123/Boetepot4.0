@@ -23,15 +23,6 @@
   <div class="hero-section">
     <div class="container">
       <div class="stats-container">
-        <div class="stat-card total-fines">
-          <div class="stat-icon">
-            <i class="fas fa-coins"></i>
-          </div>
-          <div class="stat-content">
-            <h3>Totaal Boetes</h3>
-            <h2 id="totalFines">€0.00</h2>
-          </div>
-        </div>
         <div class="stat-card fine-count">
           <div class="stat-icon">
             <i class="fas fa-receipt"></i>
@@ -84,6 +75,40 @@
                 </thead>
                 <tbody id="playerTotals"></tbody>
               </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="player-history-section">
+          <div class="section-card">
+            <div class="card-header">
+              <h2><i class="fas fa-search"></i> Zoek Speler Historie</h2>
+            </div>
+            <div class="card-body">
+              <div class="row mb-4">
+                <div class="col-md-6">
+                  <select class="form-select" id="playerSelect">
+                    <option value="">Selecteer speler</option>
+                  </select>
+                </div>
+                <div class="col-md-4">
+                  <button class="btn btn-primary w-100" onclick="loadPlayerHistory()">
+                    <i class="fas fa-search me-2"></i>Zoeken
+                  </button>
+                </div>
+              </div>
+              <div class="table-responsive">
+                <table class="custom-table" id="playerHistoryTable">
+                  <thead>
+                    <tr>
+                      <th>Datum</th>
+                      <th>Bedrag</th>
+                      <th>Reden</th>
+                    </tr>
+                  </thead>
+                  <tbody id="playerHistory"></tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>
