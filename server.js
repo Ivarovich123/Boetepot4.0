@@ -187,7 +187,9 @@ app.get('/api/totaal-boetes', async (req, res) => {
 
 app.get('/api/recent-boetes', async (req, res) => {
   try {
+    console.log('Fetching recent fines...');
     const fines = await getPublicFines();
+    console.log('Recent fines:', fines);
     res.json(fines.slice(0, 10));
   } catch (error) {
     console.error('Error getting recent fines:', error);
@@ -197,7 +199,9 @@ app.get('/api/recent-boetes', async (req, res) => {
 
 app.get('/api/player-totals', async (req, res) => {
   try {
+    console.log('Fetching player totals...');
     const totals = await getPlayerTotals();
+    console.log('Player totals:', totals);
     res.json(totals.map(player => ({
       ...player,
       formatted: `€${player.total.toFixed(2)}`
