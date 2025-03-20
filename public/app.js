@@ -19,9 +19,7 @@ function formatDate(dateString) {
   return date.toLocaleString('nl-NL', {
     year: 'numeric',
     month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit'
+    day: '2-digit'
   });
 }
 
@@ -82,11 +80,13 @@ async function loadTotalFines() {
 async function loadRecentFines() {
   toggleLoading(true);
   try {
+    console.log('Fetching recent fines...');
     const fines = await fetchAPI('/recent-boetes');
+    console.log('Received fines:', fines);
     const tbody = document.getElementById('recentFines');
     tbody.innerHTML = '';
     
-    if (fines.length === 0) {
+    if (!fines || fines.length === 0) {
       tbody.innerHTML = `
         <tr>
           <td colspan="4" class="text-center">Geen recente boetes gevonden</td>
@@ -94,21 +94,42 @@ async function loadRecentFines() {
       `;
     } else {
       fines.forEach(fine => {
+        const reasonIcon = getReasonIcon(fine.reasons.description);
         tbody.innerHTML += `
           <tr>
             <td>${fine.players.name}</td>
-            <td>${fine.reasons.description}</td>
+            <td>
+              <i class="${reasonIcon} reason-icon"></i>
+              ${fine.reasons.description}
+            </td>
             <td>${formatCurrency(fine.amount)}</td>
-            <td>${fine.date}</td>
+            <td>${formatDate(fine.date)}</td>
           </tr>
         `;
       });
     }
   } catch (error) {
+    console.error('Error loading recent fines:', error);
     showToast('Fout bij laden recente boetes: ' + error.message, true);
   } finally {
     toggleLoading(false);
   }
+}
+
+// Function to get an appropriate icon for each reason
+function getReasonIcon(reason) {
+  const reasonLower = reason.toLowerCase();
+  if (reasonLower.includes('te laat')) return 'fas fa-clock';
+  if (reasonLower.includes('geel')) return 'fas fa-square text-warning';
+  if (reasonLower.includes('rood')) return 'fas fa-square text-danger';
+  if (reasonLower.includes('vergeten')) return 'fas fa-question-circle';
+  if (reasonLower.includes('kleding')) return 'fas fa-tshirt';
+  if (reasonLower.includes('materiaal')) return 'fas fa-volleyball-ball';
+  if (reasonLower.includes('gedrag')) return 'fas fa-angry';
+  if (reasonLower.includes('afwezig')) return 'fas fa-user-slash';
+  if (reasonLower.includes('training')) return 'fas fa-running';
+  if (reasonLower.includes('wedstrijd')) return 'fas fa-trophy';
+  return 'fas fa-euro-sign'; // default icon
 }
 
 async function loadPlayerTotals() {
