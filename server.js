@@ -5,6 +5,8 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const path = require('path');
 const { 
+  supabase,
+  supabaseAdmin,
   getPlayers, 
   addPlayer,
   deletePlayer,
@@ -195,12 +197,20 @@ app.get('/api/player-history/:playerId', async (req, res) => {
 app.post('/api/admin/login', async (req, res) => {
   try {
     const { password } = req.body;
-    const { data: settings, error } = await supabase
+    const { data: settings, error } = await supabaseAdmin
       .from('admin_settings')
       .select('password_hash')
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('Error fetching admin settings:', error);
+      throw error;
+    }
+
+    if (!settings) {
+      console.error('No admin settings found');
+      return res.status(500).json({ error: 'Admin settings not configured' });
+    }
 
     const validPassword = await bcrypt.compare(password, settings.password_hash);
     if (!validPassword) {
