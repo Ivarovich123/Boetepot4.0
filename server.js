@@ -3,6 +3,11 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const { 
+  getPlayers,
+  addPlayer,
+  getReasons,
+  addReason,
+  addFine,
   getPlayerTotals, 
   getTotalFines,
   getPublicFines
@@ -12,6 +17,84 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
+
+// Player Management
+app.get('/api/players', async (req, res) => {
+  try {
+    console.log('[API] Getting players...');
+    const players = await getPlayers();
+    console.log(`[API] Successfully fetched ${players.length} players`);
+    res.json(players);
+  } catch (error) {
+    console.error('[API] Error getting players:', error);
+    res.status(500).json({ error: 'Failed to get players', details: error.message });
+  }
+});
+
+app.post('/api/players', async (req, res) => {
+  try {
+    const { name } = req.body;
+    if (!name) {
+      return res.status(400).json({ error: 'Name is required' });
+    }
+    
+    console.log('[API] Adding player:', name);
+    const player = await addPlayer(name);
+    console.log('[API] Successfully added player:', player);
+    res.json(player);
+  } catch (error) {
+    console.error('[API] Error adding player:', error);
+    res.status(500).json({ error: 'Failed to add player', details: error.message });
+  }
+});
+
+// Reason Management
+app.get('/api/reasons', async (req, res) => {
+  try {
+    console.log('[API] Getting reasons...');
+    const reasons = await getReasons();
+    console.log(`[API] Successfully fetched ${reasons.length} reasons`);
+    res.json(reasons);
+  } catch (error) {
+    console.error('[API] Error getting reasons:', error);
+    res.status(500).json({ error: 'Failed to get reasons', details: error.message });
+  }
+});
+
+app.post('/api/reasons', async (req, res) => {
+  try {
+    const { description } = req.body;
+    if (!description) {
+      return res.status(400).json({ error: 'Description is required' });
+    }
+    
+    console.log('[API] Adding reason:', description);
+    const reason = await addReason(description);
+    console.log('[API] Successfully added reason:', reason);
+    res.json(reason);
+  } catch (error) {
+    console.error('[API] Error adding reason:', error);
+    res.status(500).json({ error: 'Failed to add reason', details: error.message });
+  }
+});
+
+// Fine Management
+app.post('/api/fines', async (req, res) => {
+  try {
+    const { player_id, reason_id, amount } = req.body;
+    if (!player_id || !reason_id || !amount) {
+      return res.status(400).json({ error: 'All fields are required' });
+    }
+    
+    console.log('[API] Adding fine:', req.body);
+    const fine = await addFine({ player_id, reason_id, amount });
+    console.log('[API] Successfully added fine:', fine);
+    res.json(fine);
+  } catch (error) {
+    console.error('[API] Error adding fine:', error);
+    res.status(500).json({ error: 'Failed to add fine', details: error.message });
+  }
+});
 
 // Public API Routes
 app.get('/api/totaal-boetes', async (req, res) => {
