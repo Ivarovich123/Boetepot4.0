@@ -15,28 +15,37 @@
   <link href="styles.css" rel="stylesheet">
 </head>
 <body>
-  <header class="bg-primary text-white py-3 mb-4">
-    <div class="container">
+  <header>
+    <div class="header-content">
       <h1 class="mb-0">Boetepot</h1>
+      <div class="d-flex align-items-center gap-3">
+        <a href="admin.html" class="admin-link">
+          <i class="fas fa-user-shield"></i>
+          <span>Admin</span>
+        </a>
+        <button class="theme-toggle" onclick="toggleTheme()">
+          <i id="theme-icon" class="fas fa-moon"></i>
+        </button>
+      </div>
     </div>
   </header>
 
-  <div class="container">
+  <main>
     <!-- Loading Spinner -->
-    <div id="loadingSpinner" class="d-none justify-content-center mb-4">
+    <div id="loadingSpinner" class="d-none">
       <div class="spinner-border text-primary" role="status">
         <span class="visually-hidden">Laden...</span>
       </div>
     </div>
 
     <!-- Toast Messages -->
-    <div id="toast" class="toast position-fixed top-0 end-0 m-3" role="alert" style="display: none;">
+    <div id="toast" class="toast" role="alert">
       <div class="toast-body"></div>
     </div>
 
-    <div class="row">
+    <div class="row g-4">
       <!-- Total Amount -->
-      <div class="col-md-4 mb-4">
+      <div class="col-md-4">
         <div class="card h-100">
           <div class="card-body text-center">
             <h5 id="totalLabel" class="card-title">Totaal</h5>
@@ -46,7 +55,7 @@
       </div>
 
       <!-- Leaderboard -->
-      <div class="col-md-8 mb-4">
+      <div class="col-md-8">
         <div class="card h-100">
           <div class="card-body">
             <h5 class="card-title">Top 5 Spelers</h5>
@@ -68,9 +77,9 @@
       </div>
     </div>
 
-    <div class="row">
+    <div class="row g-4 mt-2">
       <!-- Recent Fines -->
-      <div class="col-md-6 mb-4">
+      <div class="col-md-6">
         <div class="card h-100">
           <div class="card-body">
             <h5 class="card-title">Recente Boetes</h5>
@@ -94,7 +103,7 @@
       </div>
 
       <!-- Player History -->
-      <div class="col-md-6 mb-4">
+      <div class="col-md-6">
         <div class="card h-100">
           <div class="card-body">
             <h5 class="card-title">Speler Historie</h5>
@@ -121,7 +130,7 @@
         </div>
       </div>
     </div>
-  </div>
+  </main>
 
   <!-- Scripts -->
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>

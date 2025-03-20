@@ -3,172 +3,148 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Boetepot Admin - Heren 8</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <title>Boetepot Admin</title>
+    
+    <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- Select2 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link href="styles.css" rel="stylesheet">
 </head>
 <body>
-    <header class="header">
-        <h1>Admin Panel</h1>
+    <header>
+        <div class="header-content">
+            <div class="d-flex align-items-center gap-3">
+                <a href="index.html" class="admin-link">
+                    <i class="fas fa-arrow-left"></i>
+                    <span>Terug</span>
+                </a>
+                <h1 class="mb-0">Admin Panel</h1>
+            </div>
+            <button class="theme-toggle" onclick="toggleTheme()">
+                <i id="theme-icon" class="fas fa-moon"></i>
+            </button>
+        </div>
     </header>
 
-    <div class="container">
-        <div id="adminPanel">
-            <div class="row mb-4">
-                <div class="col-12">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <a href="index.html" class="btn btn-outline-primary">
-                            <i class="fas fa-arrow-left me-2"></i>Terug naar Home
-                        </a>
+    <main>
+        <!-- Loading Spinner -->
+        <div id="loadingSpinner" class="d-none">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Laden...</span>
+            </div>
+        </div>
+
+        <!-- Toast Messages -->
+        <div id="toast" class="toast" role="alert">
+            <div class="toast-body"></div>
+        </div>
+
+        <div class="row g-4">
+            <!-- Add Player -->
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">Speler Toevoegen</h5>
+                        <form id="addPlayerForm" class="mt-3">
+                            <div class="mb-3">
+                                <label for="playerName" class="form-label">Naam</label>
+                                <input type="text" class="form-control" id="playerName" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-plus me-2"></i>Toevoegen
+                            </button>
+                        </form>
                     </div>
                 </div>
             </div>
 
-            <div class="card fade-in">
-                <div class="card-body">
-                    <ul class="nav nav-tabs admin-tabs" id="adminTabs" role="tablist">
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link active" id="fines-tab" data-bs-toggle="tab" data-bs-target="#fines" type="button" role="tab">
-                                <i class="fas fa-plus-circle me-2"></i>Boete Toevoegen
+            <!-- Add Reason -->
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">Reden Toevoegen</h5>
+                        <form id="addReasonForm" class="mt-3">
+                            <div class="mb-3">
+                                <label for="reasonDescription" class="form-label">Omschrijving</label>
+                                <input type="text" class="form-control" id="reasonDescription" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-plus me-2"></i>Toevoegen
                             </button>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link" id="settings-tab" data-bs-toggle="tab" data-bs-target="#settings" type="button" role="tab">
-                                <i class="fas fa-cog me-2"></i>Beheer
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Add Fine -->
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Boete Toevoegen</h5>
+                        <form id="addFineForm" class="mt-3">
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label for="finePlayer" class="form-label">Speler</label>
+                                    <select class="form-control" id="finePlayer" required>
+                                        <option value="">Selecteer speler...</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="fineReason" class="form-label">Reden</label>
+                                    <select class="form-control" id="fineReason" required>
+                                        <option value="">Selecteer reden...</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="fineAmount" class="form-label">Bedrag</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">€</span>
+                                        <input type="number" class="form-control" id="fineAmount" min="0" step="0.01" required>
+                                    </div>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary mt-3">
+                                <i class="fas fa-plus me-2"></i>Toevoegen
                             </button>
-                        </li>
-                    </ul>
+                        </form>
+                    </div>
+                </div>
+            </div>
 
-                    <div class="tab-content mt-4" id="adminTabContent">
-                        <!-- Boete Toevoegen Tab -->
-                        <div class="tab-pane fade show active" id="fines" role="tabpanel">
-                            <div class="card mb-4">
-                                <div class="card-body">
-                                    <h3 class="card-title">
-                                        <i class="fas fa-plus-circle me-2"></i>Nieuwe Boete Toevoegen
-                                    </h3>
-                                    <form id="addFineForm">
-                                        <div class="row">
-                                            <div class="col-md-4 mb-3">
-                                                <label for="playerSelect" class="form-label">Speler</label>
-                                                <select class="form-select" id="playerSelect" required>
-                                                    <option value="">Selecteer speler</option>
-                                                </select>
-                                            </div>
-                                            <div class="col-md-4 mb-3">
-                                                <label for="reasonSelect" class="form-label">Reden</label>
-                                                <select class="form-select" id="reasonSelect" required>
-                                                    <option value="">Selecteer reden</option>
-                                                </select>
-                                            </div>
-                                            <div class="col-md-4 mb-3">
-                                                <label for="amount" class="form-label">Bedrag</label>
-                                                <div class="input-group">
-                                                    <span class="input-group-text">€</span>
-                                                    <input type="number" class="form-control" id="amount" step="0.01" required>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <button type="submit" class="btn btn-primary">
-                                            <i class="fas fa-plus me-2"></i>Toevoegen
-                                        </button>
-                                    </form>
-                                </div>
-                            </div>
-
-                            <div class="card">
-                                <div class="card-body">
-                                    <h3 class="card-title">
-                                        <i class="fas fa-history me-2"></i>Recente Boetes
-                                    </h3>
-                                    <div class="table-responsive">
-                                        <table class="table">
-                                            <thead>
-                                                <tr>
-                                                    <th>Speler</th>
-                                                    <th>Reden</th>
-                                                    <th>Bedrag</th>
-                                                    <th>Datum</th>
-                                                    <th>Actie</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody id="finesList"></tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Beheer Tab -->
-                        <div class="tab-pane fade" id="settings" role="tabpanel">
-                            <div class="row">
-                                <div class="col-md-6 mb-4">
-                                    <div class="card">
-                                        <div class="card-body">
-                                            <h3 class="card-title">
-                                                <i class="fas fa-users me-2"></i>Spelers Beheren
-                                            </h3>
-                                            <form id="addPlayerForm" class="mb-3">
-                                                <div class="input-group">
-                                                    <input type="text" class="form-control" id="newPlayer" placeholder="Nieuwe speler" required>
-                                                    <button type="submit" class="btn btn-primary">
-                                                        <i class="fas fa-plus me-2"></i>Toevoegen
-                                                    </button>
-                                                </div>
-                                            </form>
-                                            <div class="list-group" id="playersList"></div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-md-6 mb-4">
-                                    <div class="card">
-                                        <div class="card-body">
-                                            <h3 class="card-title">
-                                                <i class="fas fa-list me-2"></i>Redenen Beheren
-                                            </h3>
-                                            <form id="addReasonForm" class="mb-3">
-                                                <div class="input-group">
-                                                    <input type="text" class="form-control" id="newReason" placeholder="Nieuwe reden" required>
-                                                    <button type="submit" class="btn btn-primary">
-                                                        <i class="fas fa-plus me-2"></i>Toevoegen
-                                                    </button>
-                                                </div>
-                                            </form>
-                                            <div class="list-group" id="reasonsList"></div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="card">
-                                <div class="card-body">
-                                    <h3 class="card-title">
-                                        <i class="fas fa-exclamation-triangle me-2 text-danger"></i>Database Reset
-                                    </h3>
-                                    <p class="text-danger">Let op: Dit verwijdert alle boetes, spelers en redenen!</p>
-                                    <button id="resetButton" class="btn btn-danger">
-                                        <i class="fas fa-trash me-2"></i>Reset Alles
-                                    </button>
-                                </div>
-                            </div>
+            <!-- Recent Fines -->
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Recente Boetes</h5>
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Speler</th>
+                                        <th>Reden</th>
+                                        <th>Bedrag</th>
+                                        <th>Datum</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="recentFines">
+                                    <tr><td colspan="4">Laden...</td></tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
+    </main>
 
-    <button class="theme-toggle" onclick="toggleTheme()">
-        <i class="fas fa-moon"></i>
-    </button>
-
-    <div id="toast" class="toast"></div>
-    <div id="loadingSpinner">
-        <div class="spinner"></div>
-    </div>
-
+    <!-- Scripts -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script src="admin.js"></script>
 </body>
 </html> 

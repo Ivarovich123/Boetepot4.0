@@ -12,6 +12,7 @@ const {
   getTotalFines,
   getPublicFines
 } = require('./lib/supabase');
+const { supabase } = require('./lib/supabase');
 
 const app = express();
 app.use(cors());
@@ -130,6 +131,35 @@ app.get('/api/player-totals', async (req, res) => {
   } catch (error) {
     console.error('[API] Error getting player totals:', error);
     res.status(500).json({ error: 'Failed to get player totals', details: error.message });
+  }
+});
+
+app.get('/api/player-history/:id', async (req, res) => {
+  try {
+    console.log('[API] Getting player history for ID:', req.params.id);
+    const { data, error } = await supabase
+      .from('fines')
+      .select(`
+        id,
+        amount,
+        date,
+        reasons:reason_id (description)
+      `)
+      .eq('player_id', req.params.id)
+      .order('date', { ascending: false });
+      
+    if (error) throw error;
+    
+    console.log(`[API] Successfully fetched player history: ${data.length} entries`);
+    res.json(data.map(fine => ({
+      id: fine.id,
+      amount: fine.amount,
+      date: fine.date,
+      reason_description: fine.reasons?.description
+    })));
+  } catch (error) {
+    console.error('[API] Error getting player history:', error);
+    res.status(500).json({ error: 'Failed to get player history', details: error.message });
   }
 });
 
