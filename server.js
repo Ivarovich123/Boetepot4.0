@@ -16,15 +16,17 @@ app.use(express.static('public'));
 // PostgreSQL Connection
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: {
+  ssl: process.env.NODE_ENV === 'production' ? {
     rejectUnauthorized: false
-  }
+  } : false
 });
 
 // Test database connection
 pool.query('SELECT NOW()', (err, res) => {
   if (err) {
     console.error('Database connection error:', err);
+    console.error('Connection string:', process.env.DATABASE_URL ? 'Present' : 'Missing');
+    console.error('Environment:', process.env.NODE_ENV);
   } else {
     console.log('Database connected successfully');
   }
@@ -33,6 +35,7 @@ pool.query('SELECT NOW()', (err, res) => {
 // Initialize database
 async function initializeDatabase() {
   try {
+    console.log('Starting database initialization...');
     // Create players table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS players (
@@ -41,6 +44,7 @@ async function initializeDatabase() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
+    console.log('Players table created/verified');
 
     // Create reasons table
     await pool.query(`
@@ -50,6 +54,7 @@ async function initializeDatabase() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
+    console.log('Reasons table created/verified');
 
     // Create fines table with foreign keys
     await pool.query(`
@@ -61,6 +66,7 @@ async function initializeDatabase() {
         date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
+    console.log('Fines table created/verified');
 
     // Create admin settings table for password
     await pool.query(`
@@ -70,6 +76,7 @@ async function initializeDatabase() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
+    console.log('Admin settings table created/verified');
 
     // Insert default admin password if not exists
     const hashedPassword = await bcrypt.hash('Mandje123', 10);
@@ -78,10 +85,16 @@ async function initializeDatabase() {
       SELECT $1
       WHERE NOT EXISTS (SELECT 1 FROM admin_settings);
     `, [hashedPassword]);
+    console.log('Default admin password set');
 
     console.log('Database initialized successfully');
   } catch (error) {
     console.error('Error initializing database:', error);
+    console.error('Error details:', {
+      message: error.message,
+      code: error.code,
+      stack: error.stack
+    });
   }
 }
 
