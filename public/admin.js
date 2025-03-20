@@ -1,43 +1,5 @@
-let adminToken = localStorage.getItem('adminToken');
-
-// Check if already logged in
-if (adminToken) {
-    showAdminPanel();
-}
-
-// Login form handler
-document.getElementById('adminLoginForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const password = document.getElementById('password').value;
-    
-    try {
-        const response = await fetch('/api/admin/login', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ password })
-        });
-
-        if (response.ok) {
-            const data = await response.json();
-            adminToken = data.token;
-            localStorage.setItem('adminToken', adminToken);
-            showAdminPanel();
-        } else {
-            alert('Ongeldig wachtwoord');
-        }
-    } catch (error) {
-        console.error('Login error:', error);
-        alert('Er is een fout opgetreden bij het inloggen');
-    }
-});
-
-function showAdminPanel() {
-    document.getElementById('loginForm').classList.add('d-none');
-    document.getElementById('adminPanel').classList.remove('d-none');
-    loadAllData();
-}
+// Load all data immediately
+loadAllData();
 
 async function loadAllData() {
     await Promise.all([
@@ -49,11 +11,7 @@ async function loadAllData() {
 
 async function loadPlayers() {
     try {
-        const response = await fetch('/api/admin/players', {
-            headers: {
-                'Authorization': `Bearer ${adminToken}`
-            }
-        });
+        const response = await fetch('/api/admin/players');
         const players = await response.json();
         
         // Update player select
@@ -84,11 +42,7 @@ async function loadPlayers() {
 
 async function loadReasons() {
     try {
-        const response = await fetch('/api/admin/reasons', {
-            headers: {
-                'Authorization': `Bearer ${adminToken}`
-            }
-        });
+        const response = await fetch('/api/admin/reasons');
         const reasons = await response.json();
         
         // Update reason select
@@ -115,11 +69,7 @@ async function loadReasons() {
 
 async function loadFines() {
     try {
-        const response = await fetch('/api/admin/fines', {
-            headers: {
-                'Authorization': `Bearer ${adminToken}`
-            }
-        });
+        const response = await fetch('/api/admin/fines');
         const fines = await response.json();
         
         const finesList = document.getElementById('finesList');
@@ -145,14 +95,6 @@ async function loadFines() {
     }
 }
 
-// Logout function
-function logoutAdmin() {
-    localStorage.removeItem('adminToken');
-    adminToken = null;
-    document.getElementById('loginForm').classList.remove('d-none');
-    document.getElementById('adminPanel').classList.add('d-none');
-}
-
 // Add fine form handler
 document.getElementById('addFineForm').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -169,8 +111,7 @@ document.getElementById('addFineForm').addEventListener('submit', async (e) => {
         const response = await fetch('/api/admin/fines', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${adminToken}`
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify({
                 player_id: parseInt(playerId),
@@ -203,8 +144,7 @@ document.getElementById('addPlayerForm').addEventListener('submit', async (e) =>
         const response = await fetch('/api/admin/players', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${adminToken}`
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify({ name })
         });
@@ -230,8 +170,7 @@ document.getElementById('addReasonForm').addEventListener('submit', async (e) =>
         const response = await fetch('/api/admin/reasons', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${adminToken}`
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify({ description })
         });
@@ -248,7 +187,6 @@ document.getElementById('addReasonForm').addEventListener('submit', async (e) =>
     }
 });
 
-// Delete fine function
 async function deleteFine(id) {
     if (!confirm('Weet je zeker dat je deze boete wilt verwijderen?')) {
         return;
@@ -256,62 +194,29 @@ async function deleteFine(id) {
 
     try {
         const response = await fetch(`/api/admin/fines/${id}`, {
-            method: 'DELETE',
-            headers: {
-                'Authorization': `Bearer ${adminToken}`
-            }
+            method: 'DELETE'
         });
 
         if (response.ok) {
-            loadFines();
+            await loadFines();
+            showToast('Boete succesvol verwijderd!');
         } else {
-            alert('Er is een fout opgetreden bij het verwijderen van de boete');
+            const error = await response.json();
+            console.error('Server error:', error);
+            showToast(error.error || 'Er is een fout opgetreden bij het verwijderen van de boete', true);
         }
     } catch (error) {
         console.error('Error deleting fine:', error);
-        alert('Er is een fout opgetreden bij het verwijderen van de boete');
+        showToast('Er is een fout opgetreden bij het verwijderen van de boete', true);
     }
 }
 
-// Reset database handler
-document.getElementById('resetButton').addEventListener('click', async () => {
-    if (!confirm('Weet je zeker dat je alles wilt resetten? Dit kan niet ongedaan worden gemaakt!')) {
-        return;
-    }
-
-    try {
-        const response = await fetch('/api/admin/reset', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${adminToken}`
-            }
-        });
-
-        if (response.ok) {
-            loadAllData();
-            alert('Database succesvol gereset');
-        } else {
-            alert('Er is een fout opgetreden bij het resetten van de database');
-        }
-    } catch (error) {
-        console.error('Error resetting database:', error);
-        alert('Er is een fout opgetreden bij het resetten van de database');
-    }
-});
-
-// Toast notification function
 function showToast(message, isError = false) {
-    const toast = document.createElement('div');
-    toast.className = `toast ${isError ? 'bg-danger' : 'bg-success'}`;
+    const toast = document.getElementById('toast');
+    toast.className = `toast ${isError ? 'bg-danger' : 'bg-success'} text-white`;
     toast.textContent = message;
-    document.body.appendChild(toast);
-
-    // Show the toast
-    setTimeout(() => toast.style.display = 'block', 100);
-
-    // Remove the toast after 3 seconds
+    toast.style.display = 'block';
     setTimeout(() => {
         toast.style.display = 'none';
-        setTimeout(() => toast.remove(), 300);
     }, 3000);
 } 
