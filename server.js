@@ -18,7 +18,9 @@ const {
   deleteFine, 
   getPlayerHistory, 
   getPlayerTotals, 
-  getTotalFines 
+  getTotalFines,
+  getPublicPlayers,
+  getPublicFines
 } = require('./lib/supabase');
 
 const app = express();
@@ -156,7 +158,10 @@ app.delete('/api/admin/reasons/:id', authenticateAdmin, async (req, res) => {
 app.get('/api/totaal-boetes', async (req, res) => {
   try {
     const total = await getTotalFines();
-    res.json({ total });
+    res.json({ 
+      total,
+      formatted: `€${total.toFixed(2)}`
+    });
   } catch (error) {
     console.error('Error getting total fines:', error);
     res.status(500).json({ error: error.message });
@@ -165,7 +170,7 @@ app.get('/api/totaal-boetes', async (req, res) => {
 
 app.get('/api/recent-boetes', async (req, res) => {
   try {
-    const fines = await getFines();
+    const fines = await getPublicFines();
     res.json(fines.slice(0, 10));
   } catch (error) {
     console.error('Error getting recent fines:', error);
@@ -176,7 +181,10 @@ app.get('/api/recent-boetes', async (req, res) => {
 app.get('/api/player-totals', async (req, res) => {
   try {
     const totals = await getPlayerTotals();
-    res.json(totals);
+    res.json(totals.map(player => ({
+      ...player,
+      formatted: `€${player.total.toFixed(2)}`
+    })));
   } catch (error) {
     console.error('Error getting player totals:', error);
     res.status(500).json({ error: error.message });
@@ -186,9 +194,22 @@ app.get('/api/player-totals', async (req, res) => {
 app.get('/api/player-history/:playerId', async (req, res) => {
   try {
     const history = await getPlayerHistory(req.params.playerId);
-    res.json(history);
+    res.json(history.map(fine => ({
+      ...fine,
+      formatted: `€${fine.amount.toFixed(2)}`
+    })));
   } catch (error) {
     console.error('Error getting player history:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/players', async (req, res) => {
+  try {
+    const players = await getPublicPlayers();
+    res.json(players);
+  } catch (error) {
+    console.error('Error getting players:', error);
     res.status(500).json({ error: error.message });
   }
 });
