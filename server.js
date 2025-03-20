@@ -8,6 +8,7 @@ const {
   getPlayers, 
   addPlayer,
   getReasons, 
+  addReason,
   getFines, 
   addFine, 
   deleteFine, 
@@ -82,6 +83,30 @@ app.delete('/api/admin/fines/:id', authenticateAdmin, async (req, res) => {
     res.json({ message: 'Fine deleted successfully' });
   } catch (error) {
     console.error('Error deleting fine:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/admin/reasons', authenticateAdmin, async (req, res) => {
+  try {
+    const reasons = await getReasons();
+    res.json(reasons);
+  } catch (error) {
+    console.error('Error getting reasons:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/admin/reasons', authenticateAdmin, async (req, res) => {
+  try {
+    const { description } = req.body;
+    if (!description) {
+      return res.status(400).json({ error: 'Description is required' });
+    }
+    const reason = await addReason(description);
+    res.json(reason);
+  } catch (error) {
+    console.error('Error adding reason:', error);
     res.status(500).json({ error: error.message });
   }
 });
