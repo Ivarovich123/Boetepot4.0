@@ -263,6 +263,7 @@ document.getElementById('addFineForm').addEventListener('submit', async (e) => {
   
   toggleLoading(true);
   try {
+    console.log('Submitting fine:', { playerId, reasonId, amount });
     const response = await fetch('/api/admin/fines', {
       method: 'POST',
       headers: {
@@ -276,20 +277,29 @@ document.getElementById('addFineForm').addEventListener('submit', async (e) => {
       })
     });
 
-    if (response.ok) {
-      showToast('Boete succesvol toegevoegd!');
-      document.getElementById('addFineForm').reset();
-      await loadFines();
-      await loadRecentFines();
-      await loadPlayerTotals();
-    } else {
+    if (!response.ok) {
       const error = await response.json();
       console.error('Server error:', error);
-      showToast(error.error || 'Er is een fout opgetreden bij het toevoegen van de boete', true);
+      throw new Error(error.error || 'Er is een fout opgetreden bij het toevoegen van de boete');
     }
+
+    const newFine = await response.json();
+    console.log('Fine added successfully:', newFine);
+
+    // Reset form
+    document.getElementById('addFineForm').reset();
+
+    // Update all relevant sections
+    await Promise.all([
+      loadRecentFines(),
+      loadTotalFines(),
+      loadPlayerTotals()
+    ]);
+
+    showToast('Boete succesvol toegevoegd!');
   } catch (error) {
     console.error('Error adding fine:', error);
-    showToast('Er is een fout opgetreden bij het toevoegen van de boete', true);
+    showToast(error.message || 'Er is een fout opgetreden bij het toevoegen van de boete', true);
   } finally {
     toggleLoading(false);
   }
@@ -319,15 +329,15 @@ document.addEventListener('DOMContentLoaded', () => {
   loadTotalFines();
   loadRecentFines();
   loadPlayerTotals();
-  loadPlayers();
+  initializeAdminPanel();
 });
 
 // Load total fines
 async function loadTotalFines() {
   try {
     console.log('Loading total fines...');
-    const { total, formatted } = await fetchAPI('/totaal-boetes');
-    console.log('Received total:', total, formatted);
+    const total = await fetchAPI('/totaal-boetes');
+    console.log('Received total:', total);
     
     const totalElement = document.getElementById('totalFines');
     if (!totalElement) {
@@ -335,8 +345,8 @@ async function loadTotalFines() {
       return;
     }
     
-    // Animate the counter from 0 to total
-    animateCounter(totalElement, 0, total, 2000, formatted);
+    const formattedTotal = `€${total.toFixed(2)}`;
+    animateCounter(totalElement, 0, total, 2000, formattedTotal);
   } catch (error) {
     console.error('Error loading total fines:', error);
     const totalElement = document.getElementById('totalFines');
@@ -382,6 +392,7 @@ async function loadPlayerTotals() {
 // Load players for the dropdown
 async function loadPlayers() {
   try {
+    console.log('Loading players for dropdown...');
     const players = await fetchAPI('/players');
     console.log('Received players:', players);
     
@@ -391,12 +402,60 @@ async function loadPlayers() {
       return;
     }
     
-    playerSelect.innerHTML = '<option value="">Selecteer speler</option>';
-    players.forEach(player => {
-      playerSelect.innerHTML += `<option value="${player.id}">${player.name}</option>`;
-    });
+    if (!Array.isArray(players) || players.length === 0) {
+      playerSelect.innerHTML = '<option value="">Geen spelers gevonden</option>';
+      return;
+    }
+    
+    playerSelect.innerHTML = '<option value="">Selecteer speler</option>' +
+      players.map(player => `<option value="${player.id}">${player.name}</option>`).join('');
   } catch (error) {
     console.error('Error loading players:', error);
     showToast('Fout bij laden spelers: ' + error.message, true);
+    
+    const playerSelect = document.getElementById('playerSelect');
+    if (playerSelect) {
+      playerSelect.innerHTML = '<option value="">Fout bij laden spelers</option>';
+    }
   }
+}
+
+// Load reasons for the dropdown
+async function loadReasons() {
+  try {
+    console.log('Loading reasons for dropdown...');
+    const reasons = await fetchAPI('/api/admin/reasons');
+    console.log('Received reasons:', reasons);
+    
+    const reasonSelect = document.getElementById('reasonSelect');
+    if (!reasonSelect) {
+      console.error('Reason select element not found');
+      return;
+    }
+    
+    if (!Array.isArray(reasons) || reasons.length === 0) {
+      reasonSelect.innerHTML = '<option value="">Geen redenen gevonden</option>';
+      return;
+    }
+    
+    reasonSelect.innerHTML = '<option value="">Selecteer reden</option>' +
+      reasons.map(reason => `<option value="${reason.id}">${reason.description}</option>`).join('');
+  } catch (error) {
+    console.error('Error loading reasons:', error);
+    showToast('Fout bij laden redenen: ' + error.message, true);
+    
+    const reasonSelect = document.getElementById('reasonSelect');
+    if (reasonSelect) {
+      reasonSelect.innerHTML = '<option value="">Fout bij laden redenen</option>';
+    }
+  }
+}
+
+// Initialize admin panel
+async function initializeAdminPanel() {
+  console.log('Initializing admin panel...');
+  await Promise.all([
+    loadPlayers(),
+    loadReasons()
+  ]);
 } 

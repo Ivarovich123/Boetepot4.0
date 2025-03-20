@@ -78,11 +78,21 @@ app.post('/api/admin/players', authenticateAdmin, async (req, res) => {
 
 app.post('/api/admin/fines', authenticateAdmin, async (req, res) => {
   try {
+    console.log('Adding fine:', req.body);
     const { player_id, reason_id, amount } = req.body;
+    
     if (!player_id || !reason_id || !amount) {
+      console.error('Missing required fields:', { player_id, reason_id, amount });
       return res.status(400).json({ error: 'All fields are required' });
     }
+
+    if (isNaN(amount) || amount <= 0) {
+      console.error('Invalid amount:', amount);
+      return res.status(400).json({ error: 'Amount must be a positive number' });
+    }
+
     const fine = await addFine({ player_id, reason_id, amount });
+    console.log('Fine added successfully:', fine);
     res.json(fine);
   } catch (error) {
     console.error('Error adding fine:', error);
@@ -169,10 +179,7 @@ app.get('/api/totaal-boetes', async (req, res) => {
       });
     }
     
-    res.json({ 
-      total,
-      formatted: `€${total.toFixed(2)}`
-    });
+    res.json(total);
   } catch (error) {
     console.error('Error getting total fines:', {
       error: error.message,
@@ -190,7 +197,16 @@ app.get('/api/recent-boetes', async (req, res) => {
     console.log('Fetching recent fines...');
     const fines = await getPublicFines();
     console.log('Recent fines:', fines);
-    res.json(fines.slice(0, 10));
+    
+    if (!Array.isArray(fines)) {
+      console.error('Invalid fines data returned:', fines);
+      return res.status(500).json({ 
+        error: 'Invalid data returned from database',
+        details: 'The fines data is not an array'
+      });
+    }
+    
+    res.json(fines);
   } catch (error) {
     console.error('Error getting recent fines:', error);
     res.status(500).json({ error: error.message });
@@ -202,10 +218,16 @@ app.get('/api/player-totals', async (req, res) => {
     console.log('Fetching player totals...');
     const totals = await getPlayerTotals();
     console.log('Player totals:', totals);
-    res.json(totals.map(player => ({
-      ...player,
-      formatted: `€${player.total.toFixed(2)}`
-    })));
+    
+    if (!Array.isArray(totals)) {
+      console.error('Invalid totals data returned:', totals);
+      return res.status(500).json({ 
+        error: 'Invalid data returned from database',
+        details: 'The totals data is not an array'
+      });
+    }
+    
+    res.json(totals);
   } catch (error) {
     console.error('Error getting player totals:', error);
     res.status(500).json({ error: error.message });
