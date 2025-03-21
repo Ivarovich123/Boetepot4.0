@@ -11,24 +11,75 @@ function debug(message) {
     }
 }
 
-// Mock data when API fails
-const MOCK_DATA = {
-    total_amount: { total: 125.50 },
-    players: [
-        { id: 1, name: "John Doe" },
-        { id: 2, name: "Jane Smith" },
-        { id: 3, name: "Mike Johnson" }
-    ],
-    recent_fines: [
-        { id: 1, player_name: "John Doe", player_id: 1, reason_description: "Te laat komen", amount: 5.00, timestamp: new Date().toISOString() },
-        { id: 2, player_name: "Jane Smith", player_id: 2, reason_description: "Telefoon tijdens training", amount: 2.50, timestamp: new Date().toISOString() }
-    ],
-    leaderboard: [
-        { id: 1, name: "John Doe", count: 3, total: 15.00 },
-        { id: 2, name: "Jane Smith", count: 2, total: 7.50 },
-        { id: 3, name: "Mike Johnson", count: 1, total: 5.00 }
-    ]
-};
+// Sync with localStorage data from admin panel
+function getLocalData(key, defaultValue = []) {
+    try {
+        const data = localStorage.getItem(key);
+        return data ? JSON.parse(data) : defaultValue;
+    } catch (e) {
+        debug(`Error getting ${key} from localStorage: ${e.message}`);
+        return defaultValue;
+    }
+}
+
+// Get dynamic fallback data from localStorage (used by admin panel)
+function getFallbackData() {
+    const players = getLocalData('players', []);
+    const reasons = getLocalData('reasons', []);
+    const fines = getLocalData('fines', []);
+    
+    // Calculate total amount
+    const totalAmount = fines.reduce((sum, fine) => {
+        return sum + (parseFloat(fine.amount) || 0);
+    }, 0);
+    
+    // Calculate leaderboard
+    const leaderboardMap = {};
+    fines.forEach(fine => {
+        const playerId = fine.player_id;
+        if (!leaderboardMap[playerId]) {
+            const player = players.find(p => p.id === playerId) || { name: 'Onbekend' };
+            leaderboardMap[playerId] = {
+                id: playerId,
+                name: player.name,
+                count: 0,
+                total: 0
+            };
+        }
+        leaderboardMap[playerId].count += 1;
+        leaderboardMap[playerId].total += (parseFloat(fine.amount) || 0);
+    });
+    
+    // Convert leaderboard to array and sort by total
+    const leaderboard = Object.values(leaderboardMap).sort((a, b) => b.total - a.total);
+    
+    // Prepare enhanced fines with player and reason info
+    const enhancedFines = fines.map(fine => {
+        const player = players.find(p => p.id === fine.player_id) || { name: 'Onbekend' };
+        const reason = reasons.find(r => r.id === fine.reason_id) || { description: 'Onbekend' };
+        return {
+            ...fine,
+            player_name: player.name,
+            reason_description: reason.description
+        };
+    });
+    
+    // Sort fines by timestamp descending
+    const recentFines = [...enhancedFines].sort((a, b) => {
+        const dateA = new Date(a.timestamp || 0);
+        const dateB = new Date(b.timestamp || 0);
+        return dateB - dateA;
+    }).slice(0, 10); // Get 10 most recent
+    
+    return {
+        total_amount: { total: totalAmount },
+        players: players,
+        reasons: reasons,
+        recent_fines: recentFines,
+        leaderboard: leaderboard,
+        all_fines: enhancedFines
+    };
+}
 
 // Utility functions
 function toggleLoading(isLoading) {
@@ -206,26 +257,31 @@ async function fetchAPI(endpoint, options = {}) {
         // Ensure endpoint starts with slash
         const path = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
         
-        // Hard-coded response for demo/fallback data
-        const useMockData = localStorage.getItem('useMockData') === 'true';
-        if (useMockData) {
-            debug('Using mock data');
+        // First try to get data from localStorage/admin panel
+        const useLocalData = localStorage.getItem('useLocalData') === 'true';
+        if (useLocalData) {
+            debug('Using local data from admin panel');
+            const localData = getFallbackData();
             
-            // Determine which mock data to return based on endpoint
+            // Handle specific endpoints
             if (endpoint.includes('total-amount')) {
-                return MOCK_DATA.total_amount;
+                return localData.total_amount;
             } else if (endpoint.includes('recent-fines')) {
-                return MOCK_DATA.recent_fines;
+                return localData.recent_fines;
             } else if (endpoint.includes('leaderboard')) {
-                return MOCK_DATA.leaderboard;
+                return localData.leaderboard;
             } else if (endpoint.includes('players') && !endpoint.includes('player-fines')) {
-                return MOCK_DATA.players;
+                return localData.players;
+            } else if (endpoint.includes('reasons')) {
+                return localData.reasons;
             } else if (endpoint.includes('player-fines')) {
                 const playerId = parseInt(endpoint.split('/').pop(), 10);
-                return MOCK_DATA.recent_fines.filter(fine => fine.player_id === playerId);
+                return localData.all_fines.filter(fine => fine.player_id === playerId);
             } else if (endpoint.includes('player/')) {
                 const playerId = parseInt(endpoint.split('/').pop(), 10);
-                return MOCK_DATA.players.find(player => player.id === playerId) || { id: 0, name: 'Onbekend' };
+                return localData.players.find(player => player.id === playerId) || { id: 0, name: 'Onbekend' };
+            } else if (endpoint.includes('fines')) {
+                return localData.all_fines;
             }
             
             return [];
@@ -284,8 +340,9 @@ async function fetchAPI(endpoint, options = {}) {
             }
         }
         
-        // If all URLs failed, throw the last error
-        throw lastError || new Error('Failed to fetch data from all URLs');
+        // If all URLs failed, fall back to local data
+        localStorage.setItem('useLocalData', 'true');
+        return getDefaultResponse(endpoint);
     } catch (error) {
         debug(`API Error: ${error.message}`);
         
@@ -296,6 +353,8 @@ async function fetchAPI(endpoint, options = {}) {
             debug(`General API error: ${error.message}`);
         }
         
+        // Set to use local data on failure
+        localStorage.setItem('useLocalData', 'true');
         return getDefaultResponse(endpoint);
     } finally {
         clearTimeout(timeoutId);
@@ -307,21 +366,28 @@ async function fetchAPI(endpoint, options = {}) {
 function getDefaultResponse(endpoint) {
     debug(`Getting default response for ${endpoint}`);
     
-    // Use mock data for fallback
+    // Use local data from admin panel
+    const localData = getFallbackData();
+    
+    // Handle specific endpoints
     if (endpoint.includes('total-amount')) {
-        return MOCK_DATA.total_amount;
+        return localData.total_amount;
     } else if (endpoint.includes('recent-fines')) {
-        return MOCK_DATA.recent_fines;
+        return localData.recent_fines;
     } else if (endpoint.includes('leaderboard')) {
-        return MOCK_DATA.leaderboard;
+        return localData.leaderboard;
     } else if (endpoint.includes('players') && !endpoint.includes('player-fines')) {
-        return MOCK_DATA.players;
+        return localData.players;
+    } else if (endpoint.includes('reasons')) {
+        return localData.reasons;
     } else if (endpoint.includes('player-fines')) {
         const playerId = parseInt(endpoint.split('/').pop(), 10);
-        return MOCK_DATA.recent_fines.filter(fine => fine.player_id === playerId);
+        return localData.all_fines.filter(fine => fine.player_id === playerId);
     } else if (endpoint.includes('player/')) {
         const playerId = parseInt(endpoint.split('/').pop(), 10);
-        return MOCK_DATA.players.find(player => player.id === playerId) || { id: 0, name: 'Onbekend' };
+        return localData.players.find(player => player.id === playerId) || { id: 0, name: 'Onbekend' };
+    } else if (endpoint.includes('fines')) {
+        return localData.all_fines;
     }
     
     return null;
@@ -500,16 +566,10 @@ async function loadPlayerHistory(playerId) {
             return;
         }
         
-        // Force mock data for player history
-        localStorage.setItem('useMockData', 'true');
-        
         const [playerData, finesData] = await Promise.all([
             fetchAPI(`/player/${playerId}`),
             fetchAPI(`/player-fines/${playerId}`)
         ]);
-        
-        // Reset mock data setting
-        localStorage.removeItem('useMockData');
         
         debug(`Player data: ${JSON.stringify(playerData)}`);
         debug(`Fines data: ${JSON.stringify(finesData)}`);
@@ -547,9 +607,9 @@ function setupDebugControls() {
     // Add a hidden debug control (activate with Alt+D)
     $(document).keydown(function(e) {
         if (e.altKey && e.key === 'd') {
-            const currentSetting = localStorage.getItem('useMockData') === 'true';
-            localStorage.setItem('useMockData', (!currentSetting).toString());
-            showToast(`Mock data ${!currentSetting ? 'enabled' : 'disabled'}`, 'info');
+            const currentSetting = localStorage.getItem('useLocalData') === 'true';
+            localStorage.setItem('useLocalData', (!currentSetting).toString());
+            showToast(`Lokale data ${!currentSetting ? 'ingeschakeld' : 'uitgeschakeld'}`, 'info');
             setTimeout(() => location.reload(), 1000);
         }
     });
@@ -567,22 +627,14 @@ $(document).ready(function() {
         // Setup debug controls
         setupDebugControls();
         
-        // Use mock data if API is not working
-        const useAutoMock = true; // Set to false if you want real data only
-        if (useAutoMock) {
-            localStorage.setItem('useMockData', 'true');
-        }
+        // Enable local data by default for first load
+        localStorage.setItem('useLocalData', 'true');
         
         // Load data
         loadTotalAmount();
         loadRecentFines();
         loadLeaderboard();
         loadPlayers();
-        
-        // Reset mock data setting for future API calls
-        if (useAutoMock) {
-            localStorage.removeItem('useMockData');
-        }
         
         // Set up player history dropdown change event
         $('#playerSelect').on('change', function() {
