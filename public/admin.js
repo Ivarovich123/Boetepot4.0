@@ -19,6 +19,23 @@ document.addEventListener('DOMContentLoaded', function() {
     const themeToggle = document.getElementById('themeToggle');
     const themeIcon = document.getElementById('themeIcon');
     
+    // Clear all cookies - helps prevent cookie-related errors
+    function clearAllCookies() {
+        debug('Clearing all cookies');
+        const cookies = document.cookie.split(';');
+        
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i];
+            const eqPos = cookie.indexOf('=');
+            const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim();
+            document.cookie = name + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/';
+            document.cookie = name + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;domain=' + window.location.hostname;
+            document.cookie = name + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;domain=.' + window.location.hostname;
+        }
+        
+        debug('All cookies cleared');
+    }
+    
     // Theme management
     function initTheme() {
         // Check for saved theme preference or use system preference
@@ -276,8 +293,12 @@ document.addEventListener('DOMContentLoaded', function() {
             const options = {
                 method,
                 headers: {
-                    'Content-Type': 'application/json'
-                }
+                    'Content-Type': 'application/json',
+                    'Cache-Control': 'no-cache, no-store',
+                    'Pragma': 'no-cache'
+                },
+                // Add this to prevent sending cookies
+                credentials: 'omit'
             };
             
             if (data && (method === 'POST' || method === 'PUT')) {
@@ -809,6 +830,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialization
     function init() {
         debug('Initializing admin panel...');
+        
+        // Clear all cookies to prevent cookie-related errors
+        clearAllCookies();
         
         // Init theme
         initTheme();
