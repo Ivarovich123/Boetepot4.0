@@ -10,7 +10,7 @@ function toggleLoading(show) {
 }
 
 function showToast(message, isError = false) {
-  const toastContainer = document.querySelector('.toast-container');
+  const toastContainer = document.getElementById('toastContainer');
   if (!toastContainer) {
     console.error('Toast container not found');
     return;
@@ -256,22 +256,31 @@ async function loadLeaderboard() {
 async function loadPlayerHistory(playerId) {
   try {
     console.log('[History] Loading player history...');
-    const history = await fetchAPI(`/player-history/${playerId}`);
+    const response = await fetchAPI(`/player-history/${playerId}`);
     
     const historyElement = document.getElementById('playerHistory');
+    const historyTitleElement = document.getElementById('playerHistoryTitle');
+    
     if (!historyElement) {
       console.error('[History] Element not found');
       return;
     }
     
-    if (!Array.isArray(history) || history.length === 0) {
-      historyElement.innerHTML = '<tr><td colspan="3">Geen boetes gevonden</td></tr>';
+    if (!response || !response.player_name || !response.fines || response.fines.length === 0) {
+      historyElement.innerHTML = '<tr><td colspan="3" class="text-center">Geen boetes gevonden</td></tr>';
+      if (historyTitleElement) {
+        historyTitleElement.textContent = 'Speler Historie';
+      }
       return;
     }
     
-    const total = history.reduce((sum, fine) => sum + (fine.amount || 0), 0);
+    const total = response.fines.reduce((sum, fine) => sum + (fine.amount || 0), 0);
     
-    const rows = history.map(fine => `
+    if (historyTitleElement) {
+      historyTitleElement.innerHTML = `<i class="fas fa-user-clock"></i>Historie van ${response.player_name}`;
+    }
+    
+    const rows = response.fines.map(fine => `
       <tr>
         <td>${formatDate(fine.date)}</td>
         <td>${fine.reason_description || 'Onbekend'}</td>

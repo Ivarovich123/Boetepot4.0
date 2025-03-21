@@ -4,14 +4,15 @@ const API_BASE_URL = '/api';
 // Theme Toggle
 function toggleTheme() {
   const body = document.body;
-  const themeIcon = document.getElementById('theme-icon');
   const isDark = body.classList.contains('dark');
+  const newTheme = isDark ? 'light' : 'dark';
   
   // Update theme
   body.classList.toggle('dark', !isDark);
-  localStorage.setItem('theme', isDark ? 'light' : 'dark');
+  localStorage.setItem('theme', newTheme);
   
   // Update icon with animation
+  const themeIcon = document.getElementById('theme-icon');
   if (themeIcon) {
     themeIcon.style.transform = 'scale(0)';
     setTimeout(() => {
@@ -20,26 +21,38 @@ function toggleTheme() {
     }, 150);
   }
   
-  // Update Select2 theme
-  $('.select2-container').toggleClass('select2-container--dark', !isDark);
+  // Update Select2 for dark mode
+  updateSelect2Theme(newTheme);
 }
 
 // Init theme from local storage
 function initTheme() {
   const theme = localStorage.getItem('theme') || 'light';
-  const isDark = theme === 'dark';
+  document.body.classList.toggle('dark', theme === 'dark');
   
-  // Update body class
-  document.body.classList.toggle('dark', isDark);
-  
-  // Update icon
   const themeIcon = document.getElementById('theme-icon');
   if (themeIcon) {
-    themeIcon.className = isDark ? 'fas fa-sun' : 'fas fa-moon';
+    themeIcon.className = theme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
   }
   
-  // Update Select2 theme
-  $('.select2-container').toggleClass('select2-container--dark', isDark);
+  // Update Select2 for dark mode if present
+  updateSelect2Theme(theme);
+}
+
+function updateSelect2Theme(theme) {
+  // Reinitialize Select2 dropdowns with appropriate theme
+  $('.select2-container').remove();
+  
+  $('.player-select, .reason-select').each(function() {
+    const currentVal = $(this).val();
+    $(this).select2({
+      theme: 'classic',
+      placeholder: $(this).attr('placeholder') || 'Selecteer een optie',
+      allowClear: true,
+      width: '100%'
+    });
+    $(this).val(currentVal).trigger('change');
+  });
 }
 
 // Utility Functions

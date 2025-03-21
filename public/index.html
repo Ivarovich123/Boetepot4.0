@@ -46,7 +46,7 @@
   </div>
 
   <!-- Toast Messages -->
-  <div id="toast" class="toast-message"></div>
+  <div class="toast-container" id="toastContainer"></div>
 
   <main class="container">
     <!-- Total Amount -->
@@ -54,7 +54,7 @@
       <div class="total-amount-wrapper">
         <div class="total-amount-card">
           <div class="total-icon">
-            <i class="fas fa-euro-sign"></i>
+            <i class="fas fa-piggy-bank"></i>
           </div>
           <div class="total-content">
             <h3>In de pot</h3>
@@ -64,74 +64,77 @@
       </div>
     </section>
 
-    <!-- Recent Fines -->
-    <section class="stats-card" data-aos="fade-up">
-      <div class="card-header">
-        <h3><i class="fas fa-history"></i>Recente Boetes</h3>
-      </div>
-      <div class="table-responsive">
-        <table class="custom-table">
-          <thead>
-            <tr>
-              <th>Speler</th>
-              <th>Reden</th>
-              <th>Bedrag</th>
-              <th>Datum</th>
-            </tr>
-          </thead>
-          <tbody id="recentFines">
-            <tr><td colspan="4" class="text-center">Laden...</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
+    <!-- Stats Grid -->
+    <div class="stats-grid">
+      <!-- Recent Fines -->
+      <section class="stats-card" data-aos="fade-up" data-aos-delay="100">
+        <div class="card-header">
+          <h3><i class="fas fa-history"></i>Recente Boetes</h3>
+        </div>
+        <div class="table-responsive">
+          <table class="custom-table">
+            <thead>
+              <tr>
+                <th>Speler</th>
+                <th>Reden</th>
+                <th>Bedrag</th>
+                <th>Datum</th>
+              </tr>
+            </thead>
+            <tbody id="recentFines">
+              <tr><td colspan="4" class="text-center">Laden...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
 
-    <!-- Player History -->
-    <section class="stats-card" data-aos="fade-up">
-      <div class="card-header">
-        <h3 id="playerHistoryTitle"><i class="fas fa-user-clock"></i>Speler Historie</h3>
-      </div>
-      <div class="search-wrapper">
-        <select id="playerSelect" class="form-select" aria-label="Selecteer een speler">
-          <option value="">Selecteer een speler</option>
-        </select>
-      </div>
-      <div class="table-responsive">
-        <table class="custom-table">
-          <thead>
-            <tr>
-              <th>Datum</th>
-              <th>Reden</th>
-              <th>Bedrag</th>
-            </tr>
-          </thead>
-          <tbody id="playerHistory">
-            <tr><td colspan="3" class="text-center">Selecteer een speler...</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
+      <!-- Player History -->
+      <section class="stats-card" data-aos="fade-up" data-aos-delay="200">
+        <div class="card-header">
+          <h3 id="playerHistoryTitle"><i class="fas fa-user-clock"></i>Speler Historie</h3>
+        </div>
+        <div class="search-wrapper">
+          <select id="playerSelect" class="form-select" aria-label="Selecteer een speler">
+            <option value="">Selecteer een speler</option>
+          </select>
+        </div>
+        <div class="table-responsive">
+          <table class="custom-table">
+            <thead>
+              <tr>
+                <th>Datum</th>
+                <th>Reden</th>
+                <th>Bedrag</th>
+              </tr>
+            </thead>
+            <tbody id="playerHistory">
+              <tr><td colspan="3" class="text-center">Selecteer een speler...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
 
-    <!-- Leaderboard -->
-    <section class="stats-card" data-aos="fade-up">
-      <div class="card-header">
-        <h3><i class="fas fa-trophy"></i>Leaderboard</h3>
-      </div>
-      <div class="table-responsive">
-        <table class="custom-table">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Speler</th>
-              <th>Totaal</th>
-            </tr>
-          </thead>
-          <tbody id="leaderboard">
-            <tr><td colspan="3" class="text-center">Laden...</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
+      <!-- Leaderboard -->
+      <section class="stats-card" data-aos="fade-up" data-aos-delay="300">
+        <div class="card-header">
+          <h3><i class="fas fa-trophy"></i>Leaderboard</h3>
+        </div>
+        <div class="table-responsive">
+          <table class="custom-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Speler</th>
+                <th>Totaal</th>
+              </tr>
+            </thead>
+            <tbody id="leaderboard">
+              <tr><td colspan="3" class="text-center">Laden...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
   </main>
 
   <!-- Scripts -->
