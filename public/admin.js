@@ -407,31 +407,60 @@ async function fetchAPI(endpoint, options = {}) {
 // Load data
 async function loadData() {
     try {
-        console.log('[DEBUG] Starting loadData() function');
-        console.log('[DEBUG] API_BASE_URL =', API_BASE_URL);
+        debug('Start loading all data...');
         
-        // Show loading spinner
-        toggleLoading(true);
+        // Load players and reasons for dropdowns
+        await loadPlayers();
+        await loadReasons();
         
-        // Load players
-        console.log('[DEBUG] Fetching players...');
-        const players = await fetchAPI('/players');
-        console.log('[DEBUG] Players loaded:', players);
+        // Set up select2 for both dropdowns
+        initializeSelect2();
         
-        // Update player select dropdown
-        console.log('[DEBUG] Updating player select dropdown...');
-        $('#playerSelect').empty().append('<option value="">Selecteer een speler</option>');
-        if (Array.isArray(players)) {
-            players.forEach(player => {
-                $('#playerSelect').append(`<option value="${player.id}">${player.name}</option>`);
-            });
-            console.log('[DEBUG] Added', players.length, 'players to dropdown');
-            console.log('[DEBUG] playerSelect HTML:', $('#playerSelect').html());
-        } else {
-            console.error('[DEBUG] Expected players to be an array but got:', typeof players);
+        // Load recent fines
+        await loadRecentFines();
+        
+        debug('All data loaded successfully');
+        $('#debugStatus').text('Data loaded successfully');
+    } catch (error) {
+        debug(`Error loading data: ${error.message}`);
+        $('#debugStatus').text(`Error: ${error.message}`);
+        showToast('Er is een fout opgetreden bij het laden van de gegevens', 'error');
+    }
+}
+
+// Add better debug support to loadPlayers function
+async function loadPlayers() {
+    try {
+        debug('Loading players for select...');
+        const data = await fetchAPI('players');
+        
+        if (!$('#playerSelect').length) {
+            debug('Error: Player select element not found');
+            return;
         }
         
-        // Load reasons
+        debug(`Received ${data.length} players from API`);
+        
+        $('#playerSelect').empty().append('<option value="">Selecteer een speler</option>');
+        
+        data.forEach(player => {
+            debug(`Adding player: ${player.name} (${player.id})`);
+            $('#playerSelect').append(`<option value="${player.id}">${player.name}</option>`);
+        });
+        
+        // Trigger change to update Select2
+        $('#playerSelect').trigger('change');
+        
+        debug('Players dropdown populated successfully');
+    } catch (error) {
+        debug(`Error loading players: ${error.message}`);
+        showToast('Fout bij het laden van spelers', 'error');
+    }
+}
+
+// Load reasons
+async function loadReasons() {
+    try {
         console.log('[DEBUG] Fetching reasons...');
         const reasons = await fetchAPI('/reasons');
         console.log('[DEBUG] Reasons loaded:', reasons);
@@ -448,8 +477,15 @@ async function loadData() {
         } else {
             console.error('[DEBUG] Expected reasons to be an array but got:', typeof reasons);
         }
-        
-        // Load recent fines
+    } catch (error) {
+        console.error('[DEBUG] Error in loadReasons():', error);
+        showToast('Er is een fout opgetreden bij het laden van de redenen', 'error');
+    }
+}
+
+// Load recent fines
+async function loadRecentFines() {
+    try {
         console.log('[DEBUG] Fetching recent fines...');
         const fines = await fetchAPI('/recent-fines');
         console.log('[DEBUG] Recent fines loaded:', fines);
@@ -469,39 +505,9 @@ async function loadData() {
         console.log('[DEBUG] Setting up delete buttons for recent fines');
         $('.delete-fine-btn').off('click').on('click', handleFineDelete);
         console.log('[DEBUG] Found', $('.delete-fine-btn').length, 'delete buttons');
-        
-        // Check DOM visibility
-        console.log('[DEBUG] DOM visibility checks:');
-        console.log('- Player form visible:', $('#playerSelect').is(':visible'));
-        console.log('- Reason form visible:', $('#reasonSelect').is(':visible'));
-        console.log('- Recent fines visible:', $('#recentFines').is(':visible'));
-        console.log('- Content boetes visible:', $('#content-boetes').is(':visible'));
-        console.log('- Content beheer visible:', $('#content-beheer').is(':visible'));
-        
-        // Initialize Select2
-        console.log('[DEBUG] Initializing Select2...');
-        setTimeout(() => {
-            initializeSelect2();
-            console.log('[DEBUG] Select2 initialization complete');
-            
-            // Check Select2 existence and visibility
-            console.log('[DEBUG] Select2 container count:', $('.select2-container').length);
-            console.log('[DEBUG] Select2 visibility:', $('.select2-container').is(':visible'));
-        }, 100);
-        
-        console.log('[DEBUG] loadData() completed successfully');
-        
     } catch (error) {
-        console.error('[DEBUG] Error in loadData():', error);
-        showToast('Er is een fout opgetreden bij het laden van de gegevens', 'error');
-    } finally {
-        // Ensure loading spinner is hidden
-        toggleLoading(false);
-        
-        // Update debug status
-        if (document.getElementById('debug-status')) {
-            document.getElementById('debug-status').textContent = 'Data loaded: ' + new Date().toLocaleTimeString();
-        }
+        console.error('[DEBUG] Error in loadRecentFines():', error);
+        showToast('Er is een fout opgetreden bij het laden van de recente boetes', 'error');
     }
 }
 
@@ -815,9 +821,10 @@ async function handleFineDelete(e) {
 
 // Initialize
 $(document).ready(function() {
-    console.log('[DEBUG] Document ready event fired');
+    // Debug logging
+    debug('Document ready fired');
     
-    // Check if all required elements exist
+    // Required DOM elements check
     const requiredElements = [
         '#tab-boetes', 
         '#tab-beheer', 
@@ -825,8 +832,7 @@ $(document).ready(function() {
         '#content-beheer',
         '#playerSelect',
         '#reasonSelect',
-        '#recentFines',
-        '#fineSelect'
+        '#recentFines'
     ];
     
     const missingElements = requiredElements.filter(selector => $(selector).length === 0);
@@ -834,75 +840,91 @@ $(document).ready(function() {
     if (missingElements.length > 0) {
         console.error('[DEBUG] Missing DOM elements:', missingElements);
         showToast('Er is een fout opgetreden bij het laden van de pagina', 'error');
-    return;
-  }
-  
-    console.log('[DEBUG] All required DOM elements found');
-    
-    // Make sure content is visible initially
-    $('#content-boetes').css('display', 'block');
-    $('#content-beheer').css('display', 'none');
-    
-    // Set up tab switching
-    $('#tab-boetes').on('click', function() {
-        console.log('[DEBUG] Switching to boetes tab');
-        switchTab('boetes');
-    });
-    
-    $('#tab-beheer').on('click', function() {
-        console.log('[DEBUG] Switching to beheer tab');
-        switchTab('beheer');
-    });
-    
-    // Load active tab from localStorage or default to 'boetes'
-    const activeTab = localStorage.getItem('activeAdminTab') || 'boetes';
-    console.log('[DEBUG] Initial active tab:', activeTab);
-    switchTab(activeTab);
-    
-    // Initialize theme
-    const isDarkMode = document.documentElement.classList.contains('dark');
-    console.log('[DEBUG] Initial theme - Dark mode:', isDarkMode);
-    setTheme(isDarkMode);
-    
-    // Wait a short time to ensure DOM is fully ready before loading data
-    setTimeout(() => {
-        console.log('[DEBUG] Starting initial data load');
-        // Force visibility of containers again
-        if (activeTab === 'boetes') {
-            $('#content-boetes').css('display', 'block');
-            $('#content-beheer').css('display', 'none');
-        } else {
-            $('#content-boetes').css('display', 'none');
-            $('#content-beheer').css('display', 'block');
-        }
-        
-        loadData().then(() => {
-            // Validate Select2 after data is loaded
-            setTimeout(validateSelect2, 500);
-        });
-    }, 300);
-
-    // Add health check button to debug panel
-    if (document.getElementById('fallback-debug')) {
-        const healthBtn = document.createElement('button');
-        healthBtn.className = 'px-3 py-1 ml-2 bg-green-600 text-white rounded';
-        healthBtn.textContent = 'API Health Check';
-        healthBtn.onclick = checkApiHealth;
-        
-        const debugPanel = document.getElementById('fallback-debug');
-        const existingBtn = debugPanel.querySelector('button');
-        existingBtn.parentNode.insertBefore(healthBtn, existingBtn.nextSibling);
+        $('#debugStatus').text(`Missing elements: ${missingElements.join(', ')}`);
+        return;
     }
-
-    // Add DOM repair button to debug panel
-    if (document.getElementById('fallback-debug')) {
-        const repairBtn = document.createElement('button');
-        repairBtn.className = 'px-3 py-1 ml-2 bg-yellow-600 text-white rounded';
-        repairBtn.textContent = 'Repair DOM';
-        repairBtn.onclick = checkAndRepairDOM;
+    
+    debug('All required DOM elements found');
+    
+    // Set up debug button
+    $('#debugLoadBtn').on('click', function() {
+        $('#debugStatus').text('Manually loading data...');
+        loadData();
+    });
+    
+    // Tab functionality
+    $('#tab-boetes').click(function() {
+        debug('Switching to Boetes tab');
+        $('#tab-boetes').addClass('text-blue-600 dark:text-blue-500 border-blue-600 dark:border-blue-500')
+            .removeClass('border-transparent hover:text-blue-600 dark:hover:text-blue-500 hover:border-blue-600 dark:hover:border-blue-500 text-gray-500 dark:text-gray-400');
+        $('#tab-beheer').removeClass('text-blue-600 dark:text-blue-500 border-blue-600 dark:border-blue-500')
+            .addClass('border-transparent hover:text-blue-600 dark:hover:text-blue-500 hover:border-blue-600 dark:hover:border-blue-500 text-gray-500 dark:text-gray-400');
+        $('#content-boetes').removeClass('hidden');
+        $('#content-beheer').addClass('hidden');
+        localStorage.setItem('activeTab', 'boetes');
+    });
+    
+    $('#tab-beheer').click(function() {
+        debug('Switching to Beheer tab');
+        $('#tab-beheer').addClass('text-blue-600 dark:text-blue-500 border-blue-600 dark:border-blue-500')
+            .removeClass('border-transparent hover:text-blue-600 dark:hover:text-blue-500 hover:border-blue-600 dark:hover:border-blue-500 text-gray-500 dark:text-gray-400');
+        $('#tab-boetes').removeClass('text-blue-600 dark:text-blue-500 border-blue-600 dark:border-blue-500')
+            .addClass('border-transparent hover:text-blue-600 dark:hover:text-blue-500 hover:border-blue-600 dark:hover:border-blue-500 text-gray-500 dark:text-gray-400');
+        $('#content-beheer').removeClass('hidden');
+        $('#content-boetes').addClass('hidden');
+        localStorage.setItem('activeTab', 'beheer');
+    });
+    
+    // Load active tab from localStorage
+    const activeTab = localStorage.getItem('activeTab') || 'boetes';
+    debug(`Active tab from localStorage: ${activeTab}`);
+    
+    if (activeTab === 'beheer') {
+        $('#tab-beheer').click();
+    } else {
+        $('#tab-boetes').click();
+    }
+    
+    // Initialize theme with debug logging
+    debug(`Current theme: ${localStorage.theme || 'not set'}`);
+    debug(`Dark mode media query: ${window.matchMedia('(prefers-color-scheme: dark)').matches}`);
+    
+    const isDarkMode = localStorage.theme === 'dark' || 
+        (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    
+    debug(`Dark mode enabled: ${isDarkMode}`);
+    
+    if (isDarkMode) {
+        debug('Setting dark theme');
+        setTheme(true);
+    } else {
+        debug('Setting light theme');
+        setTheme(false);
+    }
+    
+    // Form submissions
+    $('#addFineForm').on('submit', handleAddFine);
+    
+    // Debug to check all event listeners are set up
+    debug('All event listeners set up');
+    
+    // Start loading data with a slight delay to ensure DOM is ready
+    setTimeout(() => {
+        debug('Starting data load after timeout');
+        loadData();
         
-        const debugPanel = document.getElementById('fallback-debug');
-        const existingBtn = debugPanel.querySelector('button');
-        existingBtn.parentNode.insertBefore(repairBtn, existingBtn.nextSibling);
-  }
+        // Initial check to make sure the correct content is visible
+        if (activeTab === 'beheer') {
+            debug('Making beheer content visible');
+            $('#content-beheer').removeClass('hidden');
+            $('#content-boetes').addClass('hidden');
+        } else {
+            debug('Making boetes content visible');
+            $('#content-boetes').removeClass('hidden');
+            $('#content-beheer').addClass('hidden');
+        }
+    }, 500);
+    
+    // Update debug status
+    $('#debugStatus').text('Page initialized, loading data...');
 }); 

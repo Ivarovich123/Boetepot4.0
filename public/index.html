@@ -26,6 +26,49 @@
     }
   </script>
   <style>
+    /* Professional background pattern */
+    body {
+      background-image: 
+        radial-gradient(circle at 15px 15px, rgba(0, 0, 0, 0.02) 2px, transparent 0), 
+        radial-gradient(circle at 45px 45px, rgba(0, 0, 0, 0.02) 2px, transparent 0);
+      background-size: 60px 60px;
+      background-position: 0 0, 30px 30px;
+    }
+    
+    .dark body {
+      background-image: 
+        radial-gradient(circle at 15px 15px, rgba(255, 255, 255, 0.02) 2px, transparent 0), 
+        radial-gradient(circle at 45px 45px, rgba(255, 255, 255, 0.02) 2px, transparent 0);
+      background-size: 60px 60px;
+      background-position: 0 0, 30px 30px;
+    }
+    
+    /* Card styles */
+    .card-container {
+      backdrop-filter: blur(4px);
+    }
+    
+    .card {
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(16px);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    
+    .card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 25px rgba(0, 0, 0, 0.1);
+    }
+    
+    .dark .card {
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    
+    .dark .card:hover {
+      box-shadow: 0 6px 25px rgba(0, 0, 0, 0.3);
+    }
+    
     /* Custom Select2 Styles */
     .select2-container {
       width: 100% !important;
@@ -112,12 +155,12 @@
 </head>
 <body class="h-full bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-white">
   <!-- Navbar -->
-  <header class="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+  <header class="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 backdrop-filter backdrop-blur-lg bg-opacity-90 dark:bg-opacity-90">
     <nav class="px-4 h-16">
       <div class="h-full mx-auto flex items-center justify-between">
         <h1 class="text-xl font-bold text-blue-600 dark:text-blue-500">Boetepot</h1>
         <div class="flex items-center space-x-4">
-          <a href="/admin.html" class="p-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center">
+          <a href="/admin.html" class="p-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center shadow-md">
             <i class="fas fa-cog mr-2"></i>
             <span>Admin</span>
           </a>
@@ -140,7 +183,7 @@
   <main class="container mx-auto px-4 pt-20 pb-8">
     <!-- Total Amount -->
     <section class="mb-6">
-      <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6 overflow-hidden">
+      <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-md p-6 overflow-hidden card">
         <h2 class="text-xl font-semibold mb-4 flex items-center">
           <i class="fas fa-piggy-bank text-blue-600 mr-3"></i>
           Totaal Bedrag
@@ -154,7 +197,7 @@
     
     <!-- Player History -->
     <section class="mb-6">
-      <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6">
+      <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-md p-6 card">
         <h2 class="text-xl font-semibold mb-4 flex items-center">
           <i class="fas fa-user-clock text-blue-600 mr-3"></i>
           Boete Historie
@@ -184,7 +227,7 @@
 
     <!-- Recent Fines -->
     <section class="mb-6">
-      <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6">
+      <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-md p-6 card">
         <h2 class="text-xl font-semibold mb-4 flex items-center">
           <i class="fas fa-history text-blue-600 mr-3"></i>
           Recente Boetes
@@ -198,7 +241,7 @@
 
     <!-- Leaderboard -->
     <section class="mb-6">
-      <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6">
+      <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-md p-6 card">
         <h2 class="text-xl font-semibold mb-4 flex items-center">
           <i class="fas fa-trophy text-blue-600 mr-3"></i>
           Leaderboard
