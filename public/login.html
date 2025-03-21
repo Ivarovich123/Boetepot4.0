@@ -16,6 +16,9 @@
     
     <!-- jQuery -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    
+    <!-- Auth System -->
+    <script src="auth.js"></script>
 
     <style>
         /* Base styles */
@@ -62,12 +65,6 @@
             transition: background-color 0.3s, border-color 0.3s, color 0.3s;
         }
     </style>
-    
-    <!-- Theme System -->
-    <script src="theme.js"></script>
-    
-    <!-- Auth System -->
-    <script src="auth.js"></script>
 </head>
 <body class="flex items-center justify-center p-4">
     <div class="max-w-md w-full card rounded-2xl shadow-xl p-8">
@@ -109,48 +106,110 @@
     <div id="toastContainer" class="fixed top-4 right-4 z-50 max-w-xs w-full"></div>
     
     <script>
-        // Initialize theme
-        Theme.init();
-        
-        // Check if already logged in
-        if (Auth.check()) {
-            window.location.href = 'admin.html';
-        }
+        // Apply theme on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log("Login page loaded - applying theme");
+            
+            // Apply theme based on localStorage or system preference
+            if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+                const themeIcon = document.getElementById('theme-icon');
+                if (themeIcon) themeIcon.className = 'fas fa-sun text-xl';
+            } else {
+                document.documentElement.classList.remove('dark');
+                const themeIcon = document.getElementById('theme-icon');
+                if (themeIcon) themeIcon.className = 'fas fa-moon text-xl';
+            }
+            
+            // Add theme toggle event listener
+            const themeToggle = document.getElementById('theme-toggle');
+            if (themeToggle) {
+                themeToggle.addEventListener('click', function() {
+                    console.log("Theme toggle clicked");
+                    const isDark = document.documentElement.classList.contains('dark');
+                    
+                    if (isDark) {
+                        document.documentElement.classList.remove('dark');
+                        localStorage.theme = 'light';
+                        const themeIcon = document.getElementById('theme-icon');
+                        if (themeIcon) themeIcon.className = 'fas fa-moon text-xl';
+                    } else {
+                        document.documentElement.classList.add('dark');
+                        localStorage.theme = 'dark';
+                        const themeIcon = document.getElementById('theme-icon');
+                        if (themeIcon) themeIcon.className = 'fas fa-sun text-xl';
+                    }
+                });
+            }
+            
+            // Check if already authenticated
+            if (Auth && Auth.check()) {
+                console.log("User already authenticated, redirecting to admin page");
+                window.location.href = 'admin.html';
+            }
+        });
         
         // Show toast message
         function showToast(message, type = 'success') {
-            const toast = $(`
-                <div class="bg-${type === 'success' ? 'green' : 'red'}-500 text-white px-4 py-3 rounded-lg shadow-lg mb-4 flex items-center justify-between">
-                    <span>${message}</span>
-                    <button class="ml-4 focus:outline-none">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-            `).hide();
+            const toast = document.createElement('div');
+            toast.className = `bg-${type === 'success' ? 'green' : 'red'}-500 text-white px-4 py-3 rounded-lg shadow-lg mb-4 flex items-center justify-between`;
+            toast.innerHTML = `
+                <span>${message}</span>
+                <button class="ml-4 focus:outline-none">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
             
-            $('#toastContainer').prepend(toast);
-            toast.slideDown();
+            const container = document.getElementById('toastContainer');
+            container.appendChild(toast);
             
-            toast.find('button').on('click', () => toast.slideUp(() => toast.remove()));
-            setTimeout(() => toast.slideUp(() => toast.remove()), 5000);
+            // Add click event to close button
+            const closeButton = toast.querySelector('button');
+            if (closeButton) {
+                closeButton.addEventListener('click', function() {
+                    toast.remove();
+                });
+            }
+            
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                if (toast.parentNode) {
+                    toast.remove();
+                }
+            }, 5000);
         }
         
         // Handle login form submission
-        document.getElementById('loginForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const password = document.getElementById('password').value;
-            const success = Auth.login(password);
-            
-            if (success) {
-                showToast('Login succesvol! Doorsturen naar admin panel...');
-                setTimeout(() => window.location.href = 'admin.html', 1000);
-            } else {
-                showToast('Ongeldig wachtwoord', 'error');
-                document.getElementById('password').value = '';
-                document.getElementById('password').focus();
-            }
-        });
+        const loginForm = document.getElementById('loginForm');
+        if (loginForm) {
+            loginForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                console.log("Login form submitted");
+                const password = document.getElementById('password').value;
+                
+                if (Auth && typeof Auth.login === 'function') {
+                    const success = Auth.login(password);
+                    
+                    if (success) {
+                        showToast('Login succesvol! Doorsturen naar admin panel...');
+                        setTimeout(() => {
+                            window.location.href = 'admin.html';
+                        }, 1000);
+                    } else {
+                        showToast('Ongeldig wachtwoord', 'error');
+                        const passwordField = document.getElementById('password');
+                        if (passwordField) {
+                            passwordField.value = '';
+                            passwordField.focus();
+                        }
+                    }
+                } else {
+                    console.error("Auth object or login method not available");
+                    showToast('Authenticatie fout. Probeer de pagina te verversen.', 'error');
+                }
+            });
+        }
     </script>
 </body>
 </html> 

@@ -1,10 +1,9 @@
-// Check authentication
-if (!Auth.check()) {
+// Check authentication at the very beginning
+console.log("Admin.js loaded - checking authentication");
+if (!Auth || !Auth.check()) {
+    console.log("Authentication failed, redirecting to login");
     window.location.href = 'login.html';
 }
-
-// Initialize theme
-Theme.init();
 
 // API Base URL - make sure this matches your backend setup
 const API_BASE_URL = window.location.hostname === 'localhost' ? 'http://localhost:3000/api' : '/api';
@@ -17,106 +16,92 @@ function debug(message) {
     }
 }
 
-// Theme handling
+// Initialize theme immediately
+document.addEventListener('DOMContentLoaded', function() {
+    console.log("DOMContentLoaded - initializing theme");
+    
+    // Apply theme from localStorage
+    if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.classList.add('dark');
+        const icon = document.getElementById('theme-icon');
+        if (icon) icon.className = 'fas fa-sun text-xl';
+    } else {
+        document.documentElement.classList.remove('dark');
+        const icon = document.getElementById('theme-icon');
+        if (icon) icon.className = 'fas fa-moon text-xl';
+    }
+    
+    // Add theme toggle event listener
+    const themeToggle = document.getElementById('theme-toggle');
+    if (themeToggle) {
+        themeToggle.addEventListener('click', function() {
+            console.log("Theme toggle clicked");
+            const isDark = document.documentElement.classList.contains('dark');
+            if (isDark) {
+                document.documentElement.classList.remove('dark');
+                localStorage.theme = 'light';
+                const icon = document.getElementById('theme-icon');
+                if (icon) icon.className = 'fas fa-moon text-xl';
+            } else {
+                document.documentElement.classList.add('dark');
+                localStorage.theme = 'dark';
+                const icon = document.getElementById('theme-icon');
+                if (icon) icon.className = 'fas fa-sun text-xl';
+            }
+            
+            // Update Select2 components if they exist
+            updateSelect2Theme(!isDark);
+        });
+    }
+    
+    // Setup tabs
+    setupTabs();
+    
+    // Initialize Select2 components
+    initializeSelect2();
+    
+    // Load data
+    loadData();
+});
+
+// Update Select2 theme
 function updateSelect2Theme(isDark) {
     debug(`Updating Select2 theme to ${isDark ? 'dark' : 'light'}`);
     try {
+        if (typeof $ === 'undefined' || !$.fn || !$.fn.select2) {
+            debug('Select2 not available, skipping theme update');
+            return;
+        }
+        
         $('.select2-container--default .select2-selection--single').css({
-            'background-color': isDark ? '#1f2937' : '#ffffff',
-            'border-color': isDark ? '#374151' : '#e5e7eb',
-            'color': isDark ? '#ffffff' : '#000000'
+            'background-color': isDark ? 'var(--input-bg)' : 'var(--input-bg)',
+            'border-color': isDark ? 'var(--input-border)' : 'var(--input-border)',
+            'color': isDark ? 'var(--input-text)' : 'var(--input-text)'
         });
         
         $('.select2-container--default .select2-selection--single .select2-selection__rendered').css({
-            'color': isDark ? '#ffffff' : '#000000'
+            'color': isDark ? 'var(--input-text)' : 'var(--input-text)'
         });
         
         $('.select2-dropdown').css({
-            'background-color': isDark ? '#1f2937' : '#ffffff',
-            'border-color': isDark ? '#374151' : '#e5e7eb'
+            'background-color': isDark ? 'var(--input-bg)' : 'var(--input-bg)',
+            'border-color': isDark ? 'var(--input-border)' : 'var(--input-border)'
         });
         
         $('.select2-search--dropdown .select2-search__field').css({
-            'background-color': isDark ? '#111827' : '#ffffff',
-            'border-color': isDark ? '#374151' : '#e5e7eb',
-            'color': isDark ? '#ffffff' : '#000000'
+            'background-color': isDark ? 'var(--input-bg)' : 'var(--input-bg)',
+            'border-color': isDark ? 'var(--input-border)' : 'var(--input-border)',
+            'color': isDark ? 'var(--input-text)' : 'var(--input-text)'
         });
         
-        $('.select2-results__option').css('color', isDark ? '#ffffff' : '#000000');
+        $('.select2-results__option').css('color', isDark ? 'var(--input-text)' : 'var(--input-text)');
     } catch (error) {
         debug(`Error updating Select2 theme: ${error.message}`);
     }
 }
 
 // Initialize theme
-if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-    updateSelect2Theme(true);
-} else {
-    updateSelect2Theme(false);
-}
-
-// Direct click handler without jQuery method chaining
-document.getElementById('theme-toggle').addEventListener('click', function() {
-    const isDark = document.documentElement.classList.contains('dark');
-    updateSelect2Theme(!isDark);
-    console.log('[DEBUG] Theme toggled to:', !isDark ? 'dark' : 'light');
-});
-
-// Tab functionality
-function switchTab(tabId) {
-    console.log(`[DEBUG] Switching to tab: ${tabId}`);
-    
-    // Validate tab ID
-    if (tabId !== 'boetes' && tabId !== 'beheer') {
-        console.error(`[DEBUG] Invalid tab ID: ${tabId}, defaulting to 'boetes'`);
-        tabId = 'boetes';
-    }
-    
-    // Store active tab in localStorage
-    localStorage.setItem('activeAdminTab', tabId);
-    
-    // Check current visibility before change
-    console.log(`[DEBUG] Before tab switch: boetes=${$('#content-boetes').is(':visible')}, beheer=${$('#content-beheer').is(':visible')}`);
-    
-    // Set display directly with CSS instead of using addClass/removeClass for hidden
-    if (tabId === 'boetes') {
-        $('#content-boetes').css('display', 'block');
-        $('#content-beheer').css('display', 'none');
-    } else {
-        $('#content-boetes').css('display', 'none');
-        $('#content-beheer').css('display', 'block');
-    }
-    
-    // Update tab styling
-    $('#tab-boetes, #tab-beheer').removeClass('tab-active');
-    $(`#tab-${tabId}`).addClass('tab-active');
-    
-    // Check visibility after change
-    console.log(`[DEBUG] After tab switch: boetes=${$('#content-boetes').is(':visible')}, beheer=${$('#content-beheer').is(':visible')}`);
-    console.log(`[DEBUG] Element CSS - boetes: ${$('#content-boetes').css('display')}, beheer: ${$('#content-beheer').css('display')}`);
-    
-    // Force DOM update
-    setTimeout(() => {
-        console.log(`[DEBUG] Forcing reflow...`);
-        $('#content-boetes, #content-beheer').each(function() {
-            // Force a reflow
-            void this.offsetHeight;
-        });
-        
-        // Re-initialize Select2 after tab switch
-        console.log(`[DEBUG] Reinitializing Select2 after tab switch to ${tabId}`);
-        initializeSelect2();
-        
-        // Refresh display of visible elements
-        if (tabId === 'boetes') {
-            console.log(`[DEBUG] Refreshing fine displays`);
-            $('#playerSelect, #reasonSelect, #recentFines, #fineSelect').trigger('update');
-        } else {
-            console.log(`[DEBUG] Refreshing management displays`);
-            $('#playerName, #reasonDescription').trigger('update');
-        }
-    }, 100);
-}
+Theme.init();
 
 // Format currency
 function formatCurrency(amount) {
@@ -1358,52 +1343,87 @@ function addManagementSections() {
 
 // Setup tabs functionality
 function setupTabs() {
-    try {
-        debug('Setting up tabs');
-        
-        // Tab switching functionality
-        $('#tab-boetes').off('click').on('click', function() {
-            debug('Boetes tab clicked');
-            $('.nav-tab').removeClass('active-tab');
-            $('.tab-content').addClass('hidden');
-            
-            $(this).addClass('active-tab');
-            $('#finesTab').removeClass('hidden');
-            
-            localStorage.setItem('activeTab', 'boetes');
-        });
-        
-        $('#tab-players').off('click').on('click', function() {
-            debug('Players tab clicked');
-            $('.nav-tab').removeClass('active-tab');
-            $('.tab-content').addClass('hidden');
-            
-            $(this).addClass('active-tab');
-            $('#playersTab').removeClass('hidden');
-            
-            localStorage.setItem('activeTab', 'players');
-        });
-        
-        $('#tab-reasons').off('click').on('click', function() {
-            debug('Reasons tab clicked');
-            $('.nav-tab').removeClass('active-tab');
-            $('.tab-content').addClass('hidden');
-            
-            $(this).addClass('active-tab');
-            $('#reasonsTab').removeClass('hidden');
-            
-            localStorage.setItem('activeTab', 'reasons');
-        });
-        
-        // Add nav-tab class to all tab elements and add active-tab to default tab
-        $('#tab-boetes, #tab-players, #tab-reasons').addClass('nav-tab');
-        $('#tab-boetes').addClass('active-tab');
-        $('#finesTab').removeClass('hidden');
-        
-        debug('Tabs setup completed');
-    } catch (error) {
-        console.error('[DEBUG] Error setting up tabs:', error);
+    debug('Setting up tabs');
+    
+    // Set first tab as active by default
+    const tabBoetes = document.getElementById('tab-boetes');
+    const tabPlayers = document.getElementById('tab-players');
+    const tabReasons = document.getElementById('tab-reasons');
+    
+    const finesTab = document.getElementById('finesTab');
+    const playersTab = document.getElementById('playersTab');
+    const reasonsTab = document.getElementById('reasonsTab');
+    
+    if (!tabBoetes || !tabPlayers || !tabReasons || !finesTab || !playersTab || !reasonsTab) {
+        debug('Tab elements not found, skipping tab setup');
+        return;
     }
+    
+    // Set active tab from localStorage if available
+    const activeTab = localStorage.getItem('activeTab');
+    if (activeTab) {
+        switch (activeTab) {
+            case 'boetes':
+                activateTab(tabBoetes, finesTab);
+                break;
+            case 'players':
+                activateTab(tabPlayers, playersTab);
+                break;
+            case 'reasons':
+                activateTab(tabReasons, reasonsTab);
+                break;
+            default:
+                activateTab(tabBoetes, finesTab);
+        }
+    } else {
+        // Default to boetes tab
+        activateTab(tabBoetes, finesTab);
+    }
+    
+    // Setup tab click handlers
+    tabBoetes.addEventListener('click', function() {
+        activateTab(tabBoetes, finesTab);
+        localStorage.setItem('activeTab', 'boetes');
+    });
+    
+    tabPlayers.addEventListener('click', function() {
+        activateTab(tabPlayers, playersTab);
+        localStorage.setItem('activeTab', 'players');
+    });
+    
+    tabReasons.addEventListener('click', function() {
+        activateTab(tabReasons, reasonsTab);
+        localStorage.setItem('activeTab', 'reasons');
+    });
+    
+    debug('Tab setup completed');
+}
+
+// Helper function to activate a tab
+function activateTab(tabElement, contentElement) {
+    debug(`Activating tab: ${tabElement.id}`);
+    
+    // Reset all tabs
+    const allTabs = document.querySelectorAll('[id^="tab-"]');
+    const allContents = document.querySelectorAll('.tab-content');
+    
+    // Remove active class from all tabs
+    allTabs.forEach(tab => {
+        tab.classList.remove('tab-active');
+        tab.classList.add('border-transparent', 'hover:text-blue-600', 'dark:hover:text-blue-500', 'hover:border-blue-600', 'dark:hover:border-blue-500', 'text-gray-500', 'dark:text-gray-400');
+    });
+    
+    // Hide all content
+    allContents.forEach(content => {
+        content.classList.add('hidden');
+    });
+    
+    // Activate selected tab
+    tabElement.classList.add('tab-active');
+    tabElement.classList.remove('border-transparent', 'hover:text-blue-600', 'dark:hover:text-blue-500', 'hover:border-blue-600', 'dark:hover:border-blue-500', 'text-gray-500', 'dark:text-gray-400');
+    
+    // Show selected content
+    contentElement.classList.remove('hidden');
 }
 
 // Setup theme functionality

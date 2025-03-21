@@ -93,34 +93,51 @@ const Auth = {
     PASSWORD: 'Mandje123',
     
     login(password) {
+        console.log('Attempting login with password');
+        
         if (password !== this.PASSWORD) {
+            console.log('Invalid password');
             return false;
         }
         
-        const token = btoa(`admin:${Date.now()}`);
-        const expires = Date.now() + (7 * 24 * 60 * 60 * 1000); // 7 days
-        
-        localStorage.setItem(this.TOKEN_KEY, token);
-        localStorage.setItem(this.EXPIRES_KEY, expires.toString());
-        
-        return true;
+        try {
+            // Clear existing tokens first to prevent conflicts
+            this.logout(false);
+            
+            // Set new tokens
+            const token = btoa(`admin:${Date.now()}`);
+            const expires = Date.now() + (7 * 24 * 60 * 60 * 1000); // 7 days
+            
+            localStorage.setItem(this.TOKEN_KEY, token);
+            localStorage.setItem(this.EXPIRES_KEY, expires.toString());
+            
+            console.log('Login successful');
+            return true;
+        } catch (error) {
+            console.error('Auth error:', error);
+            return false;
+        }
     },
     
     check() {
         try {
+            console.log('Checking authentication...');
             const token = localStorage.getItem(this.TOKEN_KEY);
             const expires = localStorage.getItem(this.EXPIRES_KEY);
             
             if (!token || !expires) {
+                console.log('No token or expiration found');
                 return false;
             }
             
             const expiryTime = parseInt(expires);
             if (isNaN(expiryTime) || expiryTime <= Date.now()) {
-                this.logout();
+                console.log('Token expired');
+                this.logout(false);
                 return false;
             }
             
+            console.log('Valid authentication found');
             return true;
         } catch (error) {
             console.error('Auth check error:', error);
@@ -128,10 +145,14 @@ const Auth = {
         }
     },
     
-    logout() {
+    logout(redirect = true) {
+        console.log('Logging out user');
         localStorage.removeItem(this.TOKEN_KEY);
         localStorage.removeItem(this.EXPIRES_KEY);
-        window.location.href = 'login.html';
+        
+        if (redirect) {
+            window.location.href = 'login.html';
+        }
     },
     
     // Theme handling

@@ -22,6 +22,9 @@
     
     <!-- Select2 JS -->
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    
+    <!-- Auth System - Must be loaded first -->
+    <script src="auth.js"></script>
 
     <style>
         /* Base styles */
@@ -72,10 +75,19 @@
             background-color: var(--input-bg);
             border-color: var(--input-border);
             color: var(--input-text);
+            height: 3rem;
+            padding: 0.5rem 1rem;
+            border-radius: 0.75rem;
+            border-width: 1px;
         }
         
         .select2-container--default .select2-selection--single .select2-selection__rendered {
             color: var(--input-text);
+            line-height: 2rem;
+        }
+        
+        .select2-container--default .select2-selection--single .select2-selection__arrow {
+            height: 3rem;
         }
         
         .select2-dropdown {
@@ -114,12 +126,6 @@
             border-color: #3b82f6;
         }
     </style>
-    
-    <!-- Theme System -->
-    <script src="theme.js"></script>
-    
-    <!-- Auth System -->
-    <script src="auth.js"></script>
 </head>
 <body class="min-h-screen pb-20">
     <!-- Navbar -->
@@ -167,7 +173,7 @@
         <div class="border-b border-gray-200 dark:border-gray-700 mb-6">
             <ul class="flex flex-wrap -mb-px text-sm font-medium text-center">
                 <li class="mr-6">
-                    <a id="tab-boetes" class="inline-block p-3 rounded-t-lg border-b-2 border-transparent hover:text-blue-600 dark:hover:text-blue-500 hover:border-blue-600 dark:hover:border-blue-500 text-gray-500 dark:text-gray-400 cursor-pointer">
+                    <a id="tab-boetes" class="inline-block p-3 rounded-t-lg border-b-2 border-transparent hover:text-blue-600 dark:hover:text-blue-500 hover:border-blue-600 dark:hover:border-blue-500 text-gray-500 dark:text-gray-400 cursor-pointer tab-active">
                         <i class="fas fa-money-bill-wave mr-2"></i>
                         Boetes Beheren
                     </a>
