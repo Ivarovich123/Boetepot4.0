@@ -17,11 +17,7 @@
     },
     {
       "src": "/(.*)",
-      "dest": "public/$1"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "server.js"
+      "dest": "/public/$1"
     }
   ]
 } 
