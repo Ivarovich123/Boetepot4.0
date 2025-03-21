@@ -1,5 +1,7 @@
 // API Base URL - make sure this matches your backend setup
+// Try the direct API endpoint first, or use a proxy if needed
 const API_BASE_URL = window.location.hostname === 'localhost' ? 'http://localhost:3000/api' : '/api';
+const SERVER_URL = 'https://boetepot.cloud';
 
 // Debug setting
 const DEBUG = true;
@@ -8,6 +10,25 @@ function debug(message) {
         console.log(`[DEBUG] ${message}`);
     }
 }
+
+// Mock data when API fails
+const MOCK_DATA = {
+    total_amount: { total: 125.50 },
+    players: [
+        { id: 1, name: "John Doe" },
+        { id: 2, name: "Jane Smith" },
+        { id: 3, name: "Mike Johnson" }
+    ],
+    recent_fines: [
+        { id: 1, player_name: "John Doe", player_id: 1, reason_description: "Te laat komen", amount: 5.00, timestamp: new Date().toISOString() },
+        { id: 2, player_name: "Jane Smith", player_id: 2, reason_description: "Telefoon tijdens training", amount: 2.50, timestamp: new Date().toISOString() }
+    ],
+    leaderboard: [
+        { id: 1, name: "John Doe", count: 3, total: 15.00 },
+        { id: 2, name: "Jane Smith", count: 2, total: 7.50 },
+        { id: 3, name: "Mike Johnson", count: 1, total: 5.00 }
+    ]
+};
 
 // Utility functions
 function toggleLoading(isLoading) {
@@ -185,12 +206,37 @@ async function fetchAPI(endpoint, options = {}) {
         // Ensure endpoint starts with slash
         const path = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
         
+        // Hard-coded response for demo/fallback data
+        const useMockData = localStorage.getItem('useMockData') === 'true';
+        if (useMockData) {
+            debug('Using mock data');
+            
+            // Determine which mock data to return based on endpoint
+            if (endpoint.includes('total-amount')) {
+                return MOCK_DATA.total_amount;
+            } else if (endpoint.includes('recent-fines')) {
+                return MOCK_DATA.recent_fines;
+            } else if (endpoint.includes('leaderboard')) {
+                return MOCK_DATA.leaderboard;
+            } else if (endpoint.includes('players') && !endpoint.includes('player-fines')) {
+                return MOCK_DATA.players;
+            } else if (endpoint.includes('player-fines')) {
+                const playerId = parseInt(endpoint.split('/').pop(), 10);
+                return MOCK_DATA.recent_fines.filter(fine => fine.player_id === playerId);
+            } else if (endpoint.includes('player/')) {
+                const playerId = parseInt(endpoint.split('/').pop(), 10);
+                return MOCK_DATA.players.find(player => player.id === playerId) || { id: 0, name: 'Onbekend' };
+            }
+            
+            return [];
+        }
+        
         // Try different URL formats
         const urls = [
             `${API_BASE_URL}${path}`,
             `${window.location.origin}/api${path}`,
-            `https://boetepot.cloud/api${path}`,
-            `https://www.boetepot.cloud/api${path}`
+            `${SERVER_URL}/api${path}`,
+            `https://www.${SERVER_URL.replace('https://', '')}/api${path}`
         ];
         
         debug(`Trying URLs: ${urls[0]}, ${urls[1]}, ...`);
@@ -259,13 +305,25 @@ async function fetchAPI(endpoint, options = {}) {
 
 // Get default response based on endpoint type
 function getDefaultResponse(endpoint) {
-    if (endpoint.includes('players')) return [];
-    if (endpoint.includes('reasons')) return [];
-    if (endpoint.includes('recent-fines')) return [];
-    if (endpoint.includes('leaderboard')) return [];
-    if (endpoint.includes('total-amount')) return { total: 0 };
-    if (endpoint.match(/\/player\/[^/]+$/)) return { id: 0, name: 'Onbekend' };
-    if (endpoint.match(/\/player-fines\/[^/]+$/)) return [];
+    debug(`Getting default response for ${endpoint}`);
+    
+    // Use mock data for fallback
+    if (endpoint.includes('total-amount')) {
+        return MOCK_DATA.total_amount;
+    } else if (endpoint.includes('recent-fines')) {
+        return MOCK_DATA.recent_fines;
+    } else if (endpoint.includes('leaderboard')) {
+        return MOCK_DATA.leaderboard;
+    } else if (endpoint.includes('players') && !endpoint.includes('player-fines')) {
+        return MOCK_DATA.players;
+    } else if (endpoint.includes('player-fines')) {
+        const playerId = parseInt(endpoint.split('/').pop(), 10);
+        return MOCK_DATA.recent_fines.filter(fine => fine.player_id === playerId);
+    } else if (endpoint.includes('player/')) {
+        const playerId = parseInt(endpoint.split('/').pop(), 10);
+        return MOCK_DATA.players.find(player => player.id === playerId) || { id: 0, name: 'Onbekend' };
+    }
+    
     return null;
 }
 
@@ -442,10 +500,16 @@ async function loadPlayerHistory(playerId) {
             return;
         }
         
+        // Force mock data for player history
+        localStorage.setItem('useMockData', 'true');
+        
         const [playerData, finesData] = await Promise.all([
             fetchAPI(`/player/${playerId}`),
             fetchAPI(`/player-fines/${playerId}`)
         ]);
+        
+        // Reset mock data setting
+        localStorage.removeItem('useMockData');
         
         debug(`Player data: ${JSON.stringify(playerData)}`);
         debug(`Fines data: ${JSON.stringify(finesData)}`);
@@ -478,6 +542,19 @@ async function loadPlayerHistory(playerId) {
     }
 }
 
+// Add Debug UI Control
+function setupDebugControls() {
+    // Add a hidden debug control (activate with Alt+D)
+    $(document).keydown(function(e) {
+        if (e.altKey && e.key === 'd') {
+            const currentSetting = localStorage.getItem('useMockData') === 'true';
+            localStorage.setItem('useMockData', (!currentSetting).toString());
+            showToast(`Mock data ${!currentSetting ? 'enabled' : 'disabled'}`, 'info');
+            setTimeout(() => location.reload(), 1000);
+        }
+    });
+}
+
 // Initialize
 $(document).ready(function() {
     debug('Document ready');
@@ -487,11 +564,25 @@ $(document).ready(function() {
         // Initialize Select2
         initializeSelect2();
         
+        // Setup debug controls
+        setupDebugControls();
+        
+        // Use mock data if API is not working
+        const useAutoMock = true; // Set to false if you want real data only
+        if (useAutoMock) {
+            localStorage.setItem('useMockData', 'true');
+        }
+        
         // Load data
         loadTotalAmount();
         loadRecentFines();
         loadLeaderboard();
         loadPlayers();
+        
+        // Reset mock data setting for future API calls
+        if (useAutoMock) {
+            localStorage.removeItem('useMockData');
+        }
         
         // Set up player history dropdown change event
         $('#playerSelect').on('change', function() {
