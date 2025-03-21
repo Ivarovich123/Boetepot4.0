@@ -1,5 +1,5 @@
-// API Base URL
-const API_BASE_URL = '/api';
+// API Base URL - make sure this matches your backend setup
+const API_BASE_URL = window.location.hostname === 'localhost' ? 'http://localhost:3000/api' : '/api';
 
 // Check if we need to adjust the API base URL
 const checkApiUrl = () => {
@@ -168,90 +168,72 @@ function initializeSelect2() {
 
 // API Functions
 const fetchAPI = async (endpoint, options = {}) => {
-    const path = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
-    const url = useAbsoluteUrl 
-        ? `${window.location.origin}${API_BASE_URL}${path}`
-        : `${API_BASE_URL}${path}`;
-    
-    debug(`Fetching API: ${url} with options:`, options);
-    toggleLoading(true);
-    
     try {
-        const headers = options.headers || {};
+        debug(`Fetching API: ${endpoint}`);
+        toggleLoading(true);
+        
+        // Ensure endpoint starts with slash
+        const path = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+        const url = `${API_BASE_URL}${path}`;
+        
+        debug(`Full URL: ${url}`);
+        
+        // Add default headers
         const fetchOptions = {
             ...options,
             headers: {
+                'Content-Type': 'application/json',
                 'Accept': 'application/json',
-                ...headers
+                ...options.headers
             }
         };
         
-        const timeout = setTimeout(() => {
-            debug('API request timeout');
-            toggleLoading(false);
-        }, 10000);
-        
         const response = await fetch(url, fetchOptions);
-        clearTimeout(timeout);
         
         if (!response.ok) {
-            debug(`API error: ${response.status} ${response.statusText}`);
-            toggleLoading(false);
-            return null;
+            throw new Error(`API Error: ${response.status} ${response.statusText}`);
         }
         
-        // Check if response is JSON
-        const contentType = response.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) {
-            debug(`Received non-JSON response: ${contentType}`);
-            
-            // Try again with an absolute URL if we're not already using one
-            if (!useAbsoluteUrl) {
-                debug('Retrying with absolute URL');
-                const absoluteUrl = `${window.location.origin}${API_BASE_URL}${path}`;
-                debug(`Retrying fetch with absolute URL: ${absoluteUrl}`);
-                
-                const retryResponse = await fetch(absoluteUrl, fetchOptions);
-                if (!retryResponse.ok) {
-                    debug(`Retry failed: ${retryResponse.status} ${retryResponse.statusText}`);
-                    toggleLoading(false);
-                    return null;
-                }
-                
-                try {
-                    const retryData = await retryResponse.json();
-                    toggleLoading(false);
-                    return retryData;
-                } catch (error) {
-                    debug('Error parsing JSON from retry response:', error);
-                    toggleLoading(false);
-                    return null;
-                }
-            }
-            
-            toggleLoading(false);
-            
-            // Return empty values based on endpoint to prevent failures
-            if (path.includes('/players')) return [];
-            if (path.includes('/reasons')) return [];
-            if (path.includes('/recent-fines')) return [];
-            if (path.includes('/leaderboard')) return [];
-            if (path.includes('/total-amount')) return 0;
-            if (path.match(/\/players\/[^/]+$/)) {
-                return { id: 0, name: 'Error Loading Player' };
-            }
-            
-            return null;
-        }
-        
+        // Try to parse as JSON
         const data = await response.json();
-        debug(`API response:`, data);
-        toggleLoading(false);
+        debug(`API response successful with ${typeof data}`);
         return data;
     } catch (error) {
-        debug('API fetch error:', error);
+        debug(`API Error: ${error.message}`);
+        
+        // Try falling back to window.location.origin
+        try {
+            debug("Trying fallback with absolute URL");
+            const path = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+            const fallbackUrl = `${window.location.origin}/api${path}`;
+            
+            debug(`Fallback URL: ${fallbackUrl}`);
+            
+            const fallbackOptions = {
+                ...options,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    ...options.headers
+                }
+            };
+            
+            const fallbackResponse = await fetch(fallbackUrl, fallbackOptions);
+            
+            if (!fallbackResponse.ok) {
+                throw new Error(`Fallback API Error: ${fallbackResponse.status}`);
+            }
+            
+            const fallbackData = await fallbackResponse.json();
+            debug(`Fallback API response successful`);
+            return fallbackData;
+        } catch (fallbackError) {
+            debug(`Fallback API Error: ${fallbackError.message}`);
+            showToast(`Er is een fout opgetreden: ${error.message}`, 'error');
+            return endpoint.includes('players') || endpoint.includes('reasons') ? [] : null;
+        }
+    } finally {
         toggleLoading(false);
-        return null;
     }
 };
 
