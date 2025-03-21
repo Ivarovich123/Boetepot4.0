@@ -11,73 +11,81 @@ function debug(message) {
     }
 }
 
-// Sync with localStorage data from admin panel
-function getLocalData(key, defaultValue = []) {
+// Get local data (used for fallback when API is not available)
+function getLocalData(key) {
     try {
         const data = localStorage.getItem(key);
-        return data ? JSON.parse(data) : defaultValue;
+        return data ? JSON.parse(data) : null;
     } catch (e) {
-        debug(`Error getting ${key} from localStorage: ${e.message}`);
-        return defaultValue;
+        console.error(`Error retrieving ${key} from localStorage:`, e);
+        return null;
     }
 }
 
-// Get dynamic fallback data from localStorage (used by admin panel)
+// Get fallback data from localStorage
 function getFallbackData() {
-    const players = getLocalData('players', []);
-    const reasons = getLocalData('reasons', []);
-    const fines = getLocalData('fines', []);
+    console.log('[DEBUG] Generating fallback data from localStorage');
+    const players = getLocalData('players') || [];
+    const reasons = getLocalData('reasons') || [];
+    const fines = getLocalData('fines') || [];
     
-    // Calculate total amount
-    const totalAmount = fines.reduce((sum, fine) => {
-        return sum + (parseFloat(fine.amount) || 0);
-    }, 0);
+    // Calculate the total amount from fines
+    const totalAmount = fines.reduce((sum, fine) => sum + (parseFloat(fine.amount) || 0), 0);
     
-    // Calculate leaderboard
-    const leaderboardMap = {};
-    fines.forEach(fine => {
-        const playerId = fine.player_id;
-        if (!leaderboardMap[playerId]) {
-            const player = players.find(p => p.id === playerId) || { name: 'Onbekend' };
-            leaderboardMap[playerId] = {
-                id: playerId,
-                name: player.name,
-                count: 0,
-                total: 0
+    // Get the 5 most recent fines with player and reason information
+    const recentFines = fines
+        .sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0))
+        .slice(0, 5) // Show only the 5 most recent fines
+        .map(fine => {
+            const player = players.find(p => p.id === fine.playerId) || { name: 'Unknown' };
+            const reason = reasons.find(r => r.id === fine.reasonId) || { description: 'Unknown' };
+            return {
+                ...fine,
+                playerName: player.name,
+                reasonDescription: reason.description
             };
-        }
-        leaderboardMap[playerId].count += 1;
-        leaderboardMap[playerId].total += (parseFloat(fine.amount) || 0);
-    });
+        });
     
-    // Convert leaderboard to array and sort by total
-    const leaderboard = Object.values(leaderboardMap).sort((a, b) => b.total - a.total);
-    
-    // Prepare enhanced fines with player and reason info
-    const enhancedFines = fines.map(fine => {
-        const player = players.find(p => p.id === fine.player_id) || { name: 'Onbekend' };
-        const reason = reasons.find(r => r.id === fine.reason_id) || { description: 'Onbekend' };
+    // Create a leaderboard based on fines
+    const playerFinesMap = players.map(player => {
+        const playerFines = fines.filter(fine => fine.playerId === player.id);
+        const totalFined = playerFines.reduce((sum, fine) => sum + (parseFloat(fine.amount) || 0), 0);
         return {
-            ...fine,
-            player_name: player.name,
-            reason_description: reason.description
+            id: player.id,
+            name: player.name,
+            totalFined,
+            fineCount: playerFines.length
         };
     });
     
-    // Sort fines by timestamp descending
-    const recentFines = [...enhancedFines].sort((a, b) => {
-        const dateA = new Date(a.timestamp || 0);
-        const dateB = new Date(b.timestamp || 0);
-        return dateB - dateA;
-    }).slice(0, 10); // Get 10 most recent
+    const leaderboard = [...playerFinesMap]
+        .sort((a, b) => b.totalFined - a.totalFined)
+        .slice(0, 5);
+    
+    // Get player fines history
+    const playerFinesHistory = {};
+    players.forEach(player => {
+        const playerFines = fines
+            .filter(fine => fine.playerId === player.id)
+            .sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0))
+            .map(fine => {
+                const reason = reasons.find(r => r.id === fine.reasonId) || { description: 'Unknown' };
+                return {
+                    ...fine,
+                    reasonDescription: reason.description
+                };
+            });
+        
+        playerFinesHistory[player.id] = playerFines;
+    });
     
     return {
-        total_amount: { total: totalAmount },
-        players: players,
-        reasons: reasons,
-        recent_fines: recentFines,
-        leaderboard: leaderboard,
-        all_fines: enhancedFines
+        totalAmount,
+        players,
+        reasons,
+        recentFines,
+        leaderboard,
+        playerFinesHistory
     };
 }
 
@@ -199,23 +207,34 @@ function setTheme(isDark) {
 }
 
 function updateSelect2Theme(isDark) {
-    debug('Updating Select2 theme');
-    // Update dropdown
-    if (isDark) {
-        $('.select2-container--default .select2-selection--single').css({
-            'background-color': '#1f2937',
-            'border-color': '#374151',
-            'color': 'white'
-        });
-        $('.select2-container--default .select2-selection--single .select2-selection__rendered').css('color', 'white');
-    } else {
-        $('.select2-container--default .select2-selection--single').css({
-            'background-color': '#f0f2f5',
-            'border-color': '#D1D5DB',
-            'color': 'black'
-        });
-        $('.select2-container--default .select2-selection--single .select2-selection__rendered').css('color', 'black');
-    }
+    // Update the select2 theme to match the current theme
+    $('.select2-container--default .select2-selection--single').css({
+        'background-color': isDark ? 'rgb(17, 24, 39)' : 'white',
+        'border-color': isDark ? 'rgb(55, 65, 81)' : 'rgb(209, 213, 219)',
+        'color': isDark ? 'white' : 'inherit'
+    });
+    
+    $('.select2-container--default .select2-selection--single .select2-selection__rendered').css({
+        'color': isDark ? 'white' : 'inherit'
+    });
+    
+    $('.select2-container--default .select2-dropdown').css({
+        'background-color': isDark ? 'rgb(17, 24, 39)' : 'white',
+        'border-color': isDark ? 'rgb(55, 65, 81)' : 'rgb(209, 213, 219)'
+    });
+    
+    $('.select2-container--default .select2-results__option').css({
+        'color': isDark ? 'white' : 'inherit'
+    });
+    
+    $('.select2-container--default .select2-search__field').css({
+        'background-color': isDark ? 'rgb(17, 24, 39)' : 'white',
+        'color': isDark ? 'white' : 'inherit'
+    });
+    
+    // Ensure dropdowns appear above other elements
+    $('.select2-dropdown').css('z-index', '9999');
+    $('.select2-container').css('z-index', '1051');
 }
 
 // Initialize theme
@@ -229,20 +248,49 @@ $('#theme-toggle').click(() => {
     setTheme(!document.documentElement.classList.contains('dark'));
 });
 
-// Initialize Select2
+// Initialize Select2 for player dropdown
 function initializeSelect2() {
-    debug('Initializing Select2');
-    
-    // Initialize player select for history
-    $('#playerSelect').select2({
-        placeholder: 'Selecteer een speler',
-        allowClear: true,
-        width: '100%',
-        dropdownParent: $('body') // Fix for mobile
-    });
-    
-    // Update the theme for Select2
-    updateSelect2Theme(document.documentElement.classList.contains('dark'));
+    try {
+        $('#playerHistorySelect').select2({
+            theme: 'default',
+            placeholder: 'Selecteer een speler',
+            allowClear: true,
+            width: '100%',
+            language: {
+                searching: function() {
+                    return "Zoeken...";
+                },
+                noResults: function() {
+                    return "Geen resultaten gevonden";
+                }
+            },
+            templateResult: formatPlayerOption,
+            templateSelection: formatPlayerOption
+        });
+        
+        // Initialize Select2 for search
+        $(document).on('select2:open', function() {
+            setTimeout(function() {
+                $('.select2-search__field').attr('placeholder', 'Zoeken...');
+                $('.select2-search__field:visible').focus();
+            }, 100);
+        });
+        
+        console.log('[DEBUG] Select2 initialized');
+    } catch (error) {
+        console.error('[DEBUG] Error initializing Select2:', error);
+    }
+}
+
+// Format Select2 options to look nicer
+function formatPlayerOption(player) {
+    if (!player.id) return player.text;
+    return $(`<div class="flex items-center p-1">
+        <div class="w-8 h-8 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-500 rounded-full flex items-center justify-center font-bold mr-2">
+            ${player.text.charAt(0).toUpperCase()}
+        </div>
+        <span>${player.text}</span>
+    </div>`);
 }
 
 // API Functions
@@ -265,9 +313,9 @@ async function fetchAPI(endpoint, options = {}) {
             
             // Handle specific endpoints
             if (endpoint.includes('total-amount')) {
-                return localData.total_amount;
+                return localData.totalAmount;
             } else if (endpoint.includes('recent-fines')) {
-                return localData.recent_fines;
+                return localData.recentFines;
             } else if (endpoint.includes('leaderboard')) {
                 return localData.leaderboard;
             } else if (endpoint.includes('players') && !endpoint.includes('player-fines')) {
@@ -276,12 +324,12 @@ async function fetchAPI(endpoint, options = {}) {
                 return localData.reasons;
             } else if (endpoint.includes('player-fines')) {
                 const playerId = parseInt(endpoint.split('/').pop(), 10);
-                return localData.all_fines.filter(fine => fine.player_id === playerId);
+                return localData.playerFinesHistory[playerId] || [];
             } else if (endpoint.includes('player/')) {
                 const playerId = parseInt(endpoint.split('/').pop(), 10);
                 return localData.players.find(player => player.id === playerId) || { id: 0, name: 'Onbekend' };
             } else if (endpoint.includes('fines')) {
-                return localData.all_fines;
+                return localData.playerFinesHistory[playerId] || [];
             }
             
             return [];
@@ -364,40 +412,41 @@ async function fetchAPI(endpoint, options = {}) {
 
 // Get default response based on endpoint type
 function getDefaultResponse(endpoint) {
-    debug(`Getting default response for ${endpoint}`);
-    
-    // Use local data from admin panel
-    const localData = getFallbackData();
-    
-    // Handle specific endpoints
-    if (endpoint.includes('total-amount')) {
-        return localData.total_amount;
-    } else if (endpoint.includes('recent-fines')) {
-        return localData.recent_fines;
-    } else if (endpoint.includes('leaderboard')) {
-        return localData.leaderboard;
-    } else if (endpoint.includes('players') && !endpoint.includes('player-fines')) {
-        return localData.players;
-    } else if (endpoint.includes('reasons')) {
-        return localData.reasons;
-    } else if (endpoint.includes('player-fines')) {
-        const playerId = parseInt(endpoint.split('/').pop(), 10);
-        return localData.all_fines.filter(fine => fine.player_id === playerId);
-    } else if (endpoint.includes('player/')) {
-        const playerId = parseInt(endpoint.split('/').pop(), 10);
-        return localData.players.find(player => player.id === playerId) || { id: 0, name: 'Onbekend' };
-    } else if (endpoint.includes('fines')) {
-        return localData.all_fines;
+    if (useLocalData) {
+        console.log(`[DEBUG] Using local data for endpoint: ${endpoint}`);
+        
+        const localData = getFallbackData();
+        
+        // Handle specific endpoints
+        if (endpoint.includes('total-amount')) {
+            return { total: localData.totalAmount };
+        } else if (endpoint.includes('recent-fines')) {
+            return localData.recentFines;
+        } else if (endpoint.includes('leaderboard')) {
+            return localData.leaderboard;
+        } else if (endpoint.includes('players')) {
+            return localData.players;
+        } else if (endpoint.includes('reasons')) {
+            return localData.reasons;
+        } else if (endpoint.includes('player-fines')) {
+            const playerId = parseInt(endpoint.split('/').pop(), 10);
+            return localData.playerFinesHistory[playerId] || [];
+        } else if (endpoint.includes('player/')) {
+            const playerId = parseInt(endpoint.split('/').pop(), 10);
+            return localData.players.find(player => player.id === playerId) || { id: 0, name: 'Onbekend' };
+        } else if (endpoint.includes('fines')) {
+            return Object.values(localData.playerFinesHistory).flat();
+        }
     }
     
-    return null;
+    return [];
 }
 
 // Create fine card - fixed dark mode
 function createFineCard(fine) {
     try {
-        const playerName = fine.player_name || 'Onbekend';
-        const reasonDesc = fine.reason_description || 'Onbekend';
+        const playerName = fine.playerName || 'Onbekend';
+        const reasonDesc = fine.reasonDescription || 'Onbekend';
         const formattedDate = formatDate(fine.timestamp || fine.date);
         const amount = formatCurrency(parseFloat(fine.amount) || 0);
         
@@ -422,7 +471,7 @@ function createFineCard(fine) {
 // Create player history card - fixed dark mode
 function createPlayerHistoryCard(fine) {
     try {
-        const reasonDesc = fine.reason_description || 'Onbekend';
+        const reasonDesc = fine.reasonDescription || 'Onbekend';
         const formattedDate = formatDate(fine.timestamp || fine.date);
         const amount = formatCurrency(parseFloat(fine.amount) || 0);
         
@@ -513,10 +562,10 @@ async function loadLeaderboard() {
                         </div>
                         <div>
                             <h3 class="font-semibold">${player.name || 'Onbekend'}</h3>
-                            <p class="text-xs text-gray-500 dark:text-gray-400">${player.count || 0} boetes</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">${player.fineCount || 0} boetes</p>
                         </div>
                     </div>
-                    <div class="text-lg font-bold">${formatCurrency(player.total || 0)}</div>
+                    <div class="text-lg font-bold">${formatCurrency(player.totalFined || 0)}</div>
                 </div>
             </div>
         `).join('');
@@ -566,6 +615,8 @@ async function loadPlayerHistory(playerId) {
             return;
         }
         
+        debug(`Fetching player ${playerId} and their fines`);
+        
         const [playerData, finesData] = await Promise.all([
             fetchAPI(`/player/${playerId}`),
             fetchAPI(`/player-fines/${playerId}`)
@@ -574,7 +625,14 @@ async function loadPlayerHistory(playerId) {
         debug(`Player data: ${JSON.stringify(playerData)}`);
         debug(`Fines data: ${JSON.stringify(finesData)}`);
         
-        $('#playerHistoryName').text(playerData?.name || 'Onbekend');
+        if (!playerData || !playerData.name) {
+            debug('No valid player data received');
+            $('#playerHistoryContent').addClass('hidden');
+            $('#playerHistoryEmpty').removeClass('hidden').html('<div class="text-center py-4 text-red-500">Spelersinformatie kon niet worden geladen</div>');
+            return;
+        }
+        
+        $('#playerHistoryName').text(playerData.name || 'Onbekend');
         
         // Calculate total with proper error handling
         const total = Array.isArray(finesData) ? finesData.reduce((sum, fine) => {
@@ -615,20 +673,53 @@ function setupDebugControls() {
     });
 }
 
+// Auto-initialize dark mode
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('[DEBUG] DOMContentLoaded event fired');
+    initializeApp();
+});
+
+// Initialize the application
+function initializeApp() {
+    console.log('[DEBUG] Initializing app...');
+    
+    try {
+        // Initialize UI components
+        setupTheme();
+        setupPlayerHistory();
+        
+        // Try to load data
+        console.log('[DEBUG] Attempting to load data automatically...');
+        loadData();
+        
+        // Set up UI actions (should be after loadData)
+        setupActions();
+        
+        console.log('[DEBUG] App initialized successfully');
+    } catch (error) {
+        console.error('[DEBUG] Error initializing app:', error);
+    }
+}
+
 // Initialize
 $(document).ready(function() {
     debug('Document ready');
     
     // Initialize the UI
     try {
+        // Check and fix dark mode first
+        const prefersDark = localStorage.theme === 'dark' || 
+            (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        setTheme(prefersDark);
+        
+        // Enable local data by default
+        localStorage.setItem('useLocalData', 'true');
+        
         // Initialize Select2
         initializeSelect2();
         
         // Setup debug controls
         setupDebugControls();
-        
-        // Enable local data by default for first load
-        localStorage.setItem('useLocalData', 'true');
         
         // Load data
         loadTotalAmount();
@@ -648,4 +739,42 @@ $(document).ready(function() {
         debug(`Initialization error: ${error.message}`);
         showToast('Er is een fout opgetreden bij het initialiseren van de pagina', 'error');
     }
-}); 
+});
+
+// Helper function to fix player data references
+function setupPlayerHistory() {
+    try {
+        // Initialize the player history select
+        const players = getLocalData('players') || [];
+        
+        // Clear and populate the select dropdown
+        const playerSelect = $('#playerHistorySelect');
+        playerSelect.empty();
+        
+        // Add a default option
+        playerSelect.append('<option value="">Selecteer een speler</option>');
+        
+        // Add player options
+        players.forEach(player => {
+            playerSelect.append(`<option value="${player.id}">${player.name}</option>`);
+        });
+        
+        // Initialize Select2
+        initializeSelect2();
+        
+        // Handle player selection change
+        $('#playerHistorySelect').on('change', function() {
+            const playerId = $(this).val();
+            if (playerId) {
+                loadPlayerHistory(playerId);
+            } else {
+                // Clear the history section
+                $('#playerHistory').empty();
+            }
+        });
+        
+        console.log('[DEBUG] Player history setup completed');
+    } catch (error) {
+        console.error('[DEBUG] Error setting up player history:', error);
+    }
+} 

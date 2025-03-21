@@ -253,7 +253,17 @@ function initializeSelect2() {
             placeholder: 'Selecteer een speler',
             allowClear: true,
             width: '100%',
-            dropdownParent: $('#playerSelect').parent()
+            dropdownParent: $('#playerSelect').parent(),
+            language: {
+                searching: function() {
+                    return "Zoeken...";
+                },
+                noResults: function() {
+                    return "Geen resultaten gevonden";
+                }
+            },
+            templateResult: formatPlayerOption,
+            templateSelection: formatPlayerOption
         });
         console.log('[DEBUG] playerSelect initialized');
         
@@ -265,6 +275,16 @@ function initializeSelect2() {
             allowClear: true,
             width: '100%',
             dropdownParent: $('#reasonSelect').parent(),
+            language: {
+                searching: function() {
+                    return "Zoeken...";
+                },
+                noResults: function() {
+                    return "Geen resultaten gevonden";
+                }
+            },
+            templateResult: formatReasonOption,
+            templateSelection: formatReasonOption,
             tags: true,
             createTag: function(params) {
                 return {
@@ -291,6 +311,32 @@ function initializeSelect2() {
     }
 }
 
+// Format Select2 options to look nicer
+function formatPlayerOption(player) {
+    if (!player.id) return player.text;
+    return $(`<div class="flex items-center p-1">
+        <div class="w-8 h-8 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-500 rounded-full flex items-center justify-center font-bold mr-2">
+            ${player.text.charAt(0).toUpperCase()}
+        </div>
+        <span>${player.text}</span>
+    </div>`);
+}
+
+function formatReasonOption(reason) {
+    if (!reason.id) return reason.text;
+    return $(`<div class="p-1">
+        <span class="font-medium">${reason.text}</span>
+    </div>`);
+}
+
+// Initialize Select2 for search
+$(document).on('select2:open', function() {
+    setTimeout(function() {
+        $('.select2-search__field').attr('placeholder', 'Zoeken...');
+        $('.select2-search__field:visible').focus();
+    }, 100);
+});
+
 // Update Select2 theme
 function updateSelect2Theme(isDark) {
     $('.select2-container--default .select2-selection--single').css({
@@ -316,6 +362,10 @@ function updateSelect2Theme(isDark) {
         'background-color': isDark ? 'rgb(17, 24, 39)' : 'white',
         'color': isDark ? 'white' : 'inherit'
     });
+    
+    // Ensure dropdowns appear above other elements
+    $('.select2-dropdown').css('z-index', '9999');
+    $('.select2-container').css('z-index', '1051');
 }
 
 // API Functions
