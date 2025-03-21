@@ -437,7 +437,8 @@ body {
     gap: 1rem;
   }
 
-  .stats-card {
+  .stats-card,
+  .admin-form {
     margin-bottom: 1rem;
     border-radius: 12px;
     width: 100%;
@@ -465,10 +466,6 @@ body {
     height: 42px;
     width: 100%;
     font-size: 1rem;
-  }
-
-  .admin-form {
-    padding: 1rem;
   }
 
   .select2-container {
