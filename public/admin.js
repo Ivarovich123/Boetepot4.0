@@ -537,24 +537,31 @@ const handleAddFine = async (event) => {
     event.preventDefault();
     debug('Add fine form submitted');
     
-    // Validate form
-    if (!validateSelect2()) {
-        showToast('Please select a player, a reason, and an amount', 'error');
+    // Get values from the form
+    const playerId = $('#playerSelect').val();
+    const reasonId = $('#reasonSelect').val();
+    const amount = parseFloat($('#amount').val());
+    
+    // Basic validation
+    if (!playerId) {
+        debug('Missing player selection');
+        showToast('Selecteer een speler', 'error');
         return;
     }
     
-    const playerSelect = $('#playerSelect');
-    const reasonSelect = $('#reasonSelect');
-    const amount = $('#amountSelect').val();
-    
-    const playerId = playerSelect.val();
-    const reasonId = reasonSelect.val();
-
-    if (!playerId || !reasonId || !amount) {
-        showToast('Please select a player, a reason, and an amount', 'error');
+    if (!reasonId) {
+        debug('Missing reason selection');
+        showToast('Selecteer een reden', 'error');
         return;
     }
     
+    if (isNaN(amount) || amount <= 0) {
+        debug(`Invalid amount: ${amount}`);
+        showToast('Voer een geldig bedrag in', 'error');
+        return;
+    }
+    
+    debug(`Adding fine: player=${playerId}, reason=${reasonId}, amount=${amount}`);
     toggleLoading(true);
     
     try {
@@ -564,25 +571,27 @@ const handleAddFine = async (event) => {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                playerId: parseInt(playerId),
-                reasonId: parseInt(reasonId),
-                amount: parseInt(amount)
+                player_id: parseInt(playerId),
+                reason_id: parseInt(reasonId),
+                amount: amount
             })
         });
         
         if (response) {
-            showToast('Fine added successfully!', 'success');
+            debug('Fine added successfully');
+            showToast('Boete succesvol toegevoegd', 'success');
             resetForm();
-            loadData();
+            loadRecentFines();
         } else {
-            showToast('Failed to add fine', 'error');
+            debug('Failed to add fine - API returned no response');
+            showToast('Fout bij toevoegen van boete', 'error');
         }
     } catch (error) {
-        debug('Error adding fine:', error);
-        showToast('Error adding fine: ' + error.message, 'error');
+        debug(`Error adding fine: ${error.message}`);
+        showToast(`Fout bij toevoegen van boete: ${error.message}`, 'error');
+    } finally {
+        toggleLoading(false);
     }
-    
-    toggleLoading(false);
 };
 
 // Add player
@@ -698,129 +707,58 @@ function validateSelect2() {
     updateSelect2Theme(isDark);
 }
 
-// API Health Check
-async function checkApiHealth() {
-    console.log('[DEBUG] Running API health check');
-    document.getElementById('debug-status').textContent = 'Running API health check...';
+// Debug functions
+function enableDebugMode() {
+    debug('Debug mode enabled');
     
-    try {
-        // Test endpoints
-        const endpoints = ['/players', '/reasons', '/recent-fines'];
-        const results = {};
-        
-        for (const endpoint of endpoints) {
-            try {
-                console.log(`[DEBUG] Testing endpoint: ${endpoint}`);
-                const startTime = performance.now();
-                await fetch(`${API_BASE_URL}${endpoint}`);
-                const duration = Math.round(performance.now() - startTime);
-                results[endpoint] = { status: 'OK', duration: `${duration}ms` };
-            } catch (err) {
-                results[endpoint] = { status: 'ERROR', error: err.message };
-            }
-        }
-        
-        // Format results
-        const resultStr = Object.entries(results)
-            .map(([endpoint, result]) => `${endpoint}: ${result.status} ${result.duration || result.error || ''}`)
-            .join('\n');
-        
-        document.getElementById('debug-status').innerHTML = `API Health Check Results:<br><pre>${resultStr}</pre>`;
-        console.log('[DEBUG] Health check complete:', results);
-  } catch (error) {
-        console.error('[DEBUG] Health check failed:', error);
-        document.getElementById('debug-status').textContent = `Health check failed: ${error.message}`;
-    }
-}
-
-// DOM checker and repair function
-function checkAndRepairDOM() {
-    console.log('[DEBUG] Running DOM check and repair');
+    // Set debug flag
+    window.DEBUG = true;
     
-    // Check if all forms are properly initialized
-    const forms = ['addFineForm', 'addPlayerForm', 'addReasonForm'];
-    forms.forEach(formId => {
-        const form = document.getElementById(formId);
-        if (form) {
-            // Ensure form has submit handler
-            const hasHandler = $._data(form, 'events')?.submit?.length > 0;
-            console.log(`[DEBUG] Form ${formId}: exists=true, has submit handler=${hasHandler}`);
+    // Create toggle function for the debug panel
+    window.toggleDebugPanel = function() {
+        const panel = $('#debugPanel');
+        panel.toggleClass('hidden');
+        debug('Debug panel toggled');
+    };
+    
+    // Set up API health check
+    window.checkApiHealth = async function() {
+        debug('Running API health check');
+        $('#debugStatus').text('Running API health check...');
+        
+        try {
+            // Test endpoints
+            const endpoints = ['/players', '/reasons', '/recent-fines'];
+            const results = {};
             
-            if (!hasHandler) {
-                console.warn(`[DEBUG] Re-attaching submit handler to ${formId}`);
-                // Reattach form handlers based on form ID
-                switch(formId) {
-                    case 'addFineForm':
-                        $(form).off('submit').on('submit', async function(e) {
-                            e.preventDefault();
-                            
-                            const playerId = $('#playerSelect').val();
-                            const reasonId = $('#reasonSelect').val();
-                            const amount = parseFloat($('#amount').val());
-                            
-                            if (!playerId || !reasonId || isNaN(amount)) {
-                                showToast('Vul alle velden correct in', 'error');
-                                return;
-                            }
-                            
-                            try {
-                                await fetchAPI('/fines', {
-                                    method: 'POST',
-                                    body: JSON.stringify({ 
-                                        player_id: playerId, 
-                                        reason_id: reasonId,
-                                        amount 
-                                    })
-                                });
-                                
-                                showToast('Boete succesvol toegevoegd');
-                                this.reset();
-                                $('#playerSelect').val('').trigger('change');
-                                $('#reasonSelect').val('').trigger('change');
-                                await loadData();
-                                
-                            } catch (error) {
-                                console.error('Error adding fine:', error);
-                            }
-                        });
-                        break;
-                    // Similar for other forms
+            for (const endpoint of endpoints) {
+                try {
+                    debug(`Testing endpoint: ${endpoint}`);
+                    const startTime = performance.now();
+                    const response = await fetchAPI(endpoint);
+                    const duration = Math.round(performance.now() - startTime);
+                    results[endpoint] = { 
+                        status: response ? 'OK' : 'ERROR', 
+                        duration: `${duration}ms`,
+                        data: response ? `Got ${Array.isArray(response) ? response.length : 'non-array'} items` : 'No data'
+                    };
+                } catch (err) {
+                    results[endpoint] = { status: 'ERROR', error: err.message };
                 }
             }
-        } else {
-            console.error(`[DEBUG] Form ${formId} not found in DOM`);
+            
+            // Format results
+            const resultStr = Object.entries(results)
+                .map(([endpoint, result]) => `${endpoint}: ${result.status} ${result.duration || ''} ${result.error || ''} ${result.data || ''}`)
+                .join('\n');
+            
+            $('#debugStatus').html(`API Health Check Results:<br><pre>${resultStr}</pre>`);
+            debug('Health check complete:', results);
+        } catch (error) {
+            debug(`Health check failed: ${error.message}`);
+            $('#debugStatus').text(`Health check failed: ${error.message}`);
         }
-    });
-    
-    // Set up delete buttons
-    $('.delete-fine-btn').off('click').on('click', handleFineDelete);
-    
-    // Check Select2 elements
-    validateSelect2();
-    
-    // Repair any broken CSS 
-    $('.select2-container').css({
-        'display': 'block',
-        'position': 'relative',
-        'z-index': '1050'
-    });
-    
-    // Check if content is visible
-    const boetesVisible = $('#content-boetes').is(':visible');
-    const beheerVisible = $('#content-beheer').is(':visible');
-    
-    console.log(`[DEBUG] Content visibility: boetes=${boetesVisible}, beheer=${beheerVisible}`);
-    
-    // If no content is visible, force display of boetes tab
-    if (!boetesVisible && !beheerVisible) {
-        console.warn('[DEBUG] No content visible, forcing display of boetes tab');
-        $('#content-boetes').css('display', 'block');
-        $('#content-beheer').css('display', 'none');
-        $('#tab-boetes').addClass('tab-active');
-        $('#tab-beheer').removeClass('tab-active');
-    }
-    
-    document.getElementById('debug-status').textContent = 'DOM check completed: ' + new Date().toLocaleTimeString();
+    };
 }
 
 // Handle fine deletion directly from the card
@@ -857,6 +795,100 @@ async function handleFineDelete(e) {
     }
 }
 
+// DOM checker and repair function
+function checkAndRepairDOM() {
+    debug('Running DOM check and repair');
+    
+    // List of required DOM elements
+    const requiredElements = [
+        '#tab-boetes', 
+        '#tab-beheer', 
+        '#content-boetes', 
+        '#content-beheer',
+        '#playerSelect',
+        '#reasonSelect',
+        '#recentFines'
+    ];
+    
+    // Check if all required elements exist
+    const missingElements = requiredElements.filter(selector => $(selector).length === 0);
+    
+    if (missingElements.length > 0) {
+        debug(`Missing DOM elements: ${missingElements.join(', ')}`);
+        return false;
+    }
+    
+    debug('All required DOM elements found');
+    
+    // Set up tab functionality
+    $('#tab-boetes').off('click').on('click', function() {
+        debug('Switching to Boetes tab');
+        $('#tab-boetes').addClass('text-blue-600 dark:text-blue-500 border-blue-600 dark:border-blue-500')
+            .removeClass('border-transparent hover:text-blue-600 dark:hover:text-blue-500 hover:border-blue-600 dark:hover:border-blue-500 text-gray-500 dark:text-gray-400');
+        $('#tab-beheer').removeClass('text-blue-600 dark:text-blue-500 border-blue-600 dark:border-blue-500')
+            .addClass('border-transparent hover:text-blue-600 dark:hover:text-blue-500 hover:border-blue-600 dark:hover:border-blue-500 text-gray-500 dark:text-gray-400');
+        $('#content-boetes').removeClass('hidden');
+        $('#content-beheer').addClass('hidden');
+        localStorage.setItem('activeTab', 'boetes');
+    });
+    
+    $('#tab-beheer').off('click').on('click', function() {
+        debug('Switching to Beheer tab');
+        $('#tab-beheer').addClass('text-blue-600 dark:text-blue-500 border-blue-600 dark:border-blue-500')
+            .removeClass('border-transparent hover:text-blue-600 dark:hover:text-blue-500 hover:border-blue-600 dark:hover:border-blue-500 text-gray-500 dark:text-gray-400');
+        $('#tab-boetes').removeClass('text-blue-600 dark:text-blue-500 border-blue-600 dark:border-blue-500')
+            .addClass('border-transparent hover:text-blue-600 dark:hover:text-blue-500 hover:border-blue-600 dark:hover:border-blue-500 text-gray-500 dark:text-gray-400');
+        $('#content-beheer').removeClass('hidden');
+        $('#content-boetes').addClass('hidden');
+        localStorage.setItem('activeTab', 'beheer');
+    });
+    
+    // Check if all forms are properly initialized
+    const forms = ['addFineForm', 'addPlayerForm', 'addReasonForm'];
+    forms.forEach(formId => {
+        const form = document.getElementById(formId);
+        if (form) {
+            debug(`Form ${formId} found`);
+        } else {
+            debug(`Form ${formId} not found in DOM`);
+        }
+    });
+    
+    // Set up delete buttons
+    $('.delete-fine-btn').off('click').on('click', handleFineDelete);
+    
+    // Check Select2 elements
+    validateSelect2();
+    
+    // Repair any broken CSS 
+    $('.select2-container').css({
+        'display': 'block',
+        'position': 'relative',
+        'z-index': '1050'
+    });
+    
+    // Check if content is visible
+    const boetesVisible = $('#content-boetes').is(':visible');
+    const beheerVisible = $('#content-beheer').is(':visible');
+    
+    debug(`Content visibility: boetes=${boetesVisible}, beheer=${beheerVisible}`);
+    
+    // If no content is visible, force display of boetes tab
+    if (!boetesVisible && !beheerVisible) {
+        debug('No content visible, forcing display of boetes tab');
+        $('#content-boetes').css('display', 'block');
+        $('#content-beheer').css('display', 'none');
+        $('#tab-boetes').addClass('tab-active');
+        $('#tab-beheer').removeClass('tab-active');
+    }
+    
+    // Apply theme
+    applyTheme();
+    
+    $('#debugStatus').text('DOM check completed: ' + new Date().toLocaleTimeString());
+    return true;
+}
+
 // Initialize
 $(document).ready(async function() {
     enableDebugMode();
@@ -864,38 +896,100 @@ $(document).ready(async function() {
     try {
         // Check if all required DOM elements exist 
         if (!checkAndRepairDOM()) {
+            debug('DOM check failed - some elements are missing');
             $('#adminContent').html('<div class="alert alert-danger">Error: Some required elements are missing from the DOM.</div>');
             return;
         }
         
+        debug('DOM check passed - initializing page');
+        
+        // Initialize Select2
         await initializeSelect2();
         
         // Add event handler for Add Fine form
-        $('#addFineForm').on('submit', handleAddFine);
-        
-        // Add event handler for debug button
-        $('#debugButton').on('click', function() {
-            toggleDebugPanel();
-        });
-        
-        await loadData();
+        $('#addFineForm').off('submit').on('submit', handleAddFine);
         
         // Initialize manual load button
-        $('#manualLoadButton').on('click', async function() {
+        $('#manualLoadButton').off('click').on('click', async function() {
             debug('Manual data load triggered');
             await loadData();
         });
         
         // Attach theme toggle handler
-        $('#themeToggle').on('click', toggleTheme);
+        $('#themeToggle').off('click').on('click', toggleTheme);
         
-        // Apply current theme
-        applyTheme();
+        // Load active tab from localStorage
+        const activeTab = localStorage.getItem('activeTab') || 'boetes';
+        debug(`Loading active tab from localStorage: ${activeTab}`);
+        
+        if (activeTab === 'beheer') {
+            $('#tab-beheer').trigger('click');
+        } else {
+            $('#tab-boetes').trigger('click');
+        }
+        
+        // Load data
+        await loadData();
         
         debug('Admin page initialization complete');
-        $('#debugStatus').text('Page initialized, loading data...');
+        $('#debugStatus').text('Page initialized, data loaded successfully');
     } catch (error) {
         debug(`Error during initialization: ${error.message}`);
-        $('#adminContent').html(`<div class="alert alert-danger">Error during initialization: ${error.message}</div>`);
+        $('#debugStatus').text(`Error during initialization: ${error.message}`);
+        $('#adminContent').html(`<div class="bg-red-100 dark:bg-red-900/20 p-4 rounded-lg text-red-700 dark:text-red-400">
+            <p><strong>Error during initialization:</strong> ${error.message}</p>
+            <p>Please check the console for more details.</p>
+        </div>`);
     }
-}); 
+});
+
+// Apply theme function
+function applyTheme() {
+    debug('Applying current theme');
+    const isDarkMode = localStorage.theme === 'dark' || 
+        (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    
+    if (isDarkMode) {
+        document.documentElement.classList.add('dark');
+        $('#theme-icon').removeClass('fa-moon').addClass('fa-sun');
+    } else {
+        document.documentElement.classList.remove('dark');
+        $('#theme-icon').removeClass('fa-sun').addClass('fa-moon');
+    }
+    
+    // Update Select2 theme
+    updateSelect2Theme(isDarkMode);
+}
+
+// Toggle theme function
+function toggleTheme() {
+    debug('Toggling theme');
+    const isDarkMode = document.documentElement.classList.contains('dark');
+    
+    if (isDarkMode) {
+        localStorage.theme = 'light';
+        document.documentElement.classList.remove('dark');
+        $('#theme-icon').removeClass('fa-sun').addClass('fa-moon');
+    } else {
+        localStorage.theme = 'dark';
+        document.documentElement.classList.add('dark');
+        $('#theme-icon').removeClass('fa-moon').addClass('fa-sun');
+    }
+    
+    // Update Select2 theme
+    updateSelect2Theme(!isDarkMode);
+}
+
+// Reset form helper function
+function resetForm() {
+    debug('Resetting form fields');
+    // Reset the add fine form
+    $('#addFineForm')[0].reset();
+    
+    // Reset Select2 dropdowns
+    $('#playerSelect').val(null).trigger('change');
+    $('#reasonSelect').val(null).trigger('change');
+    
+    // Reset other inputs if needed
+    $('#amount').val('');
+} 
