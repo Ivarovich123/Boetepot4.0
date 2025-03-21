@@ -336,7 +336,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loadTotalFines();
     loadRecentFines();
     loadLeaderboard();
-    loadPlayers();
+    initializePlayerSearch();
     
     console.log('App initialized');
   } catch (error) {
