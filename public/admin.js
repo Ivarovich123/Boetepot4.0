@@ -12,6 +12,9 @@ function setTheme(isDark) {
         localStorage.theme = 'light';
         $('#theme-icon').removeClass('fa-sun').addClass('fa-moon');
     }
+    
+    // Update Select2 dropdowns
+    updateSelect2Theme(isDark);
 }
 
 // Initialize theme
@@ -27,26 +30,34 @@ $('#theme-toggle').click(() => {
 
 // Format currency
 function formatCurrency(amount) {
+    if (typeof amount !== 'number' || isNaN(amount)) {
+        console.warn('Invalid amount:', amount);
+        return '€0,00';
+    }
     return new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(amount);
 }
 
 // Format date
 function formatDate(dateString) {
-    return new Date(dateString).toLocaleDateString('nl-NL', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-    });
+    if (!dateString) return 'Onbekend';
+    try {
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) return 'Ongeldige datum';
+        
+        return new Intl.DateTimeFormat('nl-NL', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        }).format(date);
+    } catch (error) {
+        console.error('Error formatting date:', error);
+        return 'Ongeldige datum';
+    }
 }
 
-// Show loading spinner
-function showLoading() {
-    $('#loadingSpinner').addClass('flex').removeClass('hidden');
-}
-
-// Hide loading spinner
-function hideLoading() {
-    $('#loadingSpinner').removeClass('flex').addClass('hidden');
+// Show/hide loading spinner
+function toggleLoading(show) {
+    $('#loadingSpinner').toggleClass('flex hidden', show);
 }
 
 // Show toast message
@@ -71,10 +82,10 @@ function createFineCard(fine) {
     return `
         <div class="bg-gray-50 dark:bg-gray-900 rounded-xl p-4 space-y-3">
             <div class="flex items-center justify-between">
-                <div class="font-semibold">${fine.player}</div>
+                <div class="font-semibold">${fine.player_name || 'Onbekend'}</div>
                 <div class="text-lg font-bold text-blue-600 dark:text-blue-500">${formatCurrency(fine.amount)}</div>
             </div>
-            <div class="text-gray-600 dark:text-gray-400">${fine.reason}</div>
+            <div class="text-gray-600 dark:text-gray-400">${fine.reason_description || 'Onbekend'}</div>
             <div class="text-sm text-gray-500 dark:text-gray-500">${formatDate(fine.date)}</div>
         </div>
     `;
@@ -82,72 +93,102 @@ function createFineCard(fine) {
 
 // Initialize Select2
 function initializeSelect2() {
-    $('.select2-container').remove(); // Clean up any existing instances
+    // Clean up existing instances
+    $('.select2-container').remove();
     
-    $('#playerSelect, #fineSelect').select2({
-        theme: 'default',
-        placeholder: 'Selecteer...',
+    // Initialize player select
+    $('#playerSelect').select2({
+        theme: 'classic',
+        placeholder: 'Selecteer een speler',
         allowClear: true,
-        width: '100%'
+        width: '100%',
+        dropdownParent: $('#playerSelect').parent()
     });
+    
+    // Initialize fine select
+    $('#fineSelect').select2({
+        theme: 'classic',
+        placeholder: 'Selecteer een boete',
+        allowClear: true,
+        width: '100%',
+        dropdownParent: $('#fineSelect').parent()
+    });
+    
+    // Update theme
+    updateSelect2Theme(document.documentElement.classList.contains('dark'));
 }
 
-// Update Select2 theme when dark mode changes
-const observer = new MutationObserver((mutations) => {
-    mutations.forEach((mutation) => {
-        if (mutation.attributeName === 'class') {
-            const isDark = document.documentElement.classList.contains('dark');
-            $('.select2-container--default .select2-selection--single').css('background-color', isDark ? 'rgb(17, 24, 39)' : 'white');
-            $('.select2-container--default .select2-selection--single').css('border-color', isDark ? 'rgb(55, 65, 81)' : 'rgb(209, 213, 219)');
-            $('.select2-container--default .select2-selection--single .select2-selection__rendered').css('color', isDark ? 'white' : 'inherit');
-        }
+// Update Select2 theme
+function updateSelect2Theme(isDark) {
+    $('.select2-container--classic .select2-selection--single').css({
+        'background-color': isDark ? 'rgb(17, 24, 39)' : 'white',
+        'border-color': isDark ? 'rgb(55, 65, 81)' : 'rgb(209, 213, 219)',
+        'color': isDark ? 'white' : 'inherit'
     });
-});
-
-observer.observe(document.documentElement, {
-    attributes: true
-});
+    
+    $('.select2-container--classic .select2-selection--single .select2-selection__rendered').css({
+        'color': isDark ? 'white' : 'inherit'
+    });
+    
+    $('.select2-container--classic .select2-dropdown').css({
+        'background-color': isDark ? 'rgb(17, 24, 39)' : 'white',
+        'border-color': isDark ? 'rgb(55, 65, 81)' : 'rgb(209, 213, 219)'
+    });
+    
+    $('.select2-container--classic .select2-results__option').css({
+        'color': isDark ? 'white' : 'inherit'
+    });
+    
+    $('.select2-container--classic .select2-search__field').css({
+        'background-color': isDark ? 'rgb(17, 24, 39)' : 'white',
+        'color': isDark ? 'white' : 'inherit'
+    });
+}
 
 // Load data
 async function loadData() {
     try {
-        showLoading();
+        toggleLoading(true);
         
-        // Load players for select
-        const playersResponse = await fetch('/api/players');
+        // Load players
+        const playersResponse = await fetch(`${API_BASE_URL}/players`);
         const players = await playersResponse.json();
+        
+        if (!playersResponse.ok) throw new Error('Failed to load players');
         
         $('#playerSelect').empty().append('<option value="">Selecteer een speler</option>');
         players.forEach(player => {
-            $('#playerSelect').append(`<option value="${player}">${player}</option>`);
+            $('#playerSelect').append(`<option value="${player.id}">${player.name}</option>`);
         });
         
         // Load recent fines
-        const recentResponse = await fetch('/api/fines/recent');
-        const recentFines = await recentResponse.json();
+        const finesResponse = await fetch(`${API_BASE_URL}/recent-fines`);
+        const fines = await finesResponse.json();
+        
+        if (!finesResponse.ok) throw new Error('Failed to load fines');
         
         // Update recent fines display
         $('#recentFines').html(
-            recentFines.length ? 
-            recentFines.map(fine => createFineCard(fine)).join('') :
+            fines.length ? 
+            fines.map(fine => createFineCard(fine)).join('') :
             '<div class="text-center py-4 text-gray-500">Geen recente boetes</div>'
         );
         
         // Update fine select for deletion
         $('#fineSelect').empty().append('<option value="">Selecteer een boete</option>');
-        recentFines.forEach(fine => {
-            const label = `${fine.player} - ${fine.reason} - ${formatCurrency(fine.amount)} - ${formatDate(fine.date)}`;
+        fines.forEach(fine => {
+            const label = `${fine.player_name} - ${fine.reason_description} - ${formatCurrency(fine.amount)} - ${formatDate(fine.date)}`;
             $('#fineSelect').append(`<option value="${fine.id}">${label}</option>`);
         });
         
-        // Initialize Select2 after populating options
+        // Initialize Select2
         initializeSelect2();
         
     } catch (error) {
         console.error('Error loading data:', error);
         showToast('Er is een fout opgetreden bij het laden van de gegevens', 'error');
     } finally {
-        hideLoading();
+        toggleLoading(false);
     }
 }
 
@@ -155,36 +196,36 @@ async function loadData() {
 $('#addFineForm').on('submit', async function(e) {
     e.preventDefault();
     
-    const player = $('#playerSelect').val();
-    const reason = $('#reason').val();
+    const playerId = $('#playerSelect').val();
+    const reason = $('#reason').val().trim();
     const amount = parseFloat($('#amount').val());
     
-    if (!player || !reason || isNaN(amount)) {
-        showToast('Vul alle velden in', 'error');
+    if (!playerId || !reason || isNaN(amount)) {
+        showToast('Vul alle velden correct in', 'error');
         return;
     }
     
     try {
-        showLoading();
+        toggleLoading(true);
         
-        const response = await fetch('/api/fines', {
+        const response = await fetch(`${API_BASE_URL}/fines`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ player, reason, amount })
+            body: JSON.stringify({ player_id: playerId, reason_description: reason, amount })
         });
         
         if (!response.ok) throw new Error('Failed to add fine');
         
         showToast('Boete succesvol toegevoegd');
-        $('#addFineForm')[0].reset();
+        this.reset();
         $('#playerSelect').val('').trigger('change');
-        loadData();
+        await loadData();
         
     } catch (error) {
         console.error('Error adding fine:', error);
         showToast('Er is een fout opgetreden bij het toevoegen van de boete', 'error');
     } finally {
-        hideLoading();
+        toggleLoading(false);
     }
 });
 
@@ -200,9 +241,9 @@ $('#addPlayerForm').on('submit', async function(e) {
     }
     
     try {
-        showLoading();
+        toggleLoading(true);
         
-        const response = await fetch('/api/players', {
+        const response = await fetch(`${API_BASE_URL}/players`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ name })
@@ -211,14 +252,14 @@ $('#addPlayerForm').on('submit', async function(e) {
         if (!response.ok) throw new Error('Failed to add player');
         
         showToast('Speler succesvol toegevoegd');
-        $('#addPlayerForm')[0].reset();
-        loadData();
+        this.reset();
+        await loadData();
         
     } catch (error) {
         console.error('Error adding player:', error);
         showToast('Er is een fout opgetreden bij het toevoegen van de speler', 'error');
     } finally {
-        hideLoading();
+        toggleLoading(false);
     }
 });
 
@@ -238,9 +279,9 @@ $('#deleteFineForm').on('submit', async function(e) {
     }
     
     try {
-        showLoading();
+        toggleLoading(true);
         
-        const response = await fetch(`/api/fines/${fineId}`, {
+        const response = await fetch(`${API_BASE_URL}/fines/${fineId}`, {
             method: 'DELETE'
         });
         
@@ -248,13 +289,13 @@ $('#deleteFineForm').on('submit', async function(e) {
         
         showToast('Boete succesvol verwijderd');
         $('#fineSelect').val('').trigger('change');
-        loadData();
+        await loadData();
         
     } catch (error) {
         console.error('Error deleting fine:', error);
         showToast('Er is een fout opgetreden bij het verwijderen van de boete', 'error');
     } finally {
-        hideLoading();
+        toggleLoading(false);
     }
 });
 
@@ -265,24 +306,26 @@ $('#resetButton').on('click', async function() {
     }
     
     try {
-        showLoading();
+        toggleLoading(true);
         
-        const response = await fetch('/api/reset', {
+        const response = await fetch(`${API_BASE_URL}/reset`, {
             method: 'POST'
         });
         
         if (!response.ok) throw new Error('Failed to reset data');
         
         showToast('Alle gegevens zijn succesvol gereset');
-        loadData();
+        await loadData();
         
     } catch (error) {
         console.error('Error resetting data:', error);
         showToast('Er is een fout opgetreden bij het resetten van de gegevens', 'error');
     } finally {
-        hideLoading();
+        toggleLoading(false);
     }
 });
 
-// Initial load
-loadData(); 
+// Initialize app
+$(document).ready(() => {
+    loadData();
+}); 
