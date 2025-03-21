@@ -208,6 +208,42 @@ app.get('/api/player-history/:id', async (req, res) => {
   }
 });
 
+// Reset data (admin only)
+app.post('/api/reset', async (req, res) => {
+  try {
+    // This is a dangerous operation, so you might want to add authorization in the future
+    console.log('[API] Resetting all data...');
+    
+    // Delete all fines using Supabase directly
+    const { error } = await supabase
+      .from('fines')
+      .delete()
+      .gte('id', 0); // Delete all fines with ID >= 0 (effectively all)
+    
+    if (error) {
+      throw error;
+    }
+    
+    // Optional: Reset other tables if needed
+    // await supabase.from('players').delete().neq('id', 0);
+    // await supabase.from('reasons').delete().neq('id', 0);
+    
+    console.log('[API] Data reset completed');
+    res.json({ success: true, message: 'Alle gegevens zijn gereset' });
+  } catch (error) {
+    console.error('[API] Error resetting data:', error);
+    res.status(500).json({ 
+      error: 'Er is een fout opgetreden bij het resetten van gegevens',
+      details: error.message
+    });
+  }
+});
+
+// Catch all other routes and redirect to the homepage
+app.use((req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error('Global error handler:', err);

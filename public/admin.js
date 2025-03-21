@@ -64,13 +64,29 @@ function toggleLoading(show) {
 }
 
 function showToast(message, isError = false) {
-  const toast = document.getElementById('toast');
-  if (toast) {
-    toast.textContent = message;
-    toast.style.backgroundColor = isError ? 'var(--error-color)' : 'var(--success-color)';
-    toast.style.display = 'block';
-    setTimeout(() => toast.style.display = 'none', 3000);
+  const toastContainer = document.getElementById('toastContainer');
+  if (!toastContainer) {
+    console.error('Toast container not found');
+    return;
   }
+
+  const toast = document.createElement('div');
+  toast.className = `toast ${isError ? 'error' : 'success'}`;
+  toast.textContent = message;
+  
+  toastContainer.appendChild(toast);
+  
+  // Trigger reflow to enable animation
+  toast.offsetHeight;
+  
+  // Show toast
+  toast.classList.add('show');
+  
+  // Remove toast after animation
+  setTimeout(() => {
+    toast.classList.remove('show');
+    setTimeout(() => toast.remove(), 300);
+  }, 3000);
 }
 
 function formatDate(dateString) {

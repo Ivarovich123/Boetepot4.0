@@ -256,7 +256,7 @@ async function loadLeaderboard() {
 async function loadPlayerHistory(playerId) {
   try {
     console.log('[History] Loading player history...');
-    const response = await fetchAPI(`/player-history/${playerId}`);
+    const response = await fetchAPI(`/api/player-history/${playerId}`);
     
     const historyElement = document.getElementById('playerHistory');
     const historyTitleElement = document.getElementById('playerHistoryTitle');
@@ -269,7 +269,7 @@ async function loadPlayerHistory(playerId) {
     if (!response || !response.player_name || !response.fines || response.fines.length === 0) {
       historyElement.innerHTML = '<tr><td colspan="3" class="text-center">Geen boetes gevonden</td></tr>';
       if (historyTitleElement) {
-        historyTitleElement.textContent = 'Speler Historie';
+        historyTitleElement.innerHTML = '<i class="fas fa-user-clock"></i>Speler Historie';
       }
       return;
     }

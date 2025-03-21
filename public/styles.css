@@ -423,16 +423,24 @@ body {
 /* Mobile Improvements */
 @media (max-width: 767px) {
   body {
-    padding-top: var(--header-height);
+    padding-top: calc(var(--header-height) + 0.5rem);
   }
 
   .container {
     padding: 0.5rem;
+    max-width: 100%;
+  }
+
+  .stats-grid,
+  .admin-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
   }
 
   .stats-card {
     margin-bottom: 1rem;
     border-radius: 12px;
+    width: 100%;
   }
 
   .card-header {
@@ -442,6 +450,7 @@ body {
   .table-responsive {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
+    width: 100%;
   }
 
   .custom-table th,
@@ -455,10 +464,19 @@ body {
   .btn {
     height: 42px;
     width: 100%;
+    font-size: 1rem;
+  }
+
+  .admin-form {
+    padding: 1rem;
   }
 
   .select2-container {
     width: 100% !important;
+  }
+
+  .total-amount-wrapper {
+    padding: 2rem 1rem;
   }
 
   .total-amount-card {
@@ -469,6 +487,18 @@ body {
 
   .total-icon {
     margin: 0 auto;
+    width: 60px;
+    height: 60px;
+    font-size: 1.75rem;
+  }
+
+  .amount-display {
+    font-size: 2.25rem;
+  }
+  
+  /* Fix for edge-to-edge displays */
+  html, body {
+    overflow-x: hidden;
   }
 }
 
