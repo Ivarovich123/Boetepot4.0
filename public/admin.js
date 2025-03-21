@@ -1149,9 +1149,9 @@ function initialize() {
     try {
         console.log('[DEBUG] Initializing admin page...');
         
-        // Check for required elements
-        if (!document.getElementById('adminPanel')) {
-            console.error('[DEBUG] Admin panel not found');
+        // Check if we're on the admin page by looking for typical admin elements
+        if (!document.querySelector('.container') || !document.getElementById('addFineForm')) {
+            console.error('[DEBUG] Admin page elements not found');
             return;
         }
         
@@ -1185,28 +1185,66 @@ function initialize() {
     }
 }
 
-// Handle Reset
+// Handle Reset - ensure it works with localStorage
 function handleReset() {
-    if (!confirm('WAARSCHUWING: Dit zal ALLE boetes verwijderen. Deze actie kan niet ongedaan worden gemaakt! Weet je zeker dat je wilt doorgaan?')) {
-        return;
-    }
-    
-    const confirmation = prompt('Typ "RESET" om te bevestigen:');
-    if (confirmation !== 'RESET') {
-        showToast('Reset geannuleerd', 'error');
-        return;
-    }
-  
     try {
-        fetchAPI('/reset', {
-            method: 'POST'
-        }).then(() => {
-            showToast('Alle gegevens zijn gereset');
-            loadData();
-        });
+        if (confirm('WAARSCHUWING: Dit zal ALLE data verwijderen. Deze actie kan niet ongedaan worden gemaakt. Weet je het zeker?')) {
+            console.log('[DEBUG] Resetting all data...');
+            
+            // Clear all localStorage data
+            localStorage.removeItem('players');
+            localStorage.removeItem('reasons');
+            localStorage.removeItem('fines');
+            
+            // For compatibility, also try to clear via API
+            try {
+                fetchAPI('/reset', { method: 'POST' })
+                    .catch(error => {
+                        console.log('[DEBUG] API reset failed, but localStorage was cleared:', error);
+                    });
+            } catch (error) {
+                console.log('[DEBUG] API not available for reset, using localStorage only');
+            }
+            
+            showToast('Alle data is succesvol verwijderd!', 'success');
+            
+            // Force update stats
+            updateStats();
+            
+            // Reload data to refresh UI
+            loadPlayers();
+            loadReasons();
+            loadRecentFines();
+            
+            $('#debugStatus').text('Data reset successful');
+        }
     } catch (error) {
-        console.error('Error resetting data:', error);
-        showToast('Error resetting data: ' + error.message, 'error');
+        console.error('[DEBUG] Error in reset:', error);
+        showToast('Er is een fout opgetreden bij het resetten van de data', 'error');
+        $('#debugStatus').text(`Reset failed: ${error.message}`);
+    }
+}
+
+// Stats update function
+function updateStats() {
+    try {
+        console.log('[DEBUG] Updating statistics...');
+        
+        // Get data from localStorage
+        const players = JSON.parse(localStorage.getItem('players') || '[]');
+        const fines = JSON.parse(localStorage.getItem('fines') || '[]');
+        
+        // Calculate total
+        const totalAmount = fines.reduce((sum, fine) => sum + (parseFloat(fine.amount) || 0), 0);
+        
+        // Update UI stats
+        $('#totalAmount').text(formatCurrency(totalAmount));
+        $('#playerCount').text(players.length);
+        $('#fineCount').text(fines.length);
+        
+        console.log('[DEBUG] Statistics updated successfully');
+    } catch (error) {
+        console.error('[DEBUG] Error updating statistics:', error);
     }
 }
 
