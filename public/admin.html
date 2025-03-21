@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Cache-Control" content="no-cache">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>Admin - Boetepot</title>
     
     <!-- Fonts -->
@@ -25,45 +26,6 @@
     <!-- Select2 JS -->
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     
-    <!-- Redirect prevention script -->
-    <script>
-        // This helps prevent redirect loops
-        window.onload = function() {
-            // Check for redirect loop by counting page loads
-            let loadCount = parseInt(sessionStorage.getItem('adminPageLoadCount') || '0');
-            if (loadCount > 10) {
-                // Too many redirects, clear everything and show error
-                console.error('Redirect loop detected! Clearing all storage...');
-                sessionStorage.clear();
-                localStorage.clear();
-                document.cookie.split(';').forEach(cookie => {
-                    const name = cookie.split('=')[0].trim();
-                    document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
-                });
-                // Display error directly
-                document.body.innerHTML = `
-                    <div style="padding: 20px; max-width: 600px; margin: 50px auto; text-align: center; font-family: sans-serif;">
-                        <h1 style="color: #e53e3e; margin-bottom: 20px;">Redirect Loop Detected</h1>
-                        <p style="margin-bottom: 20px;">We've detected too many page reloads. This might be caused by cookies or cache issues.</p>
-                        <p style="margin-bottom: 20px;">We've cleared your local storage and cookies. Please try again.</p>
-                        <button onclick="window.location.href = 'admin.html'" style="background: #3b82f6; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">
-                            Try Again
-                        </button>
-                    </div>
-                `;
-                return;
-            }
-            
-            // Increment load count
-            sessionStorage.setItem('adminPageLoadCount', (loadCount + 1).toString());
-            
-            // Reset count after 10 seconds if page stays loaded
-            setTimeout(() => {
-                sessionStorage.setItem('adminPageLoadCount', '0');
-            }, 10000);
-        };
-    </script>
-    
     <style>
         /* Base styles */
         :root {
@@ -74,6 +36,10 @@
             --input-bg: #ffffff;
             --input-border: #e5e7eb;
             --input-text: #1f2937;
+            --btn-primary: #3b82f6;
+            --btn-primary-hover: #2563eb;
+            --btn-danger: #ef4444;
+            --btn-danger-hover: #dc2626;
         }
         
         /* Dark mode variables */
@@ -85,6 +51,10 @@
             --input-bg: #374151;
             --input-border: #4b5563;
             --input-text: #f3f4f6;
+            --btn-primary: #3b82f6;
+            --btn-primary-hover: #2563eb;
+            --btn-danger: #ef4444;
+            --btn-danger-hover: #dc2626;
         }
         
         /* Apply variables */
@@ -164,54 +134,25 @@
             border-color: #3b82f6 !important;
         }
 
-        /* Hide admin content when not logged in */
-        .admin-content {
-            display: none;
+        /* Button styles */
+        .btn-primary {
+            background-color: var(--btn-primary);
+        }
+        
+        .btn-primary:hover {
+            background-color: var(--btn-primary-hover);
+        }
+        
+        .btn-danger {
+            background-color: var(--btn-danger);
+        }
+        
+        .btn-danger:hover {
+            background-color: var(--btn-danger-hover);
         }
     </style>
 </head>
 <body class="min-h-screen pb-20">
-    <!-- Login modal -->
-    <div id="loginModal" class="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl p-6 w-full max-w-md">
-            <h2 class="text-xl font-bold mb-4 text-center">Admin Login</h2>
-            <form id="loginForm" class="space-y-4">
-                <div>
-                    <label for="password" class="block text-sm font-medium mb-2">Password</label>
-                    <input type="password" id="password" class="w-full py-2 px-3 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700" required autocomplete="off">
-                </div>
-                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors">
-                    Login
-                </button>
-                <p id="loginError" class="text-red-500 text-center hidden">Incorrect password!</p>
-            </form>
-        </div>
-    </div>
-    
-    <!-- Navbar -->
-    <header class="fixed top-0 left-0 right-0 z-40 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 backdrop-filter backdrop-blur-lg bg-opacity-90 dark:bg-opacity-90">
-        <nav class="px-4 h-16">
-            <div class="h-full mx-auto flex items-center justify-between">
-                <div class="flex items-center">
-                    <a href="index.html" class="mr-4">
-                        <h1 class="text-xl font-bold text-blue-600 dark:text-blue-500 flex items-center">
-                            <i class="fas fa-arrow-left mr-2 text-gray-500"></i>
-                            Boetepot
-                        </h1>
-                    </a>
-                </div>
-                <div class="flex items-center space-x-4">
-                    <button id="logoutBtn" class="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 admin-content">
-                        <i class="fas fa-sign-out-alt"></i>
-                    </button>
-                    <button id="themeToggle" class="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
-                        <i id="themeIcon" class="fas fa-moon text-xl"></i>
-                    </button>
-                </div>
-            </div>
-        </nav>
-    </header>
-    
     <!-- Loading Spinner -->
     <div id="loadingSpinner" class="fixed inset-0 bg-black bg-opacity-50 items-center justify-center z-50 hidden">
         <div class="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-xl">
@@ -225,7 +166,28 @@
     <!-- Toast Messages -->
     <div id="toastContainer" class="fixed top-4 right-4 z-50 max-w-xs w-full"></div>
   
-    <div id="adminPanel" class="container mx-auto px-4 pt-20 pb-8 admin-content">
+    <!-- Navbar -->
+    <header class="fixed top-0 left-0 right-0 z-40 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 backdrop-filter backdrop-blur-lg bg-opacity-90 dark:bg-opacity-90">
+        <nav class="px-4 h-16">
+            <div class="h-full mx-auto flex items-center justify-between">
+                <div class="flex items-center">
+                    <a href="index.html" class="mr-4">
+                        <h1 class="text-xl font-bold text-blue-600 dark:text-blue-500 flex items-center">
+                            <i class="fas fa-arrow-left mr-2 text-gray-500"></i>
+                            Boetepot
+                        </h1>
+                    </a>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <button id="themeToggle" class="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                        <i id="themeIcon" class="fas fa-moon text-xl"></i>
+                    </button>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <div id="adminPanel" class="container mx-auto px-4 pt-20 pb-8">
         <!-- Admin Header -->
         <div class="mb-6">
             <h1 class="text-3xl font-bold mb-2">Admin Panel</h1>
@@ -283,7 +245,7 @@
                         </div>
                     </div>
                     
-                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-xl transition-colors shadow-md flex justify-center items-center">
+                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-xl transition-colors shadow-md flex justify-center items-center btn-primary">
                         <i class="fas fa-save mr-2"></i>
                         Boete Toevoegen
                     </button>
@@ -319,7 +281,7 @@
                         <input type="text" id="playerName" class="w-full py-3 px-4 rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 shadow-sm" placeholder="Naam van de speler" required>
                     </div>
                     
-                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-xl transition-colors shadow-md flex justify-center items-center">
+                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-xl transition-colors shadow-md flex justify-center items-center btn-primary">
                         <i class="fas fa-save mr-2"></i>
                         Speler Toevoegen
                     </button>
@@ -342,7 +304,7 @@
                         <input type="text" id="reasonDescription" class="w-full py-3 px-4 rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 shadow-sm" placeholder="Beschrijving van de reden" required>
                     </div>
                     
-                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-xl transition-colors shadow-md flex justify-center items-center">
+                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-xl transition-colors shadow-md flex justify-center items-center btn-primary">
                         <i class="fas fa-save mr-2"></i>
                         Reden Toevoegen
                     </button>
@@ -364,7 +326,7 @@
                     <div id="debugStatus" class="text-gray-600 dark:text-gray-400 text-sm bg-white dark:bg-gray-800 p-2 rounded border border-gray-200 dark:border-gray-700 overflow-auto max-h-40">Waiting for page to load...</div>
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <button id="manualLoadButton" class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg text-sm flex items-center justify-center">
+                    <button id="manualLoadButton" class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg text-sm flex items-center justify-center btn-primary">
                         <i class="fas fa-sync-alt mr-2"></i>
                         Manually Load Data
                     </button>
@@ -381,7 +343,7 @@
                 Data Reset
             </h2>
             <p class="text-gray-600 dark:text-gray-400 mb-4">WAARSCHUWING: Dit zal ALLE boetes verwijderen. Deze actie kan niet ongedaan worden gemaakt!</p>
-            <button id="resetButton" class="w-full bg-red-600 hover:bg-red-700 text-white font-medium py-3 px-4 rounded-xl transition-colors shadow-md flex justify-center items-center">
+            <button id="resetButton" class="w-full bg-red-600 hover:bg-red-700 text-white font-medium py-3 px-4 rounded-xl transition-colors shadow-md flex justify-center items-center btn-danger">
                 <i class="fas fa-trash-alt mr-2"></i>
                 Reset Alle Data
             </button>

@@ -1,79 +1,56 @@
-// Simple authentication and admin functionality
+// Simplified admin panel without login
 document.addEventListener('DOMContentLoaded', function() {
     // Configuration
-    const ADMIN_PASSWORD = 'Mandje123'; // Hardcoded password
-    const AUTH_TOKEN_KEY = 'boetepot_admin_token';
-    
-    // Simplified API URL - avoid any potential redirect issues
     const API_BASE_URL = '/api';
     
     // Debug flag - set to true for console logs
     const DEBUG = true;
     
     // DOM Elements
-    const loginModal = document.getElementById('loginModal');
-    const loginForm = document.getElementById('loginForm');
-    const loginError = document.getElementById('loginError');
-    const adminContent = document.querySelectorAll('.admin-content');
-    const logoutBtn = document.getElementById('logoutBtn');
     const themeToggle = document.getElementById('themeToggle');
     const themeIcon = document.getElementById('themeIcon');
     
-    // More targeted cookie clearing - only clear specific cookies that might cause issues
-    // This replaces the previous aggressive cookie clearing
-    function clearProblemCookies() {
-        debug('Clearing specific cookies that might cause issues');
-        const problemCookies = ['connect.sid', 'session', 'token', 'auth', 'JSESSIONID', 'ASP.NET_SessionId'];
-        
-        problemCookies.forEach(cookieName => {
-            document.cookie = cookieName + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/';
-            document.cookie = cookieName + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;domain=' + window.location.hostname;
-        });
-        
-        debug('Problem cookies cleared');
-    }
-    
-    // Theme management
+    // Dark mode handling - simplified approach
     function initTheme() {
         // Check for saved theme preference or use system preference
         const savedTheme = localStorage.getItem('theme');
         const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
         
         if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
-            document.body.classList.add('dark');
-            themeIcon.classList.remove('fa-moon');
-            themeIcon.classList.add('fa-sun');
+            enableDarkMode();
         } else {
-            document.body.classList.remove('dark');
-            themeIcon.classList.remove('fa-sun');
-            themeIcon.classList.add('fa-moon');
+            disableDarkMode();
         }
-        
-        // Update Select2 theme
-        updateSelect2Theme();
     }
     
     function toggleTheme() {
-        if (document.body.classList.contains('dark')) {
-            document.body.classList.remove('dark');
-            themeIcon.classList.remove('fa-sun');
-            themeIcon.classList.add('fa-moon');
+        const isDark = document.body.classList.contains('dark');
+        if (isDark) {
+            disableDarkMode();
             localStorage.setItem('theme', 'light');
         } else {
-            document.body.classList.add('dark');
-            themeIcon.classList.remove('fa-moon');
-            themeIcon.classList.add('fa-sun');
+            enableDarkMode();
             localStorage.setItem('theme', 'dark');
         }
-        
-        // Update Select2 theme
-        updateSelect2Theme();
     }
     
-    function updateSelect2Theme() {
+    function enableDarkMode() {
+        document.body.classList.add('dark');
+        themeIcon.classList.remove('fa-moon');
+        themeIcon.classList.add('fa-sun');
+        updateSelect2Theme(true);
+    }
+    
+    function disableDarkMode() {
+        document.body.classList.remove('dark');
+        themeIcon.classList.remove('fa-sun');
+        themeIcon.classList.add('fa-moon');
+        updateSelect2Theme(false);
+    }
+    
+    function updateSelect2Theme(isDark) {
         // Force Select2 to adopt the current theme
         setTimeout(() => {
-            const isDark = document.body.classList.contains('dark');
             const select2Containers = document.querySelectorAll('.select2-container');
             select2Containers.forEach(container => {
                 const selection = container.querySelector('.select2-selection');
@@ -90,50 +67,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
         }, 100);
-    }
-    
-    // Authentication Functions
-    function generateToken() {
-        return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-    }
-    
-    function checkAuth() {
-        const token = localStorage.getItem(AUTH_TOKEN_KEY);
-        return !!token; // Return true if token exists
-    }
-    
-    function login(password) {
-        if (password === ADMIN_PASSWORD) {
-            // Create and store auth token
-            const token = generateToken();
-            localStorage.setItem(AUTH_TOKEN_KEY, token);
-            
-            // Show admin content
-            adminContent.forEach(el => el.style.display = 'block');
-            loginModal.style.display = 'none';
-            
-            // Show success message
-            showToast('Successfully logged in!', 'success');
-            
-            // Load admin data
-            loadAllData();
-            return true;
-        } else {
-            loginError.classList.remove('hidden');
-            return false;
-        }
-    }
-    
-    function logout() {
-        // Clear auth token
-        localStorage.removeItem(AUTH_TOKEN_KEY);
-        
-        // Hide admin content and show login modal
-        adminContent.forEach(el => el.style.display = 'none');
-        loginModal.style.display = 'flex';
-        
-        // Clear any sensitive data
-        clearAllData();
     }
     
     // Utility Functions
@@ -283,7 +216,7 @@ document.addEventListener('DOMContentLoaded', function() {
         tabReasons.addEventListener('click', () => activateTab('reasons'));
     }
     
-    // API & Data Functions - Simplified to prevent redirect issues
+    // API & Data Functions - Simplified approach
     async function apiRequest(endpoint, method = 'GET', data = null) {
         try {
             const url = `${API_BASE_URL}${endpoint}`;
@@ -291,9 +224,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 method,
                 headers: {
                     'Content-Type': 'application/json'
-                },
-                // Keep it simple, don't add any credentials handling
-                credentials: 'same-origin'
+                }
             };
             
             if (data && (method === 'POST' || method === 'PUT')) {
@@ -426,7 +357,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             
             // Update Select2 to match theme
-            updateSelect2Theme();
+            updateSelect2Theme(document.body.classList.contains('dark'));
         } catch (error) {
             debug(`Error initializing Select2: ${error.message}`);
         }
@@ -461,7 +392,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             
             // Update Select2 to match theme
-            updateSelect2Theme();
+            updateSelect2Theme(document.body.classList.contains('dark'));
         } catch (error) {
             debug(`Error initializing Select2: ${error.message}`);
         }
@@ -696,16 +627,6 @@ document.addEventListener('DOMContentLoaded', function() {
         // Theme toggle
         themeToggle.addEventListener('click', toggleTheme);
         
-        // Login form
-        loginForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            const password = document.getElementById('password').value;
-            login(password);
-        });
-        
-        // Logout button
-        logoutBtn.addEventListener('click', logout);
-        
         // Add Fine Form
         const addFineForm = document.getElementById('addFineForm');
         if (addFineForm) {
@@ -824,7 +745,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const clearStorageButton = document.getElementById('clearStorageButton');
         if (clearStorageButton) {
             clearStorageButton.addEventListener('click', function() {
-                if (confirm('Weet je zeker dat je alle lokale opslag wilt wissen? Je wordt uitgelogd.')) {
+                if (confirm('Weet je zeker dat je alle lokale opslag wilt wissen?')) {
                     localStorage.clear();
                     showToast('Lokale opslag gewist!', 'info');
                     setTimeout(() => {
@@ -839,30 +760,14 @@ document.addEventListener('DOMContentLoaded', function() {
     function init() {
         debug('Initializing admin panel...');
         
-        // Clear specific problematic cookies instead of all cookies
-        clearProblemCookies();
-        
-        // Init theme
+        // Initialize theme
         initTheme();
         
-        // Check authentication
-        if (checkAuth()) {
-            debug('User is authenticated');
-            // Hide login modal, show admin content
-            adminContent.forEach(el => el.style.display = 'block');
-            loginModal.style.display = 'none';
-            
-            // Setup tabs
-            setupTabs();
-            
-            // Load data
-            loadAllData();
-        } else {
-            debug('User is not authenticated');
-            // Show login modal, hide admin content
-            adminContent.forEach(el => el.style.display = 'none');
-            loginModal.style.display = 'flex';
-        }
+        // Setup tabs
+        setupTabs();
+        
+        // Load data
+        loadAllData();
         
         // Setup event listeners
         setupEventListeners();
