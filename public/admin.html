@@ -25,6 +25,59 @@
             },
         }
     </script>
+    <style>
+        /* Custom Select2 Styles */
+        .select2-container {
+            width: 100% !important;
+        }
+        .select2-container .select2-selection--single {
+            height: 42px !important;
+            border-radius: 0.5rem !important;
+            border-color: rgb(209, 213, 219) !important;
+            background-color: transparent !important;
+        }
+        .dark .select2-container .select2-selection--single {
+            background-color: rgb(17, 24, 39) !important;
+            border-color: rgb(55, 65, 81) !important;
+            color: white !important;
+        }
+        .select2-container .select2-selection--single .select2-selection__rendered {
+            line-height: 42px !important;
+            padding-left: 1rem !important;
+            padding-right: 2.5rem !important;
+            color: inherit !important;
+        }
+        .dark .select2-container .select2-selection--single .select2-selection__rendered {
+            color: white !important;
+        }
+        .select2-container .select2-selection--single .select2-selection__arrow {
+            height: 42px !important;
+            width: 2.5rem !important;
+        }
+        .select2-dropdown {
+            border-radius: 0.5rem !important;
+            margin-top: 0.25rem !important;
+            border-color: rgb(209, 213, 219) !important;
+            background-color: white !important;
+        }
+        .dark .select2-dropdown {
+            background-color: rgb(17, 24, 39) !important;
+            border-color: rgb(55, 65, 81) !important;
+        }
+        .select2-results__option {
+            padding: 0.75rem 1rem !important;
+        }
+        .dark .select2-results__option {
+            color: white !important;
+        }
+        .select2-results__option--highlighted[aria-selected] {
+            background-color: rgb(59, 130, 246) !important;
+        }
+        .dark .select2-search__field {
+            background-color: rgb(17, 24, 39) !important;
+            color: white !important;
+        }
+    </style>
 </head>
 <body class="h-full bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-white">
     <!-- Navbar -->
@@ -32,8 +85,8 @@
         <nav class="px-4 h-16">
             <div class="h-full mx-auto flex items-center justify-between">
                 <a href="/" class="flex items-center space-x-2 text-blue-600 dark:text-blue-500">
-                    <i class="fas fa-piggy-bank text-2xl"></i>
-                    <span class="text-xl font-semibold">Boetepot</span>
+                    <i class="fas fa-arrow-left text-xl"></i>
+                    <span class="text-lg font-medium">Terug</span>
                 </a>
                 <div class="flex items-center space-x-4">
                     <button id="theme-toggle" class="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
@@ -52,7 +105,7 @@
     <!-- Toast Messages -->
     <div id="toastContainer" class="fixed top-4 right-4 z-50"></div>
 
-    <main class="container mx-auto px-4 pt-20 pb-8 max-w-7xl">
+    <main class="container mx-auto px-4 pt-20 pb-8">
         <!-- Add Fine Form -->
         <section class="mb-6">
             <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6">
@@ -61,12 +114,16 @@
                     Nieuwe Boete
                 </h2>
                 <form id="addFineForm" class="space-y-6">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="grid grid-cols-1 gap-6">
                         <div>
                             <label for="playerSelect" class="block text-sm font-medium mb-2">Speler</label>
                             <select id="playerSelect" name="player" class="w-full rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-900" required>
                                 <option value="">Selecteer een speler</option>
                             </select>
+                        </div>
+                        <div>
+                            <label for="reason" class="block text-sm font-medium mb-2">Reden</label>
+                            <input type="text" id="reason" name="reason" class="w-full rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-900" required>
                         </div>
                         <div>
                             <label for="amount" class="block text-sm font-medium mb-2">Bedrag</label>
@@ -76,12 +133,8 @@
                             </div>
                         </div>
                     </div>
-                    <div>
-                        <label for="reason" class="block text-sm font-medium mb-2">Reden</label>
-                        <input type="text" id="reason" name="reason" class="w-full rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-900" required>
-                    </div>
                     <div class="flex justify-end">
-                        <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                        <button type="submit" class="w-full md:w-auto px-6 py-3 bg-blue-600 text-white text-lg font-medium rounded-lg hover:bg-blue-700 transition-colors">
                             Toevoegen
                         </button>
                     </div>
@@ -102,7 +155,7 @@
                         <input type="text" id="playerName" name="name" class="w-full rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-900" required>
                     </div>
                     <div class="flex justify-end">
-                        <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                        <button type="submit" class="w-full md:w-auto px-6 py-3 bg-blue-600 text-white text-lg font-medium rounded-lg hover:bg-blue-700 transition-colors">
                             Toevoegen
                         </button>
                     </div>
@@ -110,7 +163,21 @@
             </div>
         </section>
 
-        <!-- Delete Fine Form -->
+        <!-- Recent Fines -->
+        <section class="mb-6">
+            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6">
+                <h2 class="text-2xl font-semibold mb-6 flex items-center">
+                    <i class="fas fa-history text-blue-600 mr-3"></i>
+                    Recente Boetes
+                </h2>
+                <div id="recentFines" class="space-y-4">
+                    <!-- Mobile cards will be inserted here by JavaScript -->
+                    <div class="text-center py-4 text-gray-500">Laden...</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Delete Fine -->
         <section class="mb-6">
             <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6">
                 <h2 class="text-2xl font-semibold mb-6 flex items-center">
@@ -125,11 +192,34 @@
                         </select>
                     </div>
                     <div class="flex justify-end">
-                        <button type="submit" class="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
+                        <button type="submit" class="w-full md:w-auto px-6 py-3 bg-red-600 text-white text-lg font-medium rounded-lg hover:bg-red-700 transition-colors">
                             Verwijderen
                         </button>
                     </div>
                 </form>
+            </div>
+        </section>
+
+        <!-- Reset Data -->
+        <section class="mb-6">
+            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6">
+                <h2 class="text-2xl font-semibold mb-6 flex items-center">
+                    <i class="fas fa-exclamation-triangle text-yellow-500 mr-3"></i>
+                    Reset Gegevens
+                </h2>
+                <div class="space-y-6">
+                    <div class="p-4 bg-yellow-50 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-200 rounded-lg">
+                        <div class="flex items-center space-x-3">
+                            <i class="fas fa-exclamation-circle text-xl"></i>
+                            <p>Let op: Deze actie kan niet ongedaan worden gemaakt!</p>
+                        </div>
+                    </div>
+                    <div class="flex justify-end">
+                        <button id="resetButton" class="w-full md:w-auto px-6 py-3 bg-yellow-600 text-white text-lg font-medium rounded-lg hover:bg-yellow-700 transition-colors">
+                            Reset Alle Gegevens
+                        </button>
+                    </div>
+                </div>
             </div>
         </section>
     </main>

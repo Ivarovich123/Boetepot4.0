@@ -62,33 +62,33 @@ function formatCurrency(amount) {
 }
 
 // Theme handling
-function setTheme(isDark) {
-  if (isDark) {
-    document.documentElement.classList.add('dark');
-    document.body.classList.add('dark');
-    localStorage.theme = 'dark';
-    $('#theme-icon').removeClass('fa-moon').addClass('fa-sun');
-  } else {
-    document.documentElement.classList.remove('dark');
-    document.body.classList.remove('dark');
-    localStorage.theme = 'light';
-    $('#theme-icon').removeClass('fa-sun').addClass('fa-moon');
+function initTheme() {
+  const theme = localStorage.getItem('theme') || 'light';
+  document.body.classList.toggle('dark', theme === 'dark');
+  document.getElementById('theme-icon').className = theme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+}
+
+function toggleTheme() {
+  const body = document.body;
+  const themeIcon = document.getElementById('theme-icon');
+  const isDark = body.classList.contains('dark');
+  
+  // Update theme
+  body.classList.toggle('dark', !isDark);
+  localStorage.setItem('theme', isDark ? 'light' : 'dark');
+  
+  // Update icon with animation
+  if (themeIcon) {
+    themeIcon.style.transform = 'scale(0)';
+    setTimeout(() => {
+      themeIcon.className = isDark ? 'fas fa-moon' : 'fas fa-sun';
+      themeIcon.style.transform = 'scale(1)';
+    }, 150);
   }
   
-  // Update Select2 dropdowns
-  updateSelect2Theme(isDark);
+  // Dispatch event for other components
+  window.dispatchEvent(new CustomEvent('themechange', { detail: { theme: isDark ? 'light' : 'dark' } }));
 }
-
-// Initialize theme
-if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-  setTheme(true);
-} else {
-  setTheme(false);
-}
-
-$('#theme-toggle').click(() => {
-  setTheme(!document.documentElement.classList.contains('dark'));
-});
 
 // API Functions
 async function fetchAPI(endpoint, options = {}) {
@@ -299,7 +299,6 @@ async function loadPlayerHistory(playerId) {
     showToast('Fout bij laden speler historie', true);
   }
 }
-
 async function initializePlayerSelect() {
   try {
     console.log('[Players] Loading players for select...');
