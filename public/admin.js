@@ -1316,41 +1316,56 @@ function resetForm() {
 }
 
 // API Health Check function
-function checkApiHealth() {
+async function checkApiHealth() {
     debug('Running API health check');
-    $('#debugStatus').text('Running API health check...');
+    $('#debugStatus').html('Running API health check...');
+    
+    const results = [];
+    const endpoints = ['/players', '/reasons', '/recent-fines'];
+    
+    toggleLoading(true);
     
     try {
-        // Test endpoints
-        const endpoints = ['/players', '/reasons', '/recent-fines'];
-        const results = {};
-        
-        // Test each endpoint
-        endpoints.forEach(async (endpoint) => {
+        // Test each endpoint sequentially
+        for (const endpoint of endpoints) {
             try {
                 debug(`Testing endpoint: ${endpoint}`);
                 const startTime = performance.now();
+                
+                // Try to fetch from the endpoint
                 const response = await fetchAPI(endpoint);
                 const duration = Math.round(performance.now() - startTime);
                 
-                results[endpoint] = { 
-                    status: response ? 'OK' : 'ERROR', 
-                    data: response ? (Array.isArray(response) ? `${response.length} items` : 'data received') : 'No data'
-                };
+                const status = response ? 'OK' : 'ERROR';
+                const count = response && Array.isArray(response) ? response.length : 'N/A';
                 
-                // Update the display
-                const resultStr = Object.entries(results)
-                    .map(([ep, res]) => `${ep}: ${res.status} (${res.data})`)
-                    .join('\n');
-                
-                $('#debugStatus').html(`API Health Check Results:<br><pre>${resultStr}</pre>`);
-            } catch (err) {
-                results[endpoint] = { status: 'ERROR', error: err.message };
-                $('#debugStatus').html(`Error checking ${endpoint}: ${err.message}`);
+                results.push(`${endpoint}: ${status} (${duration}ms) - ${count} items`);
+                debug(`Endpoint ${endpoint} test completed: ${status}`);
+            } catch (error) {
+                results.push(`${endpoint}: ERROR - ${error.message}`);
+                debug(`Error testing endpoint ${endpoint}: ${error.message}`);
             }
-        });
+        }
+        
+        // Update the debug status display
+        $('#debugStatus').html(`
+            <div class="font-semibold mb-2">API Health Check Results:</div>
+            <div class="space-y-1">
+                ${results.map(result => 
+                    `<div class="text-sm ${result.includes('ERROR') ? 'text-red-500' : 'text-green-500'}">${result}</div>`
+                ).join('')}
+            </div>
+            <div class="mt-2 text-xs text-gray-500">Completed at: ${new Date().toLocaleTimeString()}</div>
+        `);
+        
+        debug('API health check completed');
     } catch (error) {
-        $('#debugStatus').text(`Health check failed: ${error.message}`);
+        $('#debugStatus').html(`
+            <div class="text-red-500">Health check failed: ${error.message}</div>
+        `);
+        debug(`API health check failed: ${error.message}`);
+    } finally {
+        toggleLoading(false);
     }
 }
 
