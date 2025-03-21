@@ -537,74 +537,106 @@ async function loadData() {
 
 // Specific data loading functions
 async function loadPlayers() {
-    debug('Loading players');
     try {
-        const players = await fetchAPI('/players');
-        if (players && Array.isArray(players)) {
-            debug(`Loaded ${players.length} players`);
-            
-            // Populate the player select dropdown
-            const $playerSelect = $('#playerSelect');
-            if ($playerSelect.length) {
-                $playerSelect.empty();
-                $playerSelect.append('<option value="">Selecteer een speler</option>');
-                
-                players.forEach(player => {
-                    $playerSelect.append(`<option value="${player.id}">${player.name}</option>`);
-                });
-                
-                // Update Select2 if initialized
-                if ($.fn.select2 && $playerSelect.data('select2')) {
-                    $playerSelect.trigger('change');
-                }
-                
-                debug('Player select dropdown populated');
-            }
-            
-            return players;
+        console.log('[DEBUG] Loading players');
+        
+        // Get players from localStorage
+        const players = JSON.parse(localStorage.getItem('players') || '[]');
+        
+        // Update the player select
+        const playerSelect = $('#playerSelect');
+        playerSelect.empty();
+        playerSelect.append('<option value="">Selecteer een speler</option>');
+        
+        // Also update the players list
+        const playersList = $('#playersList');
+        playersList.empty();
+        
+        if (players.length === 0) {
+            playersList.html('<p class="text-gray-500 dark:text-gray-400 text-center py-4">Geen spelers gevonden</p>');
         } else {
-            debug('No players returned or invalid format');
-            return [];
+            players.forEach(player => {
+                // Add to select
+                playerSelect.append(`<option value="${player.id}">${player.name}</option>`);
+                
+                // Add to list with delete button
+                playersList.append(`
+                    <div class="flex justify-between items-center bg-gray-50 dark:bg-gray-800 p-3 rounded-lg mb-2 group">
+                        <span class="text-gray-800 dark:text-gray-200">${player.name}</span>
+                        <button class="delete-player-btn text-red-500 hover:text-red-700 opacity-0 group-hover:opacity-100 transition-opacity" 
+                                data-player-id="${player.id}">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                `);
+            });
+            
+            // Add event listeners for delete buttons
+            $('.delete-player-btn').on('click', function() {
+                const playerId = $(this).data('player-id');
+                handleDeletePlayer(playerId);
+            });
         }
+        
+        // Reinitialize Select2
+        initializeSelect2();
+        
+        console.log('[DEBUG] Players loaded successfully');
     } catch (error) {
-        debug(`Error loading players: ${error.message}`);
-        return [];
+        console.error('[DEBUG] Error loading players:', error);
+        showToast('Fout bij het laden van spelers', 'error');
     }
 }
 
 async function loadReasons() {
-    debug('Loading reasons');
     try {
-        const reasons = await fetchAPI('/reasons');
-        if (reasons && Array.isArray(reasons)) {
-            debug(`Loaded ${reasons.length} reasons`);
-            
-            // Populate the reason select dropdown
-            const $reasonSelect = $('#reasonSelect');
-            if ($reasonSelect.length) {
-                $reasonSelect.empty();
-                $reasonSelect.append('<option value="">Selecteer een reden</option>');
-                
-                reasons.forEach(reason => {
-                    $reasonSelect.append(`<option value="${reason.id}">${reason.description}</option>`);
-                });
-                
-                // Update Select2 if initialized
-                if ($.fn.select2 && $reasonSelect.data('select2')) {
-                    $reasonSelect.trigger('change');
-                }
-                
-                debug('Reason select dropdown populated');
-            }
-            
-            return reasons;
+        console.log('[DEBUG] Loading reasons');
+        
+        // Get reasons from localStorage
+        const reasons = JSON.parse(localStorage.getItem('reasons') || '[]');
+        
+        // Update the reason select
+        const reasonSelect = $('#reasonSelect');
+        reasonSelect.empty();
+        reasonSelect.append('<option value="">Selecteer een reden</option>');
+        
+        // Also update the reasons list
+        const reasonsList = $('#reasonsList');
+        reasonsList.empty();
+        
+        if (reasons.length === 0) {
+            reasonsList.html('<p class="text-gray-500 dark:text-gray-400 text-center py-4">Geen redenen gevonden</p>');
         } else {
-            debug('No reasons returned or invalid format');
-            return [];
+            reasons.forEach(reason => {
+                // Add to select
+                reasonSelect.append(`<option value="${reason.id}">${reason.description}</option>`);
+                
+                // Add to list with delete button
+                reasonsList.append(`
+                    <div class="flex justify-between items-center bg-gray-50 dark:bg-gray-800 p-3 rounded-lg mb-2 group">
+                        <span class="text-gray-800 dark:text-gray-200">${reason.description}</span>
+                        <button class="delete-reason-btn text-red-500 hover:text-red-700 opacity-0 group-hover:opacity-100 transition-opacity" 
+                                data-reason-id="${reason.id}">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                `);
+            });
+            
+            // Add event listeners for delete buttons
+            $('.delete-reason-btn').on('click', function() {
+                const reasonId = $(this).data('reason-id');
+                handleDeleteReason(reasonId);
+            });
         }
+        
+        // Reinitialize Select2
+        initializeSelect2();
+        
+        console.log('[DEBUG] Reasons loaded successfully');
     } catch (error) {
-        debug(`Error loading reasons: ${error.message}`);
-        return [];
+        console.error('[DEBUG] Error loading reasons:', error);
+        showToast('Fout bij het laden van redenen', 'error');
     }
 }
 
@@ -1112,93 +1144,46 @@ function checkAndRepairDOM() {
     return true;
 }
 
-// Initialize
-$(document).ready(function() {
+// Initialize the admin page
+function initialize() {
     try {
-        debug('Document ready fired');
+        console.log('[DEBUG] Initializing admin page...');
         
-        // Required DOM elements check
-        const requiredElements = [
-            '#tab-boetes', 
-            '#tab-beheer', 
-            '#content-boetes', 
-            '#content-beheer',
-            '#playerSelect',
-            '#reasonSelect',
-            '#recentFines'
-        ];
-        
-        const missingElements = requiredElements.filter(selector => $(selector).length === 0);
-        
-        if (missingElements.length > 0) {
-            console.error('Missing DOM elements:', missingElements);
-            $('#debugStatus').text(`Missing elements: ${missingElements.join(', ')}`);
+        // Check for required elements
+        if (!document.getElementById('adminPanel')) {
+            console.error('[DEBUG] Admin panel not found');
             return;
         }
         
-        // Initialize Select2
-        initializeSelect2();
+        // Add management sections
+        addManagementSections();
         
-        // Make sure forms have handlers
-        $('#addFineForm').off('submit').on('submit', handleAddFine);
-        $('#addPlayerForm').off('submit').on('submit', handleAddPlayer);
-        $('#addReasonForm').off('submit').on('submit', handleAddReason);
-        
-        // Setup tab handlers
-        $('#tab-boetes').off('click').on('click', function() {
-            $('#tab-boetes').addClass('text-blue-600 dark:text-blue-500 border-blue-600 dark:border-blue-500')
-                .removeClass('border-transparent hover:text-blue-600 dark:hover:text-blue-500 hover:border-blue-600 dark:hover:border-blue-500 text-gray-500 dark:text-gray-400');
-            $('#tab-beheer').removeClass('text-blue-600 dark:text-blue-500 border-blue-600 dark:border-blue-500')
-                .addClass('border-transparent hover:text-blue-600 dark:hover:text-blue-500 hover:border-blue-600 dark:hover:border-blue-500 text-gray-500 dark:text-gray-400');
-            $('#content-boetes').removeClass('hidden');
-            $('#content-beheer').addClass('hidden');
-            localStorage.setItem('activeTab', 'boetes');
-        });
-        
-        $('#tab-beheer').off('click').on('click', function() {
-            $('#tab-beheer').addClass('text-blue-600 dark:text-blue-500 border-blue-600 dark:border-blue-500')
-                .removeClass('border-transparent hover:text-blue-600 dark:hover:text-blue-500 hover:border-blue-600 dark:hover:border-blue-500 text-gray-500 dark:text-gray-400');
-            $('#tab-boetes').removeClass('text-blue-600 dark:text-blue-500 border-blue-600 dark:border-blue-500')
-                .addClass('border-transparent hover:text-blue-600 dark:hover:text-blue-500 hover:border-blue-600 dark:hover:border-blue-500 text-gray-500 dark:text-gray-400');
-            $('#content-beheer').removeClass('hidden');
-            $('#content-boetes').addClass('hidden');
-            localStorage.setItem('activeTab', 'beheer');
-        });
-        
-        // Theme toggle
-        $('#theme-toggle').off('click').on('click', toggleTheme);
-        
-        // Manual load button
-        $('#manualLoadButton').off('click').on('click', loadData);
-        
-        // Check API button
-        $('#checkApiButton').off('click').on('click', checkApiHealth);
-        
-        // Reset button
-        $('#resetButton').off('click').on('click', handleReset);
-        
-        // Check active tab
-        const activeTab = localStorage.getItem('activeTab') || 'boetes';
-        if (activeTab === 'beheer') {
-            $('#tab-beheer').trigger('click');
-        } else {
-            $('#tab-boetes').trigger('click');
-        }
-        
-        // Apply theme
-        applyTheme();
+        // Setup event listeners
+        $('#addPlayerForm').on('submit', handleAddPlayer);
+        $('#addReasonForm').on('submit', handleAddReason);
+        $('#addFineForm').on('submit', handleAddFine);
+        $('#resetButton').on('click', handleReset);
         
         // Load data
-        loadData();
+        loadPlayers();
+        loadReasons();
+        loadRecentFines();
+        updateStats();
         
+        // Check API health
+        checkApiHealth();
+        
+        // Setup theme
+        setupTheme();
+        
+        // Setup tabs
+        setupTabs();
+        
+        console.log('[DEBUG] Admin page initialized successfully');
     } catch (error) {
-        console.error('Error during initialization:', error);
-        $('#adminContent').html(`<div class="bg-red-100 p-4 rounded-lg text-red-700">
-            <p><strong>Error during initialization:</strong> ${error.message}</p>
-            <p>Please check the console for more details.</p>
-        </div>`);
+        console.error('[DEBUG] Initialization error:', error);
     }
-});
+}
 
 // Handle Reset
 function handleReset() {
@@ -1313,4 +1298,202 @@ function checkApiHealth() {
     } catch (error) {
         $('#debugStatus').text(`Health check failed: ${error.message}`);
     }
-} 
+}
+
+// Handle delete player
+function handleDeletePlayer(playerId) {
+    if (!playerId) return;
+    
+    // Confirm deletion
+    if (!confirm('Weet je zeker dat je deze speler wilt verwijderen? Dit kan niet ongedaan worden gemaakt.')) {
+        return;
+    }
+    
+    try {
+        // Get existing players
+        const players = JSON.parse(localStorage.getItem('players') || '[]');
+        const fines = JSON.parse(localStorage.getItem('fines') || '[]');
+        
+        // Filter out the player to delete
+        const updatedPlayers = players.filter(player => player.id !== parseInt(playerId));
+        
+        // Remove any fines associated with this player
+        const updatedFines = fines.filter(fine => {
+            const finePlayerId = fine.player_id || fine.playerId;
+            return finePlayerId !== parseInt(playerId);
+        });
+        
+        // Save the updated data
+        localStorage.setItem('players', JSON.stringify(updatedPlayers));
+        localStorage.setItem('fines', JSON.stringify(updatedFines));
+        
+        // Refresh the UI
+        loadPlayers();
+        updateStats();
+        
+        showToast('Speler succesvol verwijderd!', 'success');
+    } catch (error) {
+        console.error('[DEBUG] Error deleting player:', error);
+        showToast('Fout bij het verwijderen van de speler', 'error');
+    }
+}
+
+// Handle delete reason
+function handleDeleteReason(reasonId) {
+    if (!reasonId) return;
+    
+    // Confirm deletion
+    if (!confirm('Weet je zeker dat je deze reden wilt verwijderen? Dit kan niet ongedaan worden gemaakt.')) {
+        return;
+    }
+    
+    try {
+        // Get existing reasons
+        const reasons = JSON.parse(localStorage.getItem('reasons') || '[]');
+        const fines = JSON.parse(localStorage.getItem('fines') || '[]');
+        
+        // Filter out the reason to delete
+        const updatedReasons = reasons.filter(reason => reason.id !== parseInt(reasonId));
+        
+        // Update fines with this reason (set reason to null)
+        const updatedFines = fines.map(fine => {
+            const fineReasonId = fine.reason_id || fine.reasonId;
+            if (fineReasonId === parseInt(reasonId)) {
+                return {
+                    ...fine,
+                    reason_id: null,
+                    reasonId: null
+                };
+            }
+            return fine;
+        });
+        
+        // Save the updated data
+        localStorage.setItem('reasons', JSON.stringify(updatedReasons));
+        localStorage.setItem('fines', JSON.stringify(updatedFines));
+        
+        // Refresh the UI
+        loadReasons();
+        updateStats();
+        
+        showToast('Reden succesvol verwijderd!', 'success');
+    } catch (error) {
+        console.error('[DEBUG] Error deleting reason:', error);
+        showToast('Fout bij het verwijderen van de reden', 'error');
+    }
+}
+
+// Add UI sections for player and reason management
+function addManagementSections() {
+    // Add players and reasons management sections if they don't exist
+    if ($('#playersList').length === 0) {
+        $('#playersTab .tab-content').append(`
+            <div class="mt-6">
+                <h3 class="text-lg font-medium mb-2 text-gray-900 dark:text-gray-100">Spelers beheren</h3>
+                <div id="playersList" class="space-y-2 max-h-60 overflow-y-auto p-2"></div>
+            </div>
+        `);
+    }
+    
+    if ($('#reasonsList').length === 0) {
+        $('#reasonsTab .tab-content').append(`
+            <div class="mt-6">
+                <h3 class="text-lg font-medium mb-2 text-gray-900 dark:text-gray-100">Redenen beheren</h3>
+                <div id="reasonsList" class="space-y-2 max-h-60 overflow-y-auto p-2"></div>
+            </div>
+        `);
+    }
+}
+
+// Setup tabs functionality
+function setupTabs() {
+    try {
+        console.log('[DEBUG] Setting up tabs');
+        
+        // Tab switching functionality
+        $('#tab-boetes').click(function() {
+            $('.nav-tab').removeClass('active-tab');
+            $('.tab-content').addClass('hidden');
+            
+            $(this).addClass('active-tab');
+            $('#finesTab').removeClass('hidden');
+            
+            localStorage.setItem('activeTab', 'boetes');
+        });
+        
+        $('#tab-players').click(function() {
+            $('.nav-tab').removeClass('active-tab');
+            $('.tab-content').addClass('hidden');
+            
+            $(this).addClass('active-tab');
+            $('#playersTab').removeClass('hidden');
+            
+            localStorage.setItem('activeTab', 'players');
+        });
+        
+        $('#tab-reasons').click(function() {
+            $('.nav-tab').removeClass('active-tab');
+            $('.tab-content').addClass('hidden');
+            
+            $(this).addClass('active-tab');
+            $('#reasonsTab').removeClass('hidden');
+            
+            localStorage.setItem('activeTab', 'reasons');
+        });
+        
+        // Set active tab from localStorage or default
+        const activeTab = localStorage.getItem('activeTab') || 'boetes';
+        $(`#tab-${activeTab}`).click();
+        
+        console.log('[DEBUG] Tabs setup completed');
+    } catch (error) {
+        console.error('[DEBUG] Error setting up tabs:', error);
+    }
+}
+
+// Setup theme functionality
+function setupTheme() {
+    try {
+        console.log('[DEBUG] Setting up theme');
+        
+        // Set initial theme
+        const isDarkMode = localStorage.getItem('theme') === 'dark' || 
+            (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        
+        if (isDarkMode) {
+            document.documentElement.classList.add('dark');
+            $('#theme-toggle-icon').removeClass('fa-moon').addClass('fa-sun');
+        } else {
+            document.documentElement.classList.remove('dark');
+            $('#theme-toggle-icon').removeClass('fa-sun').addClass('fa-moon');
+        }
+        
+        // Theme toggle handler
+        $('#theme-toggle').click(function() {
+            const isDark = document.documentElement.classList.contains('dark');
+            
+            if (isDark) {
+                document.documentElement.classList.remove('dark');
+                localStorage.theme = 'light';
+                $('#theme-toggle-icon').removeClass('fa-sun').addClass('fa-moon');
+            } else {
+                document.documentElement.classList.add('dark');
+                localStorage.theme = 'dark';
+                $('#theme-toggle-icon').removeClass('fa-moon').addClass('fa-sun');
+            }
+            
+            // Update Select2 theme
+            updateSelect2Theme(!isDark);
+        });
+        
+        console.log('[DEBUG] Theme setup completed');
+    } catch (error) {
+        console.error('[DEBUG] Error setting up theme:', error);
+    }
+}
+
+// Document ready handler
+$(document).ready(function() {
+    console.log('[DEBUG] Document ready');
+    initialize();
+}); 

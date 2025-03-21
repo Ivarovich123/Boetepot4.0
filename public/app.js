@@ -891,7 +891,7 @@ function setupDefaultData() {
             { id: 7, description: 'Correctie' }
         ];
         
-        // Add fine history
+        // Add fine history - use player_id and reason_id for consistency
         const fines = [
             { id: 1, player_id: 2, reason_id: null, amount: 46, timestamp: new Date('2025-02-27T21:57:47').toISOString() },
             { id: 2, player_id: 3, reason_id: null, amount: 20, timestamp: new Date('2025-02-27T21:58:09').toISOString() },
@@ -927,12 +927,14 @@ function setupDefaultData() {
         // Show success message
         showToast('Standaard gegevens zijn geladen', 'success');
         
-        // Force reload of data
-        loadTotalAmount();
-        loadRecentFines();
-        loadLeaderboard();
-        loadPlayers();
+        // Force immediate reload of data
+        loadData();
         setupPlayerHistory();
+        
+        // Reload the page after a short delay to ensure everything is refreshed
+        setTimeout(() => {
+            location.reload();
+        }, 500);
         
         return true;
     } catch (error) {
