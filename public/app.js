@@ -131,14 +131,14 @@ function updateSelect2Theme(isDark) {
     // Update dropdown
     if (isDark) {
         $('.select2-container--default .select2-selection--single').css({
-            'background-color': '#111827',
+            'background-color': '#1f2937',
             'border-color': '#374151',
             'color': 'white'
         });
         $('.select2-container--default .select2-selection--single .select2-selection__rendered').css('color', 'white');
     } else {
         $('.select2-container--default .select2-selection--single').css({
-            'background-color': '#f8fafc',
+            'background-color': '#f0f2f5',
             'border-color': '#D1D5DB',
             'color': 'black'
         });
@@ -165,7 +165,8 @@ function initializeSelect2() {
     $('#playerSelect').select2({
         placeholder: 'Selecteer een speler',
         allowClear: true,
-        width: '100%'
+        width: '100%',
+        dropdownParent: $('body') // Fix for mobile
     });
     
     // Update the theme for Select2
@@ -175,7 +176,7 @@ function initializeSelect2() {
 // API Functions
 async function fetchAPI(endpoint, options = {}) {
     let abortController = new AbortController();
-    const timeoutId = setTimeout(() => abortController.abort(), 10000);
+    const timeoutId = setTimeout(() => abortController.abort(), 15000);
     
     try {
         debug(`Fetching API: ${endpoint}`);
@@ -183,119 +184,76 @@ async function fetchAPI(endpoint, options = {}) {
         
         // Ensure endpoint starts with slash
         const path = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
-        const url = `${API_BASE_URL}${path}`;
         
-        debug(`Full URL: ${url}`);
+        // Try different URL formats
+        const urls = [
+            `${API_BASE_URL}${path}`,
+            `${window.location.origin}/api${path}`,
+            `https://boetepot.cloud/api${path}`,
+            `https://www.boetepot.cloud/api${path}`
+        ];
         
-        // Add default headers
-        const fetchOptions = {
-            ...options,
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-                ...options.headers
-            },
-            signal: abortController.signal
-        };
+        debug(`Trying URLs: ${urls[0]}, ${urls[1]}, ...`);
         
-        const response = await fetch(url, fetchOptions);
+        let lastError = null;
         
-        if (!response.ok) {
-            throw new Error(`API Error: ${response.status} ${response.statusText}`);
+        // Try each URL until one works
+        for (const url of urls) {
+            try {
+                debug(`Trying URL: ${url}`);
+                
+                const fetchOptions = {
+                    ...options,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        ...options.headers
+                    },
+                    signal: abortController.signal
+                };
+                
+                const response = await fetch(url, fetchOptions);
+                
+                if (!response.ok) {
+                    debug(`URL ${url} failed with ${response.status}`);
+                    lastError = new Error(`API Error: ${response.status} ${response.statusText}`);
+                    continue;
+                }
+                
+                // Check content type
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    debug(`Response from ${url} is not JSON: ${contentType}`);
+                    lastError = new Error('Response is not JSON');
+                    continue;
+                }
+                
+                // Try to parse as JSON
+                const data = await response.json();
+                debug(`API response successful with ${typeof data} from ${url}`);
+                return data;
+            } catch (error) {
+                debug(`Error for ${url}: ${error.message}`);
+                lastError = error;
+            }
         }
         
-        // Check content type
-        const contentType = response.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) {
-            debug(`Response is not JSON: ${contentType}`);
-            
-            // Try fallback URL
-            debug('Trying fallback with direct URL format');
-            return await tryFallbackApi(endpoint, options);
-        }
-        
-        // Try to parse as JSON
-        const data = await response.json();
-        debug(`API response successful with ${typeof data}`);
-        return data;
+        // If all URLs failed, throw the last error
+        throw lastError || new Error('Failed to fetch data from all URLs');
     } catch (error) {
         debug(`API Error: ${error.message}`);
         
         if (error.name === 'AbortError') {
             debug('Request timed out');
             showToast('De server reageert niet. Probeer het later opnieuw.', 'error');
-            return getDefaultResponse(endpoint);
+        } else {
+            debug(`General API error: ${error.message}`);
         }
         
-        if (error.message.includes('Unexpected token')) {
-            debug('JSON parse error - trying fallback');
-            return await tryFallbackApi(endpoint, options);
-        }
-        
-        // For other errors, try fallback
-        debug('General error - trying fallback');
-        return await tryFallbackApi(endpoint, options);
+        return getDefaultResponse(endpoint);
     } finally {
         clearTimeout(timeoutId);
         toggleLoading(false);
-    }
-}
-
-// Try fallback API
-async function tryFallbackApi(endpoint, options = {}) {
-    try {
-        debug("Trying fallback with absolute URL");
-        const path = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
-        
-        // Try different URL formats
-        const urls = [
-            `${window.location.origin}/api${path}`,
-            `https://boetepot.cloud/api${path}`
-        ];
-        
-        debug(`Trying fallback URLs: ${urls.join(', ')}`);
-        
-        for (const fallbackUrl of urls) {
-            try {
-                debug(`Trying URL: ${fallbackUrl}`);
-                
-                const fallbackOptions = {
-                    ...options,
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                        ...options.headers
-                    }
-                };
-                
-                const fallbackResponse = await fetch(fallbackUrl, fallbackOptions);
-                
-                if (!fallbackResponse.ok) {
-                    debug(`Fallback URL ${fallbackUrl} failed with ${fallbackResponse.status}`);
-                    continue;
-                }
-                
-                // Check content type
-                const contentType = fallbackResponse.headers.get('content-type');
-                if (!contentType || !contentType.includes('application/json')) {
-                    debug(`Fallback response is not JSON: ${contentType}`);
-                    continue;
-                }
-                
-                const fallbackData = await fallbackResponse.json();
-                debug(`Fallback API successful with URL: ${fallbackUrl}`);
-                return fallbackData;
-            } catch (error) {
-                debug(`Fallback attempt failed for ${fallbackUrl}: ${error.message}`);
-            }
-        }
-        
-        // If all fallbacks fail, return default empty data
-        debug('All fallback attempts failed - returning default data');
-        return getDefaultResponse(endpoint);
-    } catch (error) {
-        debug(`Fallback error: ${error.message}`);
-        return getDefaultResponse(endpoint);
     }
 }
 
@@ -320,7 +278,7 @@ function createFineCard(fine) {
         const amount = formatCurrency(parseFloat(fine.amount) || 0);
         
         return `
-        <div class="fine-card bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
+        <div class="fine-card bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
             <div class="flex justify-between items-start">
                 <div>
                     <h3 class="font-semibold text-blue-600 dark:text-blue-500">${playerName}</h3>
@@ -345,7 +303,7 @@ function createPlayerHistoryCard(fine) {
         const amount = formatCurrency(parseFloat(fine.amount) || 0);
         
         return `
-        <div class="fine-card bg-gray-100 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-xl p-4 hover:shadow-sm transition-shadow">
+        <div class="fine-card bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-4 hover:shadow-sm transition-shadow">
             <div class="flex justify-between items-start">
                 <div>
                     <p class="text-gray-600 dark:text-gray-300">${reasonDesc}</p>
@@ -375,13 +333,11 @@ async function loadTotalAmount() {
         
         $('#totalAmount').html(`
             <div class="text-5xl font-bold text-blue-600 dark:text-blue-500 bg-blue-50 dark:bg-blue-900/20 rounded-2xl px-8 py-4 mb-2 shadow-md">${formatCurrency(total)}</div>
-            <div class="text-sm text-gray-500 dark:text-gray-400 mt-2">Laatst bijgewerkt: ${formatDate(new Date())}</div>
         `);
     } catch (error) {
         debug(`Error loading total amount: ${error.message}`);
         $('#totalAmount').html(`
             <div class="text-5xl font-bold text-blue-600 dark:text-blue-500 bg-blue-50 dark:bg-blue-900/20 rounded-2xl px-8 py-4 mb-2 shadow-md">€0,00</div>
-            <div class="text-sm text-gray-500 dark:text-gray-400 mt-2">Fout bij het laden van data</div>
         `);
     }
 }
@@ -425,7 +381,7 @@ async function loadLeaderboard() {
         }
         
         const leaderboardHtml = data.map((player, index) => `
-            <div class="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
+            <div class="bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
                 <div class="flex justify-between items-center">
                     <div class="flex items-center">
                         <div class="flex-shrink-0 w-8 h-8 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-500 rounded-full flex items-center justify-center font-bold mr-3">
@@ -486,30 +442,35 @@ async function loadPlayerHistory(playerId) {
             return;
         }
         
-        const data = await fetchAPI(`/player-fines/${playerId}`);
-        const player = await fetchAPI(`/player/${playerId}`);
+        const [playerData, finesData] = await Promise.all([
+            fetchAPI(`/player/${playerId}`),
+            fetchAPI(`/player-fines/${playerId}`)
+        ]);
         
-        $('#playerHistoryName').text(player?.name || 'Onbekend');
+        debug(`Player data: ${JSON.stringify(playerData)}`);
+        debug(`Fines data: ${JSON.stringify(finesData)}`);
+        
+        $('#playerHistoryName').text(playerData?.name || 'Onbekend');
         
         // Calculate total with proper error handling
-        const total = Array.isArray(data) ? data.reduce((sum, fine) => {
+        const total = Array.isArray(finesData) ? finesData.reduce((sum, fine) => {
             const amount = parseFloat(fine.amount);
             return sum + (isNaN(amount) ? 0 : amount);
         }, 0) : 0;
         
         $('#playerHistoryTotal').text(formatCurrency(total));
         
-        if (!data || data.length === 0) {
+        if (!finesData || finesData.length === 0) {
             $('#playerHistoryFines').html('<div class="text-center py-4 text-gray-500 dark:text-gray-400">Geen boetes gevonden voor deze speler</div>');
         } else {
-            const finesHtml = data.map(fine => createPlayerHistoryCard(fine)).join('');
+            const finesHtml = finesData.map(fine => createPlayerHistoryCard(fine)).join('');
             $('#playerHistoryFines').html(finesHtml);
         }
         
         $('#playerHistoryEmpty').addClass('hidden');
         $('#playerHistoryContent').removeClass('hidden');
         
-        debug(`Loaded ${data ? data.length : 0} fines for player ${player?.name || 'unknown'}`);
+        debug(`Loaded ${finesData ? finesData.length : 0} fines for player ${playerData?.name || 'unknown'}`);
     } catch (error) {
         debug(`Error loading player history: ${error.message}`);
         $('#playerHistoryContent').addClass('hidden');
