@@ -30,6 +30,14 @@ $('#theme-toggle').click(() => {
 
 // Tab functionality
 function switchTab(tabId) {
+    console.log(`[DEBUG] Switching to tab: ${tabId}`);
+    
+    // Validate tab ID
+    if (tabId !== 'boetes' && tabId !== 'beheer') {
+        console.error(`[DEBUG] Invalid tab ID: ${tabId}, defaulting to 'boetes'`);
+        tabId = 'boetes';
+    }
+    
     // Store active tab in localStorage
     localStorage.setItem('activeAdminTab', tabId);
     
@@ -41,8 +49,13 @@ function switchTab(tabId) {
     $(`#tab-${tabId}`).addClass('tab-active');
     $(`#content-${tabId}`).removeClass('hidden');
     
+    console.log(`[DEBUG] Tab visibility: boetes=${$('#content-boetes').is(':visible')}, beheer=${$('#content-beheer').is(':visible')}`);
+    
     // Re-initialize Select2 after tab switch to fix any display issues
-    setTimeout(initializeSelect2, 50);
+    setTimeout(() => {
+        console.log(`[DEBUG] Reinitializing Select2 after tab switch to ${tabId}`);
+        initializeSelect2();
+    }, 50);
 }
 
 // Format currency
@@ -96,16 +109,44 @@ function showToast(message, type = 'success') {
 
 // Create a card for a fine
 function createFineCard(fine) {
-    return `
-        <div class="bg-gray-50 dark:bg-gray-900 rounded-xl p-4 space-y-3">
-            <div class="flex items-center justify-between">
-                <div class="font-semibold">${fine.player_name || 'Onbekend'}</div>
-                <div class="text-lg font-bold text-blue-600 dark:text-blue-500">${formatCurrency(fine.amount)}</div>
+    if (!fine) {
+        console.error('[DEBUG] createFineCard called with null or undefined fine');
+        return '';
+    }
+    
+    console.log('[DEBUG] Creating fine card for:', fine);
+    
+    try {
+        const formattedAmount = formatCurrency(fine.amount);
+        const playerName = fine.player_name || 'Onbekend';
+        const reasonDesc = fine.reason_description || 'Onbekend';
+        const formattedDate = formatDate(fine.date);
+        
+        console.log('[DEBUG] Fine card values:', {
+            player: playerName,
+            reason: reasonDesc,
+            amount: formattedAmount,
+            date: formattedDate
+        });
+        
+        return `
+            <div class="bg-gray-50 dark:bg-gray-900 rounded-xl p-4 space-y-3">
+                <div class="flex items-center justify-between">
+                    <div class="font-semibold">${playerName}</div>
+                    <div class="text-lg font-bold text-blue-600 dark:text-blue-500">${formattedAmount}</div>
+                </div>
+                <div class="text-gray-600 dark:text-gray-400">${reasonDesc}</div>
+                <div class="text-sm text-gray-500 dark:text-gray-500">${formattedDate}</div>
             </div>
-            <div class="text-gray-600 dark:text-gray-400">${fine.reason_description || 'Onbekend'}</div>
-            <div class="text-sm text-gray-500 dark:text-gray-500">${formatDate(fine.date)}</div>
-        </div>
-    `;
+        `;
+    } catch (error) {
+        console.error('[DEBUG] Error in createFineCard:', error, 'for fine:', fine);
+        return `
+            <div class="bg-red-50 dark:bg-red-900/20 rounded-xl p-4 text-red-600 dark:text-red-400">
+                Er is een fout opgetreden bij het weergeven van deze boete
+            </div>
+        `;
+    }
 }
 
 // Initialize Select2
@@ -182,14 +223,20 @@ function updateSelect2Theme(isDark) {
 // API Functions
 async function fetchAPI(endpoint, options = {}) {
     try {
+        // Show loading indicator
         toggleLoading(true);
         
         // Make sure endpoint starts with a slash for consistency
         const path = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
         
+        // Log the API request
         console.log(`[API] Fetching ${API_BASE_URL}${path}...`);
         
-        const response = await fetch(`${API_BASE_URL}${path}`, {
+        // Make the API request
+        const url = `${API_BASE_URL}${path}`;
+        console.log(`[DEBUG] Full request URL: ${url}`);
+        
+        const response = await fetch(url, {
             ...options,
             headers: {
                 'Content-Type': 'application/json',
@@ -197,6 +244,9 @@ async function fetchAPI(endpoint, options = {}) {
             }
         });
         
+        console.log(`[DEBUG] Response status:`, response.status);
+        
+        // Process the response data
         let data;
         const contentType = response.headers.get('content-type');
         
@@ -207,18 +257,22 @@ async function fetchAPI(endpoint, options = {}) {
             console.warn(`[API] Non-JSON response: ${data.substring(0, 100)}...`);
         }
         
+        // Handle error responses
         if (!response.ok) {
             console.error(`[API] Error response:`, data);
             throw new Error(typeof data === 'object' && data.error ? data.error : `HTTP error! status: ${response.status}`);
         }
         
-        console.log(`[API] Response from ${endpoint}:`, data);
+        // Log success
+        console.log(`[API] Response from ${path}:`, data);
         return data;
     } catch (error) {
         console.error(`[API] Error fetching ${endpoint}:`, error);
+        console.error(`[DEBUG] Error details:`, { message: error.message, stack: error.stack });
         showToast(error.message || 'Er is een fout opgetreden bij het verwerken van het verzoek', 'error');
         throw error;
     } finally {
+        // Hide loading indicator
         toggleLoading(false);
     }
 }
@@ -234,11 +288,16 @@ async function loadData() {
         const players = await fetchAPI('/players');
         console.log('[DEBUG] Players loaded:', players);
         
+        // Update player select dropdown
+        console.log('[DEBUG] Updating player select dropdown...');
         $('#playerSelect').empty().append('<option value="">Selecteer een speler</option>');
         if (Array.isArray(players)) {
             players.forEach(player => {
                 $('#playerSelect').append(`<option value="${player.id}">${player.name}</option>`);
             });
+            console.log('[DEBUG] Added', players.length, 'players to dropdown');
+        } else {
+            console.error('[DEBUG] Expected players to be an array but got:', typeof players);
         }
         
         // Load reasons
@@ -246,11 +305,16 @@ async function loadData() {
         const reasons = await fetchAPI('/reasons');
         console.log('[DEBUG] Reasons loaded:', reasons);
         
+        // Update reason select dropdown
+        console.log('[DEBUG] Updating reason select dropdown...');
         $('#reasonSelect').empty().append('<option value="">Selecteer een reden</option>');
         if (Array.isArray(reasons)) {
             reasons.forEach(reason => {
                 $('#reasonSelect').append(`<option value="${reason.id}">${reason.description}</option>`);
             });
+            console.log('[DEBUG] Added', reasons.length, 'reasons to dropdown');
+        } else {
+            console.error('[DEBUG] Expected reasons to be an array but got:', typeof reasons);
         }
         
         // Load recent fines
@@ -259,24 +323,35 @@ async function loadData() {
         console.log('[DEBUG] Recent fines loaded:', fines);
         
         // Update recent fines display
-        $('#recentFines').html(
-            fines.length ? 
+        console.log('[DEBUG] Updating recent fines display...');
+        const finesContent = fines.length ? 
             fines.map(fine => createFineCard(fine)).join('') :
-            '<div class="text-center py-4 text-gray-500">Geen recente boetes</div>'
-        );
+            '<div class="text-center py-4 text-gray-500">Geen recente boetes</div>';
+        
+        console.log('[DEBUG] Fines content generated:', fines.length ? `${fines.length} fine cards` : 'Empty state message');
+        $('#recentFines').html(finesContent);
+        console.log('[DEBUG] Recent fines display updated');
         
         // Update fine select for deletion
+        console.log('[DEBUG] Updating fine select dropdown...');
         $('#fineSelect').empty().append('<option value="">Selecteer een boete</option>');
         if (Array.isArray(fines)) {
             fines.forEach(fine => {
-                const label = `${fine.player_name} - ${fine.reason_description} - ${formatCurrency(fine.amount)}`;
+                const label = `${fine.player_name || 'Onbekend'} - ${fine.reason_description || 'Onbekend'} - ${formatCurrency(fine.amount)}`;
                 $('#fineSelect').append(`<option value="${fine.id}">${label}</option>`);
             });
+            console.log('[DEBUG] Added', fines.length, 'fines to deletion dropdown');
+        } else {
+            console.error('[DEBUG] Expected fines to be an array but got:', typeof fines);
         }
         
         // Initialize Select2
         console.log('[DEBUG] Initializing Select2...');
-        initializeSelect2();
+        setTimeout(() => {
+            initializeSelect2();
+            console.log('[DEBUG] Select2 initialization complete');
+        }, 100);
+        
         console.log('[DEBUG] loadData() completed successfully');
         
     } catch (error) {
@@ -430,19 +505,49 @@ $('#resetButton').on('click', async function() {
 
 // Initialize
 $(document).ready(function() {
+    console.log('[DEBUG] Document ready event fired');
+    
+    // Check if all required elements exist
+    const requiredElements = [
+        '#tab-boetes', 
+        '#tab-beheer', 
+        '#content-boetes', 
+        '#content-beheer',
+        '#playerSelect',
+        '#reasonSelect',
+        '#recentFines',
+        '#fineSelect'
+    ];
+    
+    const missingElements = requiredElements.filter(selector => $(selector).length === 0);
+    
+    if (missingElements.length > 0) {
+        console.error('[DEBUG] Missing DOM elements:', missingElements);
+        showToast('Er is een fout opgetreden bij het laden van de pagina', 'error');
+        return;
+    }
+    
+    console.log('[DEBUG] All required DOM elements found');
+    
     // Set up tab switching
     $('#tab-boetes').on('click', function() {
+        console.log('[DEBUG] Switching to boetes tab');
         switchTab('boetes');
     });
     
     $('#tab-beheer').on('click', function() {
+        console.log('[DEBUG] Switching to beheer tab');
         switchTab('beheer');
     });
     
     // Load active tab from localStorage or default to 'boetes'
     const activeTab = localStorage.getItem('activeAdminTab') || 'boetes';
+    console.log('[DEBUG] Initial active tab:', activeTab);
     switchTab(activeTab);
     
-    // Load data
-    loadData();
+    // Wait a short time to ensure DOM is fully ready before loading data
+    setTimeout(() => {
+        console.log('[DEBUG] Starting initial data load');
+        loadData();
+    }, 300);
 }); 
