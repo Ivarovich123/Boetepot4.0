@@ -41,21 +41,47 @@ function switchTab(tabId) {
     // Store active tab in localStorage
     localStorage.setItem('activeAdminTab', tabId);
     
-    // Remove active class from all tabs and hide all content
+    // Check current visibility before change
+    console.log(`[DEBUG] Before tab switch: boetes=${$('#content-boetes').is(':visible')}, beheer=${$('#content-beheer').is(':visible')}`);
+    
+    // Set display directly with CSS instead of using addClass/removeClass for hidden
+    if (tabId === 'boetes') {
+        $('#content-boetes').css('display', 'block');
+        $('#content-beheer').css('display', 'none');
+    } else {
+        $('#content-boetes').css('display', 'none');
+        $('#content-beheer').css('display', 'block');
+    }
+    
+    // Update tab styling
     $('#tab-boetes, #tab-beheer').removeClass('tab-active');
-    $('#content-boetes, #content-beheer').addClass('hidden');
-    
-    // Add active class to selected tab and show content
     $(`#tab-${tabId}`).addClass('tab-active');
-    $(`#content-${tabId}`).removeClass('hidden');
     
-    console.log(`[DEBUG] Tab visibility: boetes=${$('#content-boetes').is(':visible')}, beheer=${$('#content-beheer').is(':visible')}`);
+    // Check visibility after change
+    console.log(`[DEBUG] After tab switch: boetes=${$('#content-boetes').is(':visible')}, beheer=${$('#content-beheer').is(':visible')}`);
+    console.log(`[DEBUG] Element CSS - boetes: ${$('#content-boetes').css('display')}, beheer: ${$('#content-beheer').css('display')}`);
     
-    // Re-initialize Select2 after tab switch to fix any display issues
+    // Force DOM update
     setTimeout(() => {
+        console.log(`[DEBUG] Forcing reflow...`);
+        $('#content-boetes, #content-beheer').each(function() {
+            // Force a reflow
+            void this.offsetHeight;
+        });
+        
+        // Re-initialize Select2 after tab switch
         console.log(`[DEBUG] Reinitializing Select2 after tab switch to ${tabId}`);
         initializeSelect2();
-    }, 50);
+        
+        // Refresh display of visible elements
+        if (tabId === 'boetes') {
+            console.log(`[DEBUG] Refreshing fine displays`);
+            $('#playerSelect, #reasonSelect, #recentFines, #fineSelect').trigger('update');
+        } else {
+            console.log(`[DEBUG] Refreshing management displays`);
+            $('#playerName, #reasonDescription').trigger('update');
+        }
+    }, 100);
 }
 
 // Format currency
@@ -151,46 +177,64 @@ function createFineCard(fine) {
 
 // Initialize Select2
 function initializeSelect2() {
+    console.log('[DEBUG] Inside initializeSelect2 function');
+    
     // Clean up existing instances
+    console.log('[DEBUG] Removing existing Select2 containers...');
     $('.select2-container').remove();
     
-    // Initialize player select
-    $('#playerSelect').select2({
-        theme: 'classic',
-        placeholder: 'Selecteer een speler',
-        allowClear: true,
-        width: '100%',
-        dropdownParent: $('#playerSelect').parent()
-    });
-    
-    // Initialize reason select
-    $('#reasonSelect').select2({
-        theme: 'classic',
-        placeholder: 'Selecteer een reden',
-        allowClear: true,
-        width: '100%',
-        dropdownParent: $('#reasonSelect').parent(),
-        tags: true,
-        createTag: function(params) {
-            return {
-                id: params.term,
-                text: params.term,
-                newTag: true
-            };
-        }
-    });
-    
-    // Initialize fine select
-    $('#fineSelect').select2({
-        theme: 'classic',
-        placeholder: 'Selecteer een boete',
-        allowClear: true,
-        width: '100%',
-        dropdownParent: $('#fineSelect').parent()
-    });
-    
-    // Update theme
-    updateSelect2Theme(document.documentElement.classList.contains('dark'));
+    try {
+        // Initialize player select
+        console.log('[DEBUG] Initializing playerSelect...');
+        $('#playerSelect').select2({
+            theme: 'default',
+            placeholder: 'Selecteer een speler',
+            allowClear: true,
+            width: '100%',
+            dropdownParent: $('#playerSelect').parent()
+        });
+        console.log('[DEBUG] playerSelect initialized');
+        
+        // Initialize reason select
+        console.log('[DEBUG] Initializing reasonSelect...');
+        $('#reasonSelect').select2({
+            theme: 'default',
+            placeholder: 'Selecteer een reden',
+            allowClear: true,
+            width: '100%',
+            dropdownParent: $('#reasonSelect').parent(),
+            tags: true,
+            createTag: function(params) {
+                return {
+                    id: params.term,
+                    text: params.term,
+                    newTag: true
+                };
+            }
+        });
+        console.log('[DEBUG] reasonSelect initialized');
+        
+        // Initialize fine select
+        console.log('[DEBUG] Initializing fineSelect...');
+        $('#fineSelect').select2({
+            theme: 'default',
+            placeholder: 'Selecteer een boete',
+            allowClear: true,
+            width: '100%',
+            dropdownParent: $('#fineSelect').parent()
+        });
+        console.log('[DEBUG] fineSelect initialized');
+        
+        // Force display update
+        setTimeout(() => {
+            console.log('[DEBUG] Forcing display refresh...');
+            $('.select2').css('width', '100%').trigger('change');
+        }, 50);
+        
+        console.log('[DEBUG] Select2 initialization successful');
+    } catch (error) {
+        console.error('[DEBUG] Error in initializeSelect2:', error);
+    }
 }
 
 // Update Select2 theme
@@ -296,6 +340,7 @@ async function loadData() {
                 $('#playerSelect').append(`<option value="${player.id}">${player.name}</option>`);
             });
             console.log('[DEBUG] Added', players.length, 'players to dropdown');
+            console.log('[DEBUG] playerSelect HTML:', $('#playerSelect').html());
         } else {
             console.error('[DEBUG] Expected players to be an array but got:', typeof players);
         }
@@ -313,6 +358,7 @@ async function loadData() {
                 $('#reasonSelect').append(`<option value="${reason.id}">${reason.description}</option>`);
             });
             console.log('[DEBUG] Added', reasons.length, 'reasons to dropdown');
+            console.log('[DEBUG] reasonSelect HTML:', $('#reasonSelect').html());
         } else {
             console.error('[DEBUG] Expected reasons to be an array but got:', typeof reasons);
         }
@@ -331,6 +377,7 @@ async function loadData() {
         console.log('[DEBUG] Fines content generated:', fines.length ? `${fines.length} fine cards` : 'Empty state message');
         $('#recentFines').html(finesContent);
         console.log('[DEBUG] Recent fines display updated');
+        console.log('[DEBUG] recentFines HTML:', $('#recentFines').html());
         
         // Update fine select for deletion
         console.log('[DEBUG] Updating fine select dropdown...');
@@ -341,15 +388,29 @@ async function loadData() {
                 $('#fineSelect').append(`<option value="${fine.id}">${label}</option>`);
             });
             console.log('[DEBUG] Added', fines.length, 'fines to deletion dropdown');
+            console.log('[DEBUG] fineSelect HTML:', $('#fineSelect').html());
         } else {
             console.error('[DEBUG] Expected fines to be an array but got:', typeof fines);
         }
+        
+        // Check DOM visibility
+        console.log('[DEBUG] DOM visibility checks:');
+        console.log('- Player form visible:', $('#playerSelect').is(':visible'));
+        console.log('- Reason form visible:', $('#reasonSelect').is(':visible'));
+        console.log('- Recent fines visible:', $('#recentFines').is(':visible'));
+        console.log('- Fine select visible:', $('#fineSelect').is(':visible'));
+        console.log('- Content boetes visible:', $('#content-boetes').is(':visible'));
+        console.log('- Content beheer visible:', $('#content-beheer').is(':visible'));
         
         // Initialize Select2
         console.log('[DEBUG] Initializing Select2...');
         setTimeout(() => {
             initializeSelect2();
             console.log('[DEBUG] Select2 initialization complete');
+            
+            // Check Select2 existence and visibility
+            console.log('[DEBUG] Select2 container count:', $('.select2-container').length);
+            console.log('[DEBUG] Select2 visibility:', $('.select2-container').is(':visible'));
         }, 100);
         
         console.log('[DEBUG] loadData() completed successfully');
