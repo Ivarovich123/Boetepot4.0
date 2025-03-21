@@ -3,39 +3,57 @@ const API_BASE_URL = '/api';
 
 // Theme Toggle
 function toggleTheme() {
-  const currentTheme = document.body.getAttribute('data-theme');
-  const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-  document.body.setAttribute('data-theme', newTheme);
-  localStorage.setItem('theme', newTheme);
-  document.getElementById('theme-icon').className = newTheme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+  const body = document.body;
+  const themeIcon = document.getElementById('theme-icon');
+  
+  if (body.classList.contains('dark')) {
+    body.classList.remove('dark');
+    localStorage.setItem('theme', 'light');
+    if (themeIcon) themeIcon.className = 'fas fa-moon';
+  } else {
+    body.classList.add('dark');
+    localStorage.setItem('theme', 'dark');
+    if (themeIcon) themeIcon.className = 'fas fa-sun';
+  }
 }
 
 // Init theme from local storage
 function initTheme() {
   const theme = localStorage.getItem('theme') || 'light';
-  document.body.setAttribute('data-theme', theme);
+  document.body.classList.toggle('dark', theme === 'dark');
   document.getElementById('theme-icon').className = theme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
 }
 
 // Utility Functions
-function showLoading() {
-  document.getElementById('loadingSpinner').style.display = 'flex';
+function toggleLoading(show) {
+  const spinner = document.getElementById('loadingSpinner');
+  if (spinner) {
+    spinner.style.display = show ? 'flex' : 'none';
+  }
 }
 
-function hideLoading() {
-  document.getElementById('loadingSpinner').style.display = 'none';
-}
-
-function showToast(message, type = 'success') {
+function showToast(message, isError = false) {
   const toast = document.getElementById('toast');
-  toast.textContent = message;
-  toast.className = `toast-message show ${type}`;
-  setTimeout(() => toast.className = 'toast-message', 3000);
+  if (toast) {
+    toast.textContent = message;
+    toast.style.backgroundColor = isError ? 'var(--error-color)' : 'var(--success-color)';
+    toast.style.display = 'block';
+    setTimeout(() => toast.style.display = 'none', 3000);
+  }
 }
 
-function formatDate(date) {
-  const options = { day: 'numeric', month: 'long', year: 'numeric' };
-  return new Date(date).toLocaleDateString('nl-NL', options);
+function formatDate(dateString) {
+  if (!dateString) return 'Onbekend';
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return 'Ongeldige datum';
+    
+    const months = ['Januari', 'Februari', 'Maart', 'April', 'Mei', 'Juni', 'Juli', 'Augustus', 'September', 'Oktober', 'November', 'December'];
+    return `${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`;
+  } catch (error) {
+    console.error('Error formatting date:', error);
+    return 'Ongeldige datum';
+  }
 }
 
 function formatCurrency(amount) {
@@ -45,21 +63,32 @@ function formatCurrency(amount) {
 // API Functions
 async function fetchAPI(endpoint, options = {}) {
   try {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    console.log(`[API] Fetching ${endpoint}...`);
+    const response = await fetch(endpoint, {
       ...options,
       headers: {
         'Content-Type': 'application/json',
         ...options.headers
       }
     });
+    
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
-    const data = await response.json();
-    return data;
+
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.includes('application/json')) {
+      const data = await response.json();
+      console.log(`[API] Response from ${endpoint}:`, data);
+      return data;
+    } else {
+      const text = await response.text();
+      console.error(`[API] Non-JSON response: ${text}`);
+      throw new Error('Unexpected response format from server');
+    }
   } catch (error) {
-    console.error('API Error:', error);
-    showToast(error.message, 'error');
+    console.error(`[API] Error:`, error);
+    showToast(error.message, true);
     throw error;
   }
 }
@@ -67,111 +96,162 @@ async function fetchAPI(endpoint, options = {}) {
 // Data Loading Functions
 async function loadPlayers() {
   try {
-    const players = await fetchAPI('/players');
+    const players = await fetchAPI('/api/players');
     const select = $('#finePlayer');
     select.empty().append('<option value="">Selecteer speler</option>');
-    players.forEach(player => {
-      select.append(new Option(player.name, player.id));
+    
+    if (Array.isArray(players)) {
+      players.forEach(player => {
+        select.append(new Option(player.name, player.id));
+      });
+    }
+    
+    // Initialize or refresh Select2
+    select.select2({
+      theme: 'classic',
+      placeholder: 'Selecteer speler',
+      allowClear: true,
+      width: '100%'
     });
   } catch (error) {
     console.error('Error loading players:', error);
-    showToast('Fout bij laden spelers', 'error');
+    showToast('Fout bij laden spelers', true);
   }
 }
 
 async function loadReasons() {
   try {
-    const reasons = await fetchAPI('/reasons');
+    const reasons = await fetchAPI('/api/reasons');
     const select = $('#fineReason');
     select.empty().append('<option value="">Selecteer reden</option>');
-    reasons.forEach(reason => {
-      select.append(new Option(reason.description, reason.id));
+    
+    if (Array.isArray(reasons)) {
+      reasons.forEach(reason => {
+        select.append(new Option(reason.description, reason.id));
+      });
+    }
+    
+    // Initialize or refresh Select2
+    select.select2({
+      theme: 'classic',
+      placeholder: 'Selecteer reden',
+      allowClear: true,
+      width: '100%'
     });
   } catch (error) {
     console.error('Error loading reasons:', error);
-    showToast('Fout bij laden redenen', 'error');
+    showToast('Fout bij laden redenen', true);
   }
 }
 
 async function loadRecentFines() {
   try {
-    const fines = await fetchAPI('/recent-fines');
+    const fines = await fetchAPI('/api/recent-fines');
     const tbody = document.getElementById('recentFines');
-    tbody.innerHTML = fines.length ? fines.map(fine => `
+    
+    if (!tbody) return;
+    
+    if (!Array.isArray(fines) || fines.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="4" class="text-center">Geen recente boetes gevonden</td></tr>';
+      return;
+    }
+    
+    tbody.innerHTML = fines.map(fine => `
       <tr>
-        <td>${fine.player_name}</td>
-        <td>${fine.reason_description}</td>
-        <td>${formatCurrency(fine.amount)}</td>
+        <td>${fine.player_name || 'Onbekend'}</td>
+        <td>${fine.reason_description || 'Onbekend'}</td>
+        <td>${formatCurrency(fine.amount || 0)}</td>
         <td>${formatDate(fine.created_at)}</td>
       </tr>
-    `).join('') : '<tr><td colspan="4" class="text-center">Geen recente boetes</td></tr>';
+    `).join('');
   } catch (error) {
     console.error('Error loading recent fines:', error);
-    showToast('Fout bij laden recente boetes', 'error');
+    showToast('Fout bij laden recente boetes', true);
   }
 }
 
 // Form Handlers
 async function handleAddPlayer(event) {
   event.preventDefault();
-  showLoading();
+  
+  const nameInput = document.getElementById('playerName');
+  if (!nameInput) return;
+  
+  const name = nameInput.value.trim();
+  if (!name) {
+    showToast('Vul een naam in', true);
+    return;
+  }
+  
   try {
-    const name = document.getElementById('playerName').value.trim();
-    if (!name) {
-      showToast('Vul een naam in', 'error');
-      return;
-    }
-    await fetchAPI('/players', {
+    toggleLoading(true);
+    await fetchAPI('/api/players', {
       method: 'POST',
       body: JSON.stringify({ name })
     });
-    showToast('Speler succesvol toegevoegd');
-    event.target.reset();
+    
+    showToast('Speler toegevoegd');
+    nameInput.value = '';
     await loadPlayers();
   } catch (error) {
-    showToast('Fout bij toevoegen speler', 'error');
+    console.error('Error adding player:', error);
+    showToast('Fout bij toevoegen speler', true);
   } finally {
-    hideLoading();
+    toggleLoading(false);
   }
 }
 
 async function handleAddReason(event) {
   event.preventDefault();
-  showLoading();
+  
+  const descriptionInput = document.getElementById('reasonDescription');
+  if (!descriptionInput) return;
+  
+  const description = descriptionInput.value.trim();
+  if (!description) {
+    showToast('Vul een omschrijving in', true);
+    return;
+  }
+  
   try {
-    const description = document.getElementById('reasonDescription').value.trim();
-    if (!description) {
-      showToast('Vul een omschrijving in', 'error');
-      return;
-    }
-    await fetchAPI('/reasons', {
+    toggleLoading(true);
+    await fetchAPI('/api/reasons', {
       method: 'POST',
       body: JSON.stringify({ description })
     });
-    showToast('Reden succesvol toegevoegd');
-    event.target.reset();
+    
+    showToast('Reden toegevoegd');
+    descriptionInput.value = '';
     await loadReasons();
   } catch (error) {
-    showToast('Fout bij toevoegen reden', 'error');
+    console.error('Error adding reason:', error);
+    showToast('Fout bij toevoegen reden', true);
   } finally {
-    hideLoading();
+    toggleLoading(false);
   }
 }
 
 async function handleAddFine(event) {
   event.preventDefault();
-  showLoading();
+  
+  const playerSelect = document.getElementById('finePlayer');
+  const reasonSelect = document.getElementById('fineReason');
+  const amountInput = document.getElementById('fineAmount');
+  
+  if (!playerSelect || !reasonSelect || !amountInput) return;
+  
+  const player_id = parseInt(playerSelect.value);
+  const reason_id = parseInt(reasonSelect.value);
+  const amount = parseFloat(amountInput.value);
+  
+  if (!player_id || !reason_id || isNaN(amount) || amount <= 0) {
+    showToast('Vul alle velden correct in', true);
+    return;
+  }
+  
   try {
-    const player_id = parseInt(document.getElementById('finePlayer').value);
-    const reason_id = parseInt(document.getElementById('fineReason').value);
-    const amount = parseFloat(document.getElementById('fineAmount').value);
-
-    if (!player_id || !reason_id || isNaN(amount) || amount <= 0) {
-      showToast('Vul alle velden correct in', 'error');
-      return;
-    }
-
-    await fetchAPI('/fines', {
+    toggleLoading(true);
+    await fetchAPI('/api/fines', {
       method: 'POST',
       body: JSON.stringify({
         player_id,
@@ -179,15 +259,18 @@ async function handleAddFine(event) {
         amount: parseFloat(amount.toFixed(2))
       })
     });
-    showToast('Boete succesvol toegevoegd');
-    event.target.reset();
-    $('#finePlayer').val(null).trigger('change');
-    $('#fineReason').val(null).trigger('change');
+    
+    showToast('Boete toegevoegd');
+    amountInput.value = '';
+    $(playerSelect).val(null).trigger('change');
+    $(reasonSelect).val(null).trigger('change');
+    
     await loadRecentFines();
   } catch (error) {
-    showToast('Fout bij toevoegen boete', 'error');
+    console.error('Error adding fine:', error);
+    showToast('Fout bij toevoegen boete', true);
   } finally {
-    hideLoading();
+    toggleLoading(false);
   }
 }
 
@@ -195,53 +278,62 @@ async function handleReset() {
   if (!confirm('Weet je zeker dat je alle gegevens wilt resetten? Dit kan niet ongedaan worden gemaakt!')) {
     return;
   }
-  showLoading();
+  
   try {
-    await fetchAPI('/reset', { method: 'POST' });
+    toggleLoading(true);
+    await fetchAPI('/api/reset', { method: 'POST' });
     showToast('Alle gegevens zijn gereset');
-    await Promise.all([loadPlayers(), loadReasons(), loadRecentFines()]);
-  } catch (error) {
-    showToast('Fout bij resetten gegevens', 'error');
-  } finally {
-    hideLoading();
-  }
-}
-
-// Initialize app
-document.addEventListener('DOMContentLoaded', async () => {
-  try {
-    // Initialize theme
-    initTheme();
     
-    // Initialize Select2 with custom styling
-    $('#finePlayer, #fineReason').select2({
-      theme: 'default',
-      placeholder: 'Selecteer...',
-      allowClear: true,
-      width: '100%',
-      dropdownParent: $('body'),
-      templateResult: (data) => {
-        if (!data.id) return data.text;
-        return $(`<span><i class="fas ${data.element.closest('select').id === 'finePlayer' ? 'fa-user' : 'fa-tag'} me-2"></i>${data.text}</span>`);
-      }
-    });
-
-    // Load initial data
+    // Reload all data
     await Promise.all([
       loadPlayers(),
       loadReasons(),
       loadRecentFines()
     ]);
-
-    // Add event listeners
-    document.getElementById('addPlayerForm').addEventListener('submit', handleAddPlayer);
-    document.getElementById('addReasonForm').addEventListener('submit', handleAddReason);
-    document.getElementById('addFineForm').addEventListener('submit', handleAddFine);
-    document.getElementById('resetButton').addEventListener('click', handleReset);
-
-    hideLoading();
   } catch (error) {
-    console.error('Initialization error:', error);
-    showToast('Fout bij initialiseren', 'error');
+    console.error('Error resetting data:', error);
+    showToast('Fout bij resetten gegevens', true);
+  } finally {
+    toggleLoading(false);
+  }
+}
+
+// Initialize app
+document.addEventListener('DOMContentLoaded', () => {
+  try {
+    // Initialize theme
+    initTheme();
+    
+    // Load data
+    loadPlayers();
+    loadReasons();
+    loadRecentFines();
+    
+    // Set up form handlers
+    const addPlayerForm = document.getElementById('addPlayerForm');
+    const addReasonForm = document.getElementById('addReasonForm');
+    const addFineForm = document.getElementById('addFineForm');
+    const resetButton = document.getElementById('resetButton');
+    
+    if (addPlayerForm) {
+      addPlayerForm.addEventListener('submit', handleAddPlayer);
+    }
+    
+    if (addReasonForm) {
+      addReasonForm.addEventListener('submit', handleAddReason);
+    }
+    
+    if (addFineForm) {
+      addFineForm.addEventListener('submit', handleAddFine);
+    }
+    
+    if (resetButton) {
+      resetButton.addEventListener('click', handleReset);
+    }
+    
+    console.log('Admin initialized');
+  } catch (error) {
+    console.error('Error initializing admin:', error);
+    showToast('Fout bij initialiseren', true);
   }
 }); 

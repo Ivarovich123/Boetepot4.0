@@ -10,13 +10,29 @@ function toggleLoading(show) {
 }
 
 function showToast(message, isError = false) {
-  const toast = document.getElementById('toast');
-  if (toast) {
-    toast.textContent = message;
-    toast.style.backgroundColor = isError ? 'var(--error-color)' : 'var(--success-color)';
-    toast.style.display = 'block';
-    setTimeout(() => toast.style.display = 'none', 3000);
+  const toastContainer = document.querySelector('.toast-container');
+  if (!toastContainer) {
+    console.error('Toast container not found');
+    return;
   }
+
+  const toast = document.createElement('div');
+  toast.className = `toast ${isError ? 'error' : 'success'}`;
+  toast.textContent = message;
+  
+  toastContainer.appendChild(toast);
+  
+  // Trigger reflow to enable animation
+  toast.offsetHeight;
+  
+  // Show toast
+  toast.classList.add('show');
+  
+  // Remove toast after animation
+  setTimeout(() => {
+    toast.classList.remove('show');
+    setTimeout(() => toast.remove(), 300);
+  }, 3000);
 }
 
 function formatDate(dateString) {
@@ -25,8 +41,12 @@ function formatDate(dateString) {
     const date = new Date(dateString);
     if (isNaN(date.getTime())) return 'Ongeldige datum';
     
-    const months = ['Januari', 'Februari', 'Maart', 'April', 'Mei', 'Juni', 'Juli', 'Augustus', 'September', 'Oktober', 'November', 'December'];
-    return `${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`;
+    const months = ['januari', 'februari', 'maart', 'april', 'mei', 'juni', 'juli', 'augustus', 'september', 'oktober', 'november', 'december'];
+    const day = date.getDate();
+    const month = months[date.getMonth()];
+    const year = date.getFullYear();
+    
+    return `${day} ${month} ${year}`;
   } catch (error) {
     console.error('Error formatting date:', error);
     return 'Ongeldige datum';
@@ -34,39 +54,40 @@ function formatDate(dateString) {
 }
 
 function formatCurrency(amount) {
-  if (isNaN(amount)) {
+  if (typeof amount !== 'number' || isNaN(amount)) {
+    console.warn('Invalid amount:', amount);
     return '€0,00';
   }
-  return `€${parseFloat(amount).toFixed(2).replace('.', ',')}`;
+  return new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(amount);
 }
 
-// Theme Toggle
+// Theme handling
+function initTheme() {
+  const theme = localStorage.getItem('theme') || 'light';
+  document.body.classList.toggle('dark', theme === 'dark');
+  document.getElementById('theme-icon').className = theme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+}
+
 function toggleTheme() {
   const body = document.body;
   const themeIcon = document.getElementById('theme-icon');
+  const isDark = body.classList.contains('dark');
   
-  if (body.classList.contains('dark')) {
-    body.classList.remove('dark');
-    localStorage.setItem('theme', 'light');
-    if (themeIcon) themeIcon.className = 'fas fa-moon';
-  } else {
-    body.classList.add('dark');
-    localStorage.setItem('theme', 'dark');
-    if (themeIcon) themeIcon.className = 'fas fa-sun';
-  }
-}
-
-// Init theme from local storage
-function initTheme() {
-  const savedTheme = localStorage.getItem('theme');
-  const themeIcon = document.getElementById('theme-icon');
+  // Update theme
+  body.classList.toggle('dark', !isDark);
+  localStorage.setItem('theme', isDark ? 'light' : 'dark');
   
-  if (savedTheme === 'dark') {
-    document.body.classList.add('dark');
-    if (themeIcon) themeIcon.className = 'fas fa-sun';
-  } else {
-    if (themeIcon) themeIcon.className = 'fas fa-moon';
+  // Update icon with animation
+  if (themeIcon) {
+    themeIcon.style.transform = 'scale(0)';
+    setTimeout(() => {
+      themeIcon.className = isDark ? 'fas fa-moon' : 'fas fa-sun';
+      themeIcon.style.transform = 'scale(1)';
+    }, 150);
   }
+  
+  // Dispatch event for other components
+  window.dispatchEvent(new CustomEvent('themechange', { detail: { theme: isDark ? 'light' : 'dark' } }));
 }
 
 // API Functions
@@ -106,25 +127,6 @@ async function fetchAPI(endpoint, options = {}) {
   }
 }
 
-// UI Functions
-function animateCounter(element, start, end, duration) {
-  if (!element) return;
-  
-  const startTimestamp = performance.now();
-  const updateCounter = (currentTimestamp) => {
-    const elapsed = currentTimestamp - startTimestamp;
-    const progress = Math.min(elapsed / duration, 1);
-    
-    const current = Math.floor(start + (end - start) * progress);
-    element.textContent = formatCurrency(current);
-    
-    if (progress < 1) {
-      requestAnimationFrame(updateCounter);
-    }
-  };
-  requestAnimationFrame(updateCounter);
-}
-
 async function loadTotalFines() {
   try {
     console.log('[Total] Loading total fines...');
@@ -139,28 +141,39 @@ async function loadTotalFines() {
     
     const total = parseFloat(data.total || 0);
     
-    // Simple animation for the counter
+    // Enhanced animation for the counter
     const duration = 2000;
-    const steps = 50;
+    const steps = 60;
     const stepTime = duration / steps;
-    const increment = total / steps;
-    let current = 0;
-    let step = 0;
+    let start = 0;
     
-    const interval = setInterval(() => {
-      step++;
-      if (step >= steps) {
-        clearInterval(interval);
-        current = total; // Ensure we end at the exact total
-      } else {
-        // Use easing function for smoother animation
-        const progress = step / steps;
-        const easedProgress = 1 - Math.pow(1 - progress, 3); // Cubic ease out
-        current = total * easedProgress;
-      }
+    // Use requestAnimationFrame for smoother animation
+    let lastTime = performance.now();
+    let currentStep = 0;
+    
+    const animate = (currentTime) => {
+      const deltaTime = currentTime - lastTime;
       
-      totalElement.textContent = formatCurrency(current);
-    }, stepTime);
+      if (deltaTime >= stepTime) {
+        currentStep++;
+        const progress = currentStep / steps;
+        const easedProgress = 1 - Math.pow(1 - progress, 3); // Cubic ease out
+        const current = total * easedProgress;
+        
+        totalElement.textContent = formatCurrency(current);
+        lastTime = currentTime;
+        
+        if (currentStep < steps) {
+          requestAnimationFrame(animate);
+        } else {
+          totalElement.textContent = formatCurrency(total); // Ensure final value is exact
+        }
+      } else {
+        requestAnimationFrame(animate);
+      }
+    };
+    
+    requestAnimationFrame(animate);
   } catch (error) {
     console.error('[Total] Error loading total:', error);
     showToast('Fout bij laden van totaal bedrag', true);
@@ -216,19 +229,20 @@ async function loadLeaderboard() {
     }
     
     if (!Array.isArray(totals) || totals.length === 0) {
-      leaderboardElement.innerHTML = '<tr><td colspan="2">Geen spelers gevonden</td></tr>';
+      leaderboardElement.innerHTML = '<tr><td colspan="3">Geen spelers gevonden</td></tr>';
       return;
     }
     
-    // Sort by total amount and take top 5
+    // Sort by total amount descending and take top 5
     const topPlayers = totals
-      .sort((a, b) => b.total_amount - a.total_amount)
+      .sort((a, b) => (b.total || 0) - (a.total || 0))
       .slice(0, 5);
     
-    const rows = topPlayers.map(player => `
+    const rows = topPlayers.map((player, index) => `
       <tr>
-        <td>${player.player_name || 'Onbekend'}</td>
-        <td>${formatCurrency(player.total_amount || 0)}</td>
+        <td>${index + 1}</td>
+        <td>${player.name || 'Onbekend'}</td>
+        <td>${formatCurrency(player.total || 0)}</td>
       </tr>
     `).join('');
     
@@ -259,7 +273,7 @@ async function loadPlayerHistory(playerId) {
     
     const rows = history.map(fine => `
       <tr>
-        <td>${formatDate(fine.date, true)}</td>
+        <td>${formatDate(fine.date)}</td>
         <td>${fine.reason_description || 'Onbekend'}</td>
         <td>${formatCurrency(fine.amount || 0)}</td>
       </tr>
@@ -277,70 +291,105 @@ async function loadPlayerHistory(playerId) {
   }
 }
 
-// Player search functionality
-async function initializePlayerSearch() {
+async function initializePlayerSelect() {
   try {
-    console.log('[Search] Initializing player search...');
+    console.log('[Players] Loading players for select...');
     const players = await fetchAPI('/players');
     
-    const playerSelect = document.getElementById('playerSelect');
-    if (!playerSelect) {
-      console.error('[Search] Player select not found');
+    const select = $('#playerSelect');
+    if (!select.length) {
+      console.error('[Players] Select element not found');
       return;
     }
     
-    // Initialize select2 for better search
-    $(playerSelect).select2({
-      placeholder: 'Zoek een speler...',
+    select.empty().append('<option value="">Selecteer speler</option>');
+    
+    if (Array.isArray(players)) {
+      players.forEach(player => {
+        select.append(new Option(player.name, player.id));
+      });
+    }
+    
+    // Initialize Select2
+    select.select2({
+      theme: 'classic',
+      placeholder: 'Selecteer speler',
       allowClear: true,
-      data: players.map(player => ({
-        id: player.id,
-        text: player.name
-      }))
+      width: '100%'
     }).on('change', function() {
       const playerId = $(this).val();
       if (playerId) {
         loadPlayerHistory(playerId);
+      } else {
+        const historyElement = document.getElementById('playerHistory');
+        if (historyElement) {
+          historyElement.innerHTML = '<tr><td colspan="3">Selecteer een speler</td></tr>';
+        }
       }
     });
   } catch (error) {
-    console.error('[Search] Error:', error);
-    showToast('Fout bij initialiseren speler zoeken', true);
+    console.error('[Players] Error:', error);
+    showToast('Fout bij laden spelers', true);
   }
 }
 
-// Initialize
+// Initialize app
 document.addEventListener('DOMContentLoaded', () => {
   try {
     // Initialize theme
     initTheme();
     
-    // Initialize Select2
-    if ($.fn.select2) {
-      $('#playerSelect').select2({
-        placeholder: 'Zoek een speler...',
+    // Initialize Select2 for player select
+    $('#playerSelect').select2({
+      theme: 'classic',
+      placeholder: 'Selecteer een speler',
+      allowClear: true,
+      width: '100%'
+    }).on('select2:open', function() {
+      document.querySelector('.select2-search__field').focus();
+    });
+    
+    // Load data
+    Promise.all([
+      loadTotalFines(),
+      loadRecentFines(),
+      loadLeaderboard()
+    ]).catch(error => {
+      console.error('Error loading initial data:', error);
+      showToast('Fout bij laden van gegevens', true);
+    });
+    
+    // Initialize AOS
+    AOS.init({
+      duration: 800,
+      once: true,
+      offset: 50,
+      easing: 'ease-in-out'
+    });
+    
+    // Theme change listener for Select2
+    window.addEventListener('themechange', () => {
+      // Destroy and reinitialize Select2 to update theme
+      const select = $('#playerSelect');
+      const value = select.val();
+      select.select2('destroy').select2({
+        theme: 'classic',
+        placeholder: 'Selecteer een speler',
         allowClear: true,
         width: '100%'
       });
-    } else {
-      console.warn('Select2 not loaded');
-    }
+      select.val(value).trigger('change');
+    });
     
-    // Set up player select event listener
-    const playerSelect = document.getElementById('playerSelect');
-    if (playerSelect) {
-      playerSelect.addEventListener('change', loadPlayerHistory);
+    // Set up theme toggle
+    const themeButton = document.getElementById('theme-toggle');
+    if (themeButton) {
+      themeButton.addEventListener('click', toggleTheme);
     }
-    
-    // Load all data
-    loadTotalFines();
-    loadRecentFines();
-    loadLeaderboard();
-    initializePlayerSearch();
     
     console.log('App initialized');
   } catch (error) {
     console.error('Error initializing app:', error);
-    showToast('Er is een fout opgetreden bij het initialiseren van de app', true);
+    showToast('Fout bij initialiseren', true);
   }
 }); 
