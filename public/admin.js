@@ -318,78 +318,150 @@ function updateSelect2Theme(isDark) {
     });
 }
 
-// Simple API fetch with direct URL
+// API Functions
 async function fetchAPI(endpoint, options = {}) {
+    debug(`Fetching API: ${endpoint}`);
+    toggleLoading(true);
+    
     try {
-        debug(`Fetching API: ${endpoint}`);
-        toggleLoading(true);
-        
         // Ensure endpoint starts with slash
         const path = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
-        const url = `${API_BASE_URL}${path}`;
         
-        debug(`Full URL: ${url}`);
+        // Try different URL formats
+        const urls = [
+            `/api${path}`,
+            `${window.location.origin}/api${path}`,
+            `https://boetepot.cloud/api${path}`,
+            `https://www.boetepot.cloud/api${path}`
+        ];
         
-        // Add default headers
-        const fetchOptions = {
-            ...options,
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-                ...options.headers
+        debug(`Trying URLs: ${urls.join(', ')}`);
+        
+        let lastError = null;
+        
+        // Try each URL until one works
+        for (const url of urls) {
+            try {
+                debug(`Trying URL: ${url}`);
+                
+                const response = await fetch(url, {
+                    ...options,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        ...options.headers
+                    }
+                });
+                
+                if (!response.ok) {
+                    debug(`URL ${url} failed with ${response.status}`);
+                    lastError = new Error(`API Error: ${response.status} ${response.statusText}`);
+                    continue;
+                }
+                
+                // Check content type
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    debug(`Response from ${url} is not JSON: ${contentType}`);
+                    
+                    // Try to get text content and see if it's actually JSON
+                    const text = await response.text();
+                    try {
+                        const jsonData = JSON.parse(text);
+                        debug('Successfully parsed text response as JSON');
+                        
+                        // Add the data to localStorage for the main page to use
+                        saveDataToLocalStorage(endpoint, jsonData);
+                        
+                        return jsonData;
+                    } catch (parseError) {
+                        debug(`Error parsing text as JSON: ${parseError.message}`);
+                        lastError = new Error('Response is not JSON');
+                        continue;
+                    }
+                }
+                
+                // Try to parse as JSON
+                const data = await response.json();
+                debug(`API response successful with ${typeof data} from ${url}`);
+                
+                // Add the data to localStorage for the main page to use
+                saveDataToLocalStorage(endpoint, data);
+                
+                return data;
+            } catch (error) {
+                debug(`Error for ${url}: ${error.message}`);
+                lastError = error;
             }
-        };
-        
-        const response = await fetch(url, fetchOptions);
-        
-        if (!response.ok) {
-            throw new Error(`API Error: ${response.status} ${response.statusText}`);
         }
         
-        // Try to parse as JSON
-        const data = await response.json();
-        debug(`API response successful with ${typeof data}`);
-        return data;
+        throw lastError || new Error('Failed to fetch data from all URLs');
     } catch (error) {
         debug(`API Error: ${error.message}`);
-        
-        // Try falling back to window.location.origin
-        try {
-            debug("Trying fallback with absolute URL");
-            const path = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
-            const fallbackUrl = `${window.location.origin}/api${path}`;
-            
-            debug(`Fallback URL: ${fallbackUrl}`);
-            
-            const fallbackOptions = {
-                ...options,
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    ...options.headers
-                }
-            };
-            
-            const fallbackResponse = await fetch(fallbackUrl, fallbackOptions);
-            
-            if (!fallbackResponse.ok) {
-                throw new Error(`Fallback API Error: ${fallbackResponse.status}`);
-            }
-            
-            const fallbackData = await fallbackResponse.json();
-            debug(`Fallback API response successful`);
-            return fallbackData;
-        } catch (fallbackError) {
-            debug(`Fallback API Error: ${fallbackError.message}`);
-            showToast(`Er is een fout opgetreden: ${error.message}`, 'error');
-            return endpoint.includes('players') || endpoint.includes('reasons') ? [] : null;
-        }
+        showToast(`Er is een fout opgetreden bij het ophalen van gegevens: ${error.message}`, 'error');
+        return null;
     } finally {
         toggleLoading(false);
     }
 }
 
-// Load data
+// Save data to localStorage based on endpoint
+function saveDataToLocalStorage(endpoint, data) {
+    try {
+        debug(`Saving data from ${endpoint} to localStorage`);
+        
+        if (endpoint.includes('/players')) {
+            localStorage.setItem('players', JSON.stringify(data));
+            debug(`Saved ${data.length} players to localStorage`);
+        } 
+        else if (endpoint.includes('/reasons')) {
+            localStorage.setItem('reasons', JSON.stringify(data));
+            debug(`Saved ${data.length} reasons to localStorage`);
+        } 
+        else if (endpoint.includes('/fines')) {
+            // For fines endpoint data, we want to keep what we have and add new fines
+            const existingFinesStr = localStorage.getItem('fines') || '[]';
+            let existingFines = [];
+            
+            try {
+                existingFines = JSON.parse(existingFinesStr);
+            } catch (e) {
+                debug(`Error parsing existing fines: ${e.message}`);
+                existingFines = [];
+            }
+            
+            // If data is a single fine object (from a POST response)
+            if (!Array.isArray(data) && data.id) {
+                // Check if the fine already exists
+                const exists = existingFines.some(fine => fine.id === data.id);
+                if (!exists) {
+                    existingFines.push(data);
+                    debug(`Added new fine with ID ${data.id}`);
+                }
+            } 
+            // If data is an array of fines (from a GET response)
+            else if (Array.isArray(data)) {
+                // Merge new fines with existing ones, avoiding duplicates
+                const uniqueFines = [...existingFines];
+                
+                data.forEach(newFine => {
+                    if (!uniqueFines.some(fine => fine.id === newFine.id)) {
+                        uniqueFines.push(newFine);
+                    }
+                });
+                
+                existingFines = uniqueFines;
+                debug(`Updated fines in localStorage. Total: ${existingFines.length}`);
+            }
+            
+            localStorage.setItem('fines', JSON.stringify(existingFines));
+        }
+    } catch (error) {
+        debug(`Error saving to localStorage: ${error.message}`);
+    }
+}
+
+// Load all data from API
 async function loadData() {
     try {
         debug('Start loading all data...');
@@ -413,86 +485,132 @@ async function loadData() {
     }
 }
 
-// Add better debug support to loadPlayers function
+// Specific data loading functions
 async function loadPlayers() {
+    debug('Loading players');
     try {
-        debug('Loading players for select...');
-        const data = await fetchAPI('players');
-        
-        if (!$('#playerSelect').length) {
-            debug('Error: Player select element not found');
-            return;
+        const players = await fetchAPI('/players');
+        if (players && Array.isArray(players)) {
+            debug(`Loaded ${players.length} players`);
+            
+            // Populate the player select dropdown
+            const $playerSelect = $('#playerSelect');
+            if ($playerSelect.length) {
+                $playerSelect.empty();
+                $playerSelect.append('<option value="">Selecteer een speler</option>');
+                
+                players.forEach(player => {
+                    $playerSelect.append(`<option value="${player.id}">${player.name}</option>`);
+                });
+                
+                // Update Select2 if initialized
+                if ($.fn.select2 && $playerSelect.data('select2')) {
+                    $playerSelect.trigger('change');
+                }
+                
+                debug('Player select dropdown populated');
+            }
+            
+            return players;
+        } else {
+            debug('No players returned or invalid format');
+            return [];
         }
-        
-        debug(`Received ${data.length} players from API`);
-        
-        $('#playerSelect').empty().append('<option value="">Selecteer een speler</option>');
-        
-        data.forEach(player => {
-            debug(`Adding player: ${player.name} (${player.id})`);
-            $('#playerSelect').append(`<option value="${player.id}">${player.name}</option>`);
-        });
-        
-        // Trigger change to update Select2
-        $('#playerSelect').trigger('change');
-        
-        debug('Players dropdown populated successfully');
     } catch (error) {
         debug(`Error loading players: ${error.message}`);
-        showToast('Fout bij het laden van spelers', 'error');
+        return [];
     }
 }
 
-// Load reasons
 async function loadReasons() {
+    debug('Loading reasons');
     try {
-        console.log('[DEBUG] Fetching reasons...');
         const reasons = await fetchAPI('/reasons');
-        console.log('[DEBUG] Reasons loaded:', reasons);
-        
-        // Update reason select dropdown
-        console.log('[DEBUG] Updating reason select dropdown...');
-        $('#reasonSelect').empty().append('<option value="">Selecteer een reden</option>');
-        if (Array.isArray(reasons)) {
-            reasons.forEach(reason => {
-                $('#reasonSelect').append(`<option value="${reason.id}">${reason.description}</option>`);
-            });
-            console.log('[DEBUG] Added', reasons.length, 'reasons to dropdown');
-            console.log('[DEBUG] reasonSelect HTML:', $('#reasonSelect').html());
+        if (reasons && Array.isArray(reasons)) {
+            debug(`Loaded ${reasons.length} reasons`);
+            
+            // Populate the reason select dropdown
+            const $reasonSelect = $('#reasonSelect');
+            if ($reasonSelect.length) {
+                $reasonSelect.empty();
+                $reasonSelect.append('<option value="">Selecteer een reden</option>');
+                
+                reasons.forEach(reason => {
+                    $reasonSelect.append(`<option value="${reason.id}">${reason.description}</option>`);
+                });
+                
+                // Update Select2 if initialized
+                if ($.fn.select2 && $reasonSelect.data('select2')) {
+                    $reasonSelect.trigger('change');
+                }
+                
+                debug('Reason select dropdown populated');
+            }
+            
+            return reasons;
         } else {
-            console.error('[DEBUG] Expected reasons to be an array but got:', typeof reasons);
+            debug('No reasons returned or invalid format');
+            return [];
         }
     } catch (error) {
-        console.error('[DEBUG] Error in loadReasons():', error);
-        showToast('Er is een fout opgetreden bij het laden van de redenen', 'error');
+        debug(`Error loading reasons: ${error.message}`);
+        return [];
     }
 }
 
-// Load recent fines
 async function loadRecentFines() {
+    debug('Loading recent fines');
     try {
-        console.log('[DEBUG] Fetching recent fines...');
-        const fines = await fetchAPI('/recent-fines');
-        console.log('[DEBUG] Recent fines loaded:', fines);
-        
-        // Update recent fines display
-        console.log('[DEBUG] Updating recent fines display...');
-        const finesContent = fines.length ? 
-            fines.map(fine => createFineCard(fine, true)).join('') :
-            '<div class="text-center py-4 text-gray-500">Geen recente boetes</div>';
-        
-        console.log('[DEBUG] Fines content generated:', fines.length ? `${fines.length} fine cards` : 'Empty state message');
-        $('#recentFines').html(finesContent);
-        console.log('[DEBUG] Recent fines display updated');
-        console.log('[DEBUG] recentFines HTML:', $('#recentFines').html());
-        
-        // Set up delete buttons
-        console.log('[DEBUG] Setting up delete buttons for recent fines');
-        $('.delete-fine-btn').off('click').on('click', handleFineDelete);
-        console.log('[DEBUG] Found', $('.delete-fine-btn').length, 'delete buttons');
+        const recentFines = await fetchAPI('/recent-fines');
+        if (recentFines && Array.isArray(recentFines)) {
+            debug(`Loaded ${recentFines.length} recent fines`);
+            
+            // Also fetch all fines (not just recent) for the main page to use
+            try {
+                await fetchAPI('/fines');
+            } catch(e) {
+                debug(`Note: Fetching all fines failed: ${e.message}`);
+            }
+            
+            // Update UI with recent fines
+            const $recentFines = $('#recentFines');
+            if ($recentFines.length) {
+                if (recentFines.length === 0) {
+                    $recentFines.html('<div class="text-center py-4 text-gray-500 dark:text-gray-400">Geen recente boetes gevonden</div>');
+                } else {
+                    const finesHtml = recentFines.map(fine => createFineCard(fine)).join('');
+                    $recentFines.html(finesHtml);
+                    
+                    // Add event listeners for delete buttons
+                    $('.delete-fine-btn').off('click').on('click', function() {
+                        const fineId = $(this).data('id');
+                        const playerName = $(this).data('name');
+                        
+                        if (confirm(`Weet je zeker dat je de boete voor ${playerName} wilt verwijderen?`)) {
+                            deleteFine(fineId);
+                        }
+                    });
+                }
+            }
+            
+            return recentFines;
+        } else {
+            debug('No recent fines returned or invalid format');
+            // Update UI
+            const $recentFines = $('#recentFines');
+            if ($recentFines.length) {
+                $recentFines.html('<div class="text-center py-4 text-gray-500 dark:text-gray-400">Geen recente boetes gevonden</div>');
+            }
+            return [];
+        }
     } catch (error) {
-        console.error('[DEBUG] Error in loadRecentFines():', error);
-        showToast('Er is een fout opgetreden bij het laden van de recente boetes', 'error');
+        debug(`Error loading recent fines: ${error.message}`);
+        // Update UI
+        const $recentFines = $('#recentFines');
+        if ($recentFines.length) {
+            $recentFines.html('<div class="text-center py-4 text-red-500">Er is een fout opgetreden bij het laden van recente boetes</div>');
+        }
+        return [];
     }
 }
 
@@ -546,6 +664,31 @@ const handleAddFine = async (event) => {
         if (response) {
             debug('Fine added successfully');
             showToast('Boete succesvol toegevoegd', 'success');
+            
+            // Add the new fine to localStorage even if API failed
+            const playersData = JSON.parse(localStorage.getItem('players') || '[]');
+            const reasonsData = JSON.parse(localStorage.getItem('reasons') || '[]');
+            const finesData = JSON.parse(localStorage.getItem('fines') || '[]');
+            
+            const player = playersData.find(p => p.id == playerId);
+            const reason = reasonsData.find(r => r.id == reasonId);
+            
+            // Create a new fine object
+            const newFine = {
+                id: Date.now(), // Use timestamp as temporary ID
+                player_id: parseInt(playerId),
+                reason_id: parseInt(reasonId),
+                amount: amount,
+                timestamp: new Date().toISOString(),
+                player_name: player?.name || 'Onbekend',
+                reason_description: reason?.description || 'Onbekend'
+            };
+            
+            // Add to fines in localStorage
+            finesData.push(newFine);
+            localStorage.setItem('fines', JSON.stringify(finesData));
+            debug('Added fine to localStorage');
+            
             resetForm();
             loadRecentFines();
         } else {
@@ -560,57 +703,121 @@ const handleAddFine = async (event) => {
     }
 };
 
-// Add player
-$('#addPlayerForm').on('submit', async function(e) {
-    e.preventDefault();
+// Handle Add Player form submission
+const handleAddPlayer = async (event) => {
+    event.preventDefault();
+    debug('Add player form submitted');
     
+    // Get values from the form
     const name = $('#playerName').val().trim();
     
+    // Basic validation
     if (!name) {
-        showToast('Vul een naam in', 'error');
-      return;
+        debug('Missing player name');
+        showToast('Voer een naam in', 'error');
+        return;
     }
     
+    debug(`Adding player: ${name}`);
+    toggleLoading(true);
+    
     try {
-        await fetchAPI('/players', {
+        const response = await fetchAPI('/players', {
             method: 'POST',
             body: JSON.stringify({ name })
         });
         
-        showToast('Speler succesvol toegevoegd');
-        this.reset();
-        await loadData();
-        
-  } catch (error) {
-        console.error('Error adding player:', error);
+        if (response) {
+            debug('Player added successfully');
+            
+            // Add to localStorage even if API fails
+            const playersData = JSON.parse(localStorage.getItem('players') || '[]');
+            
+            // Use the response or create a new player object
+            const newPlayer = response || {
+                id: Date.now(), // Use timestamp as temporary ID
+                name: name
+            };
+            
+            // Check if player already exists in localStorage
+            if (!playersData.some(player => player.id === newPlayer.id)) {
+                playersData.push(newPlayer);
+                localStorage.setItem('players', JSON.stringify(playersData));
+                debug(`Added player ${name} to localStorage`);
+            }
+            
+            showToast('Speler succesvol toegevoegd', 'success');
+            $('#playerName').val('');
+            loadPlayers();
+        } else {
+            debug('Failed to add player - API returned no response');
+            showToast('Fout bij toevoegen van speler', 'error');
+        }
+    } catch (error) {
+        debug(`Error adding player: ${error.message}`);
+        showToast(`Fout bij toevoegen van speler: ${error.message}`, 'error');
+    } finally {
+        toggleLoading(false);
     }
-});
+};
 
-// Add reason
-$('#addReasonForm').on('submit', async function(e) {
-    e.preventDefault();
+// Handle Add Reason form submission
+const handleAddReason = async (event) => {
+    event.preventDefault();
+    debug('Add reason form submitted');
     
+    // Get values from the form
     const description = $('#reasonDescription').val().trim();
     
+    // Basic validation
     if (!description) {
-        showToast('Vul een beschrijving in', 'error');
-      return;
+        debug('Missing reason description');
+        showToast('Voer een beschrijving in', 'error');
+        return;
     }
     
+    debug(`Adding reason: ${description}`);
+    toggleLoading(true);
+    
     try {
-        await fetchAPI('/reasons', {
+        const response = await fetchAPI('/reasons', {
             method: 'POST',
             body: JSON.stringify({ description })
         });
         
-        showToast('Reden succesvol toegevoegd');
-        this.reset();
-        await loadData();
-        
+        if (response) {
+            debug('Reason added successfully');
+            
+            // Add to localStorage even if API fails
+            const reasonsData = JSON.parse(localStorage.getItem('reasons') || '[]');
+            
+            // Use the response or create a new reason object
+            const newReason = response || {
+                id: Date.now(), // Use timestamp as temporary ID
+                description: description
+            };
+            
+            // Check if reason already exists in localStorage
+            if (!reasonsData.some(reason => reason.id === newReason.id)) {
+                reasonsData.push(newReason);
+                localStorage.setItem('reasons', JSON.stringify(reasonsData));
+                debug(`Added reason ${description} to localStorage`);
+            }
+            
+            showToast('Reden succesvol toegevoegd', 'success');
+            $('#reasonDescription').val('');
+            loadReasons();
+        } else {
+            debug('Failed to add reason - API returned no response');
+            showToast('Fout bij toevoegen van reden', 'error');
+        }
     } catch (error) {
-        console.error('Error adding reason:', error);
+        debug(`Error adding reason: ${error.message}`);
+        showToast(`Fout bij toevoegen van reden: ${error.message}`, 'error');
+    } finally {
+        toggleLoading(false);
     }
-});
+};
 
 // Reset data
 $('#resetButton').on('click', async function() {
@@ -942,64 +1149,6 @@ $(document).ready(function() {
         </div>`);
     }
 });
-
-// Handle Add Player form submission
-function handleAddPlayer(e) {
-    e.preventDefault();
-    
-    const name = $('#playerName').val().trim();
-    
-    if (!name) {
-        showToast('Vul een naam in', 'error');
-        return;
-    }
-    
-    try {
-        fetchAPI('/players', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ name })
-        }).then(() => {
-            showToast('Speler succesvol toegevoegd');
-            $('#playerName').val('');
-            loadData();
-        });
-    } catch (error) {
-        console.error('Error adding player:', error);
-        showToast('Error adding player: ' + error.message, 'error');
-    }
-}
-
-// Handle Add Reason form submission
-function handleAddReason(e) {
-    e.preventDefault();
-    
-    const description = $('#reasonDescription').val().trim();
-    
-    if (!description) {
-        showToast('Vul een beschrijving in', 'error');
-        return;
-    }
-    
-    try {
-        fetchAPI('/reasons', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ description })
-        }).then(() => {
-            showToast('Reden succesvol toegevoegd');
-            $('#reasonDescription').val('');
-            loadData();
-        });
-    } catch (error) {
-        console.error('Error adding reason:', error);
-        showToast('Error adding reason: ' + error.message, 'error');
-    }
-}
 
 // Handle Reset
 function handleReset() {
