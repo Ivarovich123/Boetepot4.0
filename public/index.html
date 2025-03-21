@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="nl">
+<html lang="nl" class="h-full bg-gray-100 dark:bg-gray-900">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -7,33 +7,41 @@
   
   <!-- Google Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <!-- Bootstrap CSS -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <!-- Font Awesome -->
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
   <!-- Select2 CSS -->
   <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
-  <!-- AOS Animation -->
-  <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
-  <!-- Custom CSS -->
-  <link href="styles.css" rel="stylesheet">
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+          },
+        },
+      },
+    }
+  </script>
 </head>
-<body>
+<body class="h-full bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-white">
   <!-- Navbar -->
-  <header>
-    <nav class="navbar">
-      <div class="container">
-        <a href="/" class="navbar-brand">
-          <i class="fas fa-piggy-bank"></i>
-          <span>Boetepot</span>
+  <header class="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+    <nav class="px-4 h-16">
+      <div class="h-full mx-auto flex items-center justify-between">
+        <a href="/" class="flex items-center space-x-2 text-blue-600 dark:text-blue-500">
+          <i class="fas fa-piggy-bank text-2xl"></i>
+          <span class="text-xl font-semibold">Boetepot</span>
         </a>
-        <div class="nav-actions">
-          <button class="theme-toggle" id="theme-toggle" title="Toggle Dark Mode">
-            <i id="theme-icon" class="fas fa-moon"></i>
+        <div class="flex items-center space-x-4">
+          <button id="theme-toggle" class="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+            <i id="theme-icon" class="fas fa-moon text-xl"></i>
           </button>
-          <a href="/admin.html" class="admin-link">
-            <i class="fas fa-cog"></i>
-            <span>Admin</span>
+          <a href="/admin.html" class="inline-flex items-center justify-center w-10 h-10 md:w-auto md:h-auto md:px-4 md:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+            <i class="fas fa-cog text-lg md:mr-2"></i>
+            <span class="hidden md:inline">Admin</span>
           </a>
         </div>
       </div>
@@ -41,95 +49,104 @@
   </header>
 
   <!-- Loading Spinner -->
-  <div id="loadingSpinner" class="loading-spinner">
-    <div class="spinner"></div>
+  <div id="loadingSpinner" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+    <div class="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
   </div>
 
   <!-- Toast Messages -->
-  <div class="toast-container" id="toastContainer"></div>
+  <div id="toastContainer" class="fixed top-4 right-4 z-50"></div>
 
-  <main class="container">
+  <main class="container mx-auto px-4 pt-20 pb-8 max-w-7xl">
     <!-- Total Amount -->
-    <section class="hero-section" data-aos="fade-up">
-      <div class="total-amount-wrapper">
-        <div class="total-amount-card">
-          <div class="total-icon">
-            <i class="fas fa-piggy-bank"></i>
+    <section class="mb-6">
+      <div class="bg-blue-600 rounded-2xl p-6 md:p-8 text-white">
+        <div class="flex flex-col md:flex-row items-center justify-center md:justify-start space-y-4 md:space-y-0 md:space-x-6">
+          <div class="w-20 h-20 md:w-24 md:h-24 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+            <i class="fas fa-piggy-bank text-4xl md:text-5xl"></i>
           </div>
-          <div class="total-content">
-            <h3>In de pot</h3>
-            <div class="amount-display" id="totalAmount">€0,00</div>
+          <div class="text-center md:text-left">
+            <h3 class="text-xl md:text-2xl font-medium mb-2">In de pot</h3>
+            <div id="totalAmount" class="text-4xl md:text-5xl font-bold">€0,00</div>
           </div>
         </div>
       </div>
     </section>
 
     <!-- Stats Grid -->
-    <div class="stats-grid">
+    <div class="grid grid-cols-1 gap-6">
       <!-- Recent Fines -->
-      <section class="stats-card" data-aos="fade-up" data-aos-delay="100">
-        <div class="card-header">
-          <h3><i class="fas fa-history"></i>Recente Boetes</h3>
+      <section class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm overflow-hidden">
+        <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+          <h3 class="flex items-center text-xl font-semibold">
+            <i class="fas fa-history text-blue-600 mr-3"></i>
+            Recente Boetes
+          </h3>
         </div>
-        <div class="table-responsive">
-          <table class="custom-table">
+        <div class="p-6 overflow-x-auto">
+          <table class="w-full min-w-[500px]">
             <thead>
-              <tr>
-                <th>Speler</th>
-                <th>Reden</th>
-                <th>Bedrag</th>
-                <th>Datum</th>
+              <tr class="text-left border-b border-gray-200 dark:border-gray-700">
+                <th class="pb-3 font-semibold text-gray-600 dark:text-gray-400">Speler</th>
+                <th class="pb-3 font-semibold text-gray-600 dark:text-gray-400">Reden</th>
+                <th class="pb-3 font-semibold text-gray-600 dark:text-gray-400">Bedrag</th>
+                <th class="pb-3 font-semibold text-gray-600 dark:text-gray-400">Datum</th>
               </tr>
             </thead>
             <tbody id="recentFines">
-              <tr><td colspan="4" class="text-center">Laden...</td></tr>
+              <tr><td colspan="4" class="py-4 text-center">Laden...</td></tr>
             </tbody>
           </table>
         </div>
       </section>
 
       <!-- Player History -->
-      <section class="stats-card" data-aos="fade-up" data-aos-delay="200">
-        <div class="card-header">
-          <h3 id="playerHistoryTitle"><i class="fas fa-user-clock"></i>Speler Historie</h3>
+      <section class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm overflow-hidden">
+        <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+          <h3 id="playerHistoryTitle" class="flex items-center text-xl font-semibold">
+            <i class="fas fa-user-clock text-blue-600 mr-3"></i>
+            Speler Historie
+          </h3>
         </div>
-        <div class="search-wrapper">
-          <select id="playerSelect" class="form-select" aria-label="Selecteer een speler">
+        <div class="p-6">
+          <select id="playerSelect" class="w-full mb-6 text-base">
             <option value="">Selecteer een speler</option>
           </select>
-        </div>
-        <div class="table-responsive">
-          <table class="custom-table">
-            <thead>
-              <tr>
-                <th>Datum</th>
-                <th>Reden</th>
-                <th>Bedrag</th>
-              </tr>
-            </thead>
-            <tbody id="playerHistory">
-              <tr><td colspan="3" class="text-center">Selecteer een speler...</td></tr>
-            </tbody>
-          </table>
+          <div class="overflow-x-auto">
+            <table class="w-full min-w-[500px]">
+              <thead>
+                <tr class="text-left border-b border-gray-200 dark:border-gray-700">
+                  <th class="pb-3 font-semibold text-gray-600 dark:text-gray-400">Datum</th>
+                  <th class="pb-3 font-semibold text-gray-600 dark:text-gray-400">Reden</th>
+                  <th class="pb-3 font-semibold text-gray-600 dark:text-gray-400">Bedrag</th>
+                </tr>
+              </thead>
+              <tbody id="playerHistory">
+                <tr><td colspan="3" class="py-4 text-center">Selecteer een speler...</td></tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </section>
 
       <!-- Leaderboard -->
-      <section class="stats-card" data-aos="fade-up" data-aos-delay="300">
-        <div class="card-header">
-          <h3><i class="fas fa-trophy"></i>Leaderboard</h3>
+      <section class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm overflow-hidden">
+        <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+          <h3 class="flex items-center text-xl font-semibold">
+            <i class="fas fa-trophy text-blue-600 mr-3"></i>
+            Leaderboard
+          </h3>
         </div>
-        <div class="table-responsive">
-          <table class="custom-table">
+        <div class="p-6 overflow-x-auto">
+          <table class="w-full min-w-[500px]">
             <thead>
-              <tr>
-                <th>#</th>
-                <th>Speler</th>
-                <th>Totaal</th>
+              <tr class="text-left border-b border-gray-200 dark:border-gray-700">
+                <th class="pb-3 font-semibold text-gray-600 dark:text-gray-400">#</th>
+                <th class="pb-3 font-semibold text-gray-600 dark:text-gray-400">Speler</th>
+                <th class="pb-3 font-semibold text-gray-600 dark:text-gray-400">Totaal</th>
               </tr>
             </thead>
             <tbody id="leaderboard">
-              <tr><td colspan="3" class="text-center">Laden...</td></tr>
+              <tr><td colspan="3" class="py-4 text-center">Laden...</td></tr>
             </tbody>
           </table>
         </div>
@@ -139,9 +156,7 @@
 
   <!-- Scripts -->
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-  <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
   <script src="app.js"></script>
 </body>
 </html> 

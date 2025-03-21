@@ -1,308 +1,142 @@
 <!DOCTYPE html>
-<html lang="nl">
+<html lang="nl" class="h-full bg-gray-100 dark:bg-gray-900">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Boetepot Admin</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Admin - Boetepot</title>
     
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Font Awesome -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <!-- Select2 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
-    <!-- AOS Animation -->
-    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
-    <!-- Custom CSS -->
-    <link href="styles.css" rel="stylesheet">
-    <style>
-        .nav-tabs .nav-link {
-            color: var(--text-color);
-            border: none;
-            padding: 1rem 1.5rem;
-            font-weight: 500;
-            transition: var(--transition);
-            position: relative;
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+                    },
+                },
+            },
         }
-        
-        .nav-tabs .nav-link:hover {
-            color: var(--accent-color);
-        }
-        
-        .nav-tabs .nav-link.active {
-            color: var(--accent-color);
-            background: none;
-        }
-        
-        .nav-tabs .nav-link.active::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            height: 2px;
-            background-color: var(--accent-color);
-            animation: slideIn 0.3s ease-out;
-        }
-        
-        .nav-tabs {
-            border-bottom: 1px solid var(--border-color);
-            margin-bottom: 2rem;
-        }
-        
-        .tab-content {
-            padding: 1rem 0;
-        }
-        
-        .admin-form {
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 2rem;
-        }
-        
-        .input-group-text {
-            background-color: var(--card-background);
-            border: 1px solid var(--border-color);
-            color: var(--text-color);
-            transition: var(--transition);
-        }
-        
-        .input-group:focus-within .input-group-text {
-            border-color: var(--accent-color);
-        }
-        
-        @keyframes slideIn {
-            from {
-                transform: scaleX(0);
-            }
-            to {
-                transform: scaleX(1);
-            }
-        }
-        
-        .back-link {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            color: var(--text-color);
-            text-decoration: none;
-            font-weight: 500;
-            transition: var(--transition);
-        }
-        
-        .back-link:hover {
-            color: var(--accent-color);
-            transform: translateX(-2px);
-        }
-        
-        .back-link i {
-            font-size: 1.25rem;
-        }
-    </style>
+    </script>
 </head>
-<body>
-    <header>
-        <nav class="navbar">
-            <div class="container">
-                <div class="navbar-brand">
-                    <a href="/" class="back-link" title="Terug naar Home">
-                        <i class="fas fa-arrow-left"></i>
-                        <span>Terug</span>
-                    </a>
-                </div>
-                <div class="nav-actions">
-                    <button class="theme-toggle" id="theme-toggle" title="Toggle Dark Mode">
-                        <i id="theme-icon" class="fas fa-moon"></i>
+<body class="h-full bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-white">
+    <!-- Navbar -->
+    <header class="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+        <nav class="px-4 h-16">
+            <div class="h-full mx-auto flex items-center justify-between">
+                <a href="/" class="flex items-center space-x-2 text-blue-600 dark:text-blue-500">
+                    <i class="fas fa-piggy-bank text-2xl"></i>
+                    <span class="text-xl font-semibold">Boetepot</span>
+                </a>
+                <div class="flex items-center space-x-4">
+                    <button id="theme-toggle" class="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                        <i id="theme-icon" class="fas fa-moon text-xl"></i>
                     </button>
                 </div>
             </div>
         </nav>
     </header>
 
-    <main class="container">
-        <!-- Loading Spinner -->
-        <div id="loadingSpinner" class="loading-spinner">
-            <div class="spinner"></div>
-        </div>
+    <!-- Loading Spinner -->
+    <div id="loadingSpinner" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+    </div>
 
-        <!-- Toast Messages -->
-        <div class="toast-container" id="toastContainer"></div>
+    <!-- Toast Messages -->
+    <div id="toastContainer" class="fixed top-4 right-4 z-50"></div>
 
-        <!-- Admin Tabs -->
-        <div class="admin-tabs" data-aos="fade-up">
-            <ul class="nav nav-tabs nav-fill" id="adminTabs" role="tablist">
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link active" id="fines-tab" data-bs-toggle="tab" data-bs-target="#fines" type="button" role="tab" aria-controls="fines" aria-selected="true">
-                        <i class="fas fa-euro-sign"></i>
-                        <span>Boete Toevoegen</span>
-                    </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="manage-tab" data-bs-toggle="tab" data-bs-target="#manage" type="button" role="tab" aria-controls="manage" aria-selected="false">
-                        <i class="fas fa-cog"></i>
-                        <span>Beheer</span>
-                    </button>
-                </li>
-            </ul>
-        </div>
-
-        <!-- Tab Content -->
-        <div class="tab-content mt-4" id="adminTabsContent">
-            <!-- Fines Tab -->
-            <div class="tab-pane fade show active" id="fines" role="tabpanel" aria-labelledby="fines-tab">
-                <div class="admin-grid">
-                    <!-- Add Fine -->
-                    <section class="stats-card" data-aos="fade-up">
-                        <div class="card-header">
-                            <h3><i class="fas fa-euro-sign"></i>Boete Toevoegen</h3>
+    <main class="container mx-auto px-4 pt-20 pb-8 max-w-7xl">
+        <!-- Add Fine Form -->
+        <section class="mb-6">
+            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6">
+                <h2 class="text-2xl font-semibold mb-6 flex items-center">
+                    <i class="fas fa-plus-circle text-blue-600 mr-3"></i>
+                    Nieuwe Boete
+                </h2>
+                <form id="addFineForm" class="space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label for="playerSelect" class="block text-sm font-medium mb-2">Speler</label>
+                            <select id="playerSelect" name="player" class="w-full rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-900" required>
+                                <option value="">Selecteer een speler</option>
+                            </select>
                         </div>
-                        <form id="addFineForm" class="admin-form">
-                            <div class="form-group">
-                                <label for="finePlayer" class="form-label">Speler</label>
-                                <select id="finePlayer" class="form-select" required aria-label="Selecteer speler">
-                                    <option value="">Selecteer speler</option>
-                                </select>
+                        <div>
+                            <label for="amount" class="block text-sm font-medium mb-2">Bedrag</label>
+                            <div class="relative">
+                                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">€</span>
+                                <input type="number" id="amount" name="amount" min="0" step="0.01" class="w-full pl-8 rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-900" required>
                             </div>
-                            <div class="form-group">
-                                <label for="fineReason" class="form-label">Reden</label>
-                                <select id="fineReason" class="form-select" required aria-label="Selecteer reden">
-                                    <option value="">Selecteer reden</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label for="fineAmount" class="form-label">Bedrag</label>
-                                <div class="input-group">
-                                    <span class="input-group-text">€</span>
-                                    <input type="number" id="fineAmount" class="form-control" placeholder="0,00" step="0.01" min="0" required aria-label="Bedrag">
-                                </div>
-                            </div>
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-plus"></i>
-                                <span>Toevoegen</span>
-                            </button>
-                        </form>
-                    </section>
-
-                    <!-- All Fines -->
-                    <section class="stats-card" data-aos="fade-up" data-aos-delay="100">
-                        <div class="card-header">
-                            <h3><i class="fas fa-list"></i>Alle Boetes</h3>
                         </div>
-                        <div class="table-responsive">
-                            <table class="custom-table">
-                                <thead>
-                                    <tr>
-                                        <th>Speler</th>
-                                        <th>Reden</th>
-                                        <th>Bedrag</th>
-                                        <th>Datum</th>
-                                        <th>Acties</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="allFines">
-                                    <tr><td colspan="5" class="text-center">Laden...</td></tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </section>
-
-                    <!-- Recent Fines -->
-                    <section class="stats-card" data-aos="fade-up" data-aos-delay="200">
-                        <div class="card-header">
-                            <h3><i class="fas fa-history"></i>Recente Boetes</h3>
-                        </div>
-                        <div class="table-responsive">
-                            <table class="custom-table">
-                                <thead>
-                                    <tr>
-                                        <th>Speler</th>
-                                        <th>Reden</th>
-                                        <th>Bedrag</th>
-                                        <th>Datum</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="recentFines">
-                                    <tr><td colspan="4" class="text-center">Laden...</td></tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </section>
-                </div>
+                    </div>
+                    <div>
+                        <label for="reason" class="block text-sm font-medium mb-2">Reden</label>
+                        <input type="text" id="reason" name="reason" class="w-full rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-900" required>
+                    </div>
+                    <div class="flex justify-end">
+                        <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                            Toevoegen
+                        </button>
+                    </div>
+                </form>
             </div>
+        </section>
 
-            <!-- Manage Tab -->
-            <div class="tab-pane fade" id="manage" role="tabpanel" aria-labelledby="manage-tab">
-                <div class="admin-grid">
-                    <!-- Add Player -->
-                    <section class="stats-card" data-aos="fade-up">
-                        <div class="card-header">
-                            <h3><i class="fas fa-user-plus"></i>Speler Toevoegen</h3>
-                        </div>
-                        <form id="addPlayerForm" class="admin-form">
-                            <div class="form-group">
-                                <label for="playerName" class="form-label">Naam</label>
-                                <input type="text" id="playerName" class="form-control" placeholder="Naam van speler" required aria-label="Naam van speler">
-                            </div>
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-plus"></i>
-                                <span>Toevoegen</span>
-                            </button>
-                        </form>
-                    </section>
-
-                    <!-- Add Reason -->
-                    <section class="stats-card" data-aos="fade-up" data-aos-delay="100">
-                        <div class="card-header">
-                            <h3><i class="fas fa-clipboard-list"></i>Reden Toevoegen</h3>
-                        </div>
-                        <form id="addReasonForm" class="admin-form">
-                            <div class="form-group">
-                                <label for="reasonDescription" class="form-label">Omschrijving</label>
-                                <input type="text" id="reasonDescription" class="form-control" placeholder="Omschrijving van reden" required aria-label="Omschrijving van reden">
-                            </div>
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-plus"></i>
-                                <span>Toevoegen</span>
-                            </button>
-                        </form>
-                    </section>
-
-                    <!-- Reset Section -->
-                    <section class="stats-card" data-aos="fade-up" data-aos-delay="200">
-                        <div class="card-header">
-                            <h3><i class="fas fa-exclamation-triangle text-danger"></i>Gegevens Resetten</h3>
-                        </div>
-                        <div class="admin-form">
-                            <div class="alert alert-warning" role="alert">
-                                <i class="fas fa-exclamation-circle"></i>
-                                Let op: Deze actie kan niet ongedaan worden gemaakt!
-                            </div>
-                            <button id="resetButton" class="btn btn-danger">
-                                <i class="fas fa-trash"></i>
-                                <span>Reset Alle Gegevens</span>
-                            </button>
-                        </div>
-                    </section>
-                </div>
+        <!-- Add Player Form -->
+        <section class="mb-6">
+            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6">
+                <h2 class="text-2xl font-semibold mb-6 flex items-center">
+                    <i class="fas fa-user-plus text-blue-600 mr-3"></i>
+                    Nieuwe Speler
+                </h2>
+                <form id="addPlayerForm" class="space-y-6">
+                    <div>
+                        <label for="playerName" class="block text-sm font-medium mb-2">Naam</label>
+                        <input type="text" id="playerName" name="name" class="w-full rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-900" required>
+                    </div>
+                    <div class="flex justify-end">
+                        <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                            Toevoegen
+                        </button>
+                    </div>
+                </form>
             </div>
-        </div>
+        </section>
+
+        <!-- Delete Fine Form -->
+        <section class="mb-6">
+            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6">
+                <h2 class="text-2xl font-semibold mb-6 flex items-center">
+                    <i class="fas fa-trash-alt text-red-600 mr-3"></i>
+                    Verwijder Boete
+                </h2>
+                <form id="deleteFineForm" class="space-y-6">
+                    <div>
+                        <label for="fineSelect" class="block text-sm font-medium mb-2">Selecteer Boete</label>
+                        <select id="fineSelect" name="fineId" class="w-full rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-900" required>
+                            <option value="">Selecteer een boete</option>
+                        </select>
+                    </div>
+                    <div class="flex justify-end">
+                        <button type="submit" class="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
+                            Verwijderen
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </section>
     </main>
 
     <!-- Scripts -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
     <script src="admin.js"></script>
-    <script>
-        AOS.init({
-            duration: 800,
-            once: true,
-            offset: 50,
-            easing: 'ease-in-out'
-        });
-    </script>
 </body>
 </html> 
