@@ -1,14 +1,16 @@
 :root {
   /* Modern color palette */
-  --primary-color: #0f172a;
+  --primary-color: #2563eb;
+  --primary-hover: #1d4ed8;
+  --danger-color: #dc2626;
+  --success-color: #16a34a;
+  --text-color: #1f2937;
+  --border-color: #e5e7eb;
+  --background-color: #ffffff;
+  --card-background: #ffffff;
+  --input-background: #ffffff;
   --secondary-color: #64748b;
   --accent-color: #3b82f6;
-  --background-color: #f8fafc;
-  --card-background: #ffffff;
-  --text-color: #1e293b;
-  --border-color: #e2e8f0;
-  --success-color: #10b981;
-  --error-color: #ef4444;
   --header-height: 70px;
   --card-radius: 16px;
   --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -16,13 +18,13 @@
 
 /* Dark mode colors */
 body.dark {
-  --primary-color: #1e293b;
-  --secondary-color: #94a3b8;
-  --accent-color: #60a5fa;
-  --background-color: #0f172a;
-  --card-background: #1e293b;
-  --text-color: #f1f5f9;
-  --border-color: #334155;
+  --primary-color: #3b82f6;
+  --primary-hover: #60a5fa;
+  --text-color: #f3f4f6;
+  --border-color: #374151;
+  --background-color: #111827;
+  --card-background: #1f2937;
+  --input-background: #374151;
 }
 
 /* Global styles */
@@ -33,11 +35,11 @@ body.dark {
 }
 
 body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: 'Inter', sans-serif;
   background-color: var(--background-color);
   color: var(--text-color);
+  transition: background-color 0.3s ease;
   line-height: 1.6;
-  transition: var(--transition);
   min-height: 100vh;
   padding-top: calc(var(--header-height) + 2rem);
 }
@@ -45,22 +47,22 @@ body {
 /* Navbar styles */
 .navbar {
   background-color: var(--card-background);
+  border-bottom: 1px solid var(--border-color);
   height: var(--header-height);
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   z-index: 1000;
-  padding: 0 2rem;
-  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+  padding: 1rem;
 }
 
 .navbar-brand {
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: var(--text-color);
   display: flex;
   align-items: center;
+  color: var(--text-color);
+  font-weight: 600;
+  font-size: 1.25rem;
 }
 
 .navbar-brand i {
@@ -69,7 +71,6 @@ body {
 
 .nav-actions {
   display: flex;
-  align-items: center;
   gap: 1rem;
 }
 
@@ -92,17 +93,12 @@ body {
 }
 
 .theme-toggle {
-  background: transparent;
-  border: 1.5px solid var(--border-color);
+  background: none;
+  border: none;
   color: var(--text-color);
-  width: 40px;
-  height: 40px;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   cursor: pointer;
-  transition: var(--transition);
+  padding: 0.5rem;
+  font-size: 1.25rem;
 }
 
 .theme-toggle:hover {
@@ -205,21 +201,22 @@ body {
 
 .custom-table {
   width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
+  border-collapse: collapse;
 }
 
 .custom-table th {
-  font-weight: 500;
+  background-color: var(--card-background);
+  color: var(--text-color);
+  font-weight: 600;
   text-align: left;
-  padding: 0.75rem;
-  color: var(--secondary-color);
-  border-bottom: 1px solid var(--border-color);
+  padding: 1rem;
+  border-bottom: 2px solid var(--border-color);
 }
 
 .custom-table td {
-  padding: 1rem 0.75rem;
+  padding: 1rem;
   border-bottom: 1px solid var(--border-color);
+  color: var(--text-color);
 }
 
 .custom-table tr:last-child td {
@@ -241,18 +238,41 @@ body {
 
 /* Select2 Customization */
 .select2-container--default .select2-selection--single {
+  background-color: var(--input-background);
+  border: 1px solid var(--border-color);
+  border-radius: 0.375rem;
   height: 42px;
-  border-color: var(--border-color);
-  border-radius: 8px;
 }
 
 .select2-container--default .select2-selection--single .select2-selection__rendered {
+  color: var(--text-color);
   line-height: 42px;
   padding-left: 1rem;
 }
 
 .select2-container--default .select2-selection--single .select2-selection__arrow {
-  height: 42px;
+  height: 40px;
+}
+
+.select2-dropdown {
+  background-color: var(--card-background);
+  border: 1px solid var(--border-color);
+}
+
+.select2-container--default .select2-search--dropdown .select2-search__field {
+  background-color: var(--input-background);
+  border: 1px solid var(--border-color);
+  color: var(--text-color);
+}
+
+.select2-container--default .select2-results__option {
+  padding: 0.5rem 1rem;
+  color: var(--text-color);
+}
+
+.select2-container--default .select2-results__option--highlighted[aria-selected] {
+  background-color: var(--primary-color);
+  color: white;
 }
 
 /* Loading Spinner */
@@ -262,7 +282,7 @@ body {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background-color: rgba(0, 0, 0, 0.5);
   display: none;
   justify-content: center;
   align-items: center;
@@ -299,16 +319,24 @@ body {
 /* Toast Message */
 .toast-message {
   position: fixed;
-  bottom: 2rem;
-  right: 2rem;
-  padding: 1rem 1.5rem;
-  border-radius: 8px;
-  background: var(--primary-color);
+  top: 1rem;
+  right: 1rem;
+  padding: 1rem 2rem;
+  border-radius: 0.375rem;
+  background-color: var(--success-color);
   color: white;
   font-weight: 500;
-  display: none;
   z-index: 9999;
+  display: none;
   animation: slideIn 0.3s ease-out;
+}
+
+.toast-message.show {
+  display: block;
+}
+
+.toast-message.error {
+  background-color: var(--danger-color);
 }
 
 @keyframes slideIn {
@@ -348,11 +376,15 @@ body {
   
   .table-responsive {
     margin: 0 -1rem;
-    padding: 1rem;
+    width: calc(100% + 2rem);
   }
   
-  .custom-table {
-    font-size: 0.875rem;
+  .custom-table td, .custom-table th {
+    padding: 0.75rem;
+  }
+  
+  .btn {
+    width: 100%;
   }
 }
 
@@ -373,17 +405,19 @@ body {
 }
 
 .form-control, .form-select {
-  height: 48px;
-  border-color: var(--border-color);
-  border-radius: 8px;
-  padding: 0.75rem 1rem;
-  font-size: 1rem;
-  transition: var(--transition);
+  background-color: var(--input-background);
+  border: 1px solid var(--border-color);
+  color: var(--text-color);
+  border-radius: 0.375rem;
+  padding: 0.625rem;
+  width: 100%;
+  transition: border-color 0.15s ease-in-out;
 }
 
 .form-control:focus, .form-select:focus {
-  border-color: var(--accent-color);
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+  border-color: var(--primary-color);
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
 }
 
 .input-group-text {
@@ -395,35 +429,40 @@ body {
 }
 
 .btn {
-  height: 48px;
-  padding: 0 1.5rem;
-  border-radius: 8px;
+  padding: 0.625rem 1.25rem;
+  border-radius: 0.375rem;
   font-weight: 500;
-  display: flex;
+  transition: all 0.3s ease;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  transition: var(--transition);
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, var(--accent-color), #2563eb);
+  background-color: var(--primary-color);
   border: none;
   color: white;
 }
 
 .btn-primary:hover {
-  background: linear-gradient(135deg, #2563eb, #1d4ed8);
-  transform: translateY(-1px);
+  background-color: var(--primary-hover);
+}
+
+.btn-danger {
+  background-color: var(--danger-color);
+  border: none;
+  color: white;
+}
+
+.btn-danger:hover {
+  opacity: 0.9;
 }
 
 .back-link {
   color: var(--text-color);
   text-decoration: none;
-  padding: 0.5rem;
-  margin-right: 0.5rem;
-  border-radius: 8px;
-  transition: var(--transition);
+  margin-right: 1rem;
 }
 
 .back-link:hover {

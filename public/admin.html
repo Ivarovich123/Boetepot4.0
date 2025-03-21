@@ -13,10 +13,62 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <!-- Select2 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
-    <!-- AOS Animation -->
-    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
     <!-- Custom CSS -->
     <link href="styles.css" rel="stylesheet">
+    <style>
+        .select2-container {
+            width: 100% !important;
+        }
+        .select2-container .select2-selection--single {
+            height: 38px;
+            border: 1px solid #ced4da;
+            border-radius: 0.375rem;
+        }
+        .select2-container--default .select2-selection--single .select2-selection__rendered {
+            line-height: 38px;
+            padding-left: 12px;
+        }
+        .select2-container--default .select2-selection--single .select2-selection__arrow {
+            height: 36px;
+        }
+        .nav-tabs .nav-link {
+            color: var(--text-color);
+            border: none;
+            padding: 1rem 1.5rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        .nav-tabs .nav-link.active {
+            color: var(--primary-color);
+            border-bottom: 2px solid var(--primary-color);
+            background: none;
+        }
+        .nav-tabs {
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 2rem;
+        }
+        .tab-content {
+            padding: 1rem 0;
+        }
+        .admin-form {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        .btn-reset {
+            background-color: var(--danger-color);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            transition: all 0.3s ease;
+        }
+        .btn-reset:hover {
+            opacity: 0.9;
+        }
+    </style>
 </head>
 <body>
     <header>
@@ -38,7 +90,7 @@
         </nav>
     </header>
 
-    <main class="container">
+    <main class="container py-4">
         <!-- Loading Spinner -->
         <div id="loadingSpinner" class="loading-overlay">
             <div class="spinner">
@@ -50,93 +102,130 @@
         <!-- Toast Messages -->
         <div id="toast" class="toast-message"></div>
 
-        <!-- Admin Grid -->
-        <div class="admin-grid">
-            <!-- Add Player -->
-            <section class="stats-card" data-aos="fade-up">
-                <div class="card-header">
-                    <h3><i class="fas fa-user-plus me-2"></i>Speler Toevoegen</h3>
-                </div>
-                <div class="card-body">
-                    <form id="addPlayerForm" class="admin-form">
-                        <div class="form-group">
-                            <input type="text" id="playerName" class="form-control" placeholder="Naam van speler" required>
-                        </div>
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-plus me-2"></i>Toevoegen
-                        </button>
-                    </form>
-                </div>
-            </section>
+        <!-- Tabs -->
+        <ul class="nav nav-tabs" id="adminTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="fines-tab" data-bs-toggle="tab" data-bs-target="#fines" type="button" role="tab">
+                    <i class="fas fa-euro-sign me-2"></i>Boete Toevoegen
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="manage-tab" data-bs-toggle="tab" data-bs-target="#manage" type="button" role="tab">
+                    <i class="fas fa-cog me-2"></i>Beheer
+                </button>
+            </li>
+        </ul>
 
-            <!-- Add Reason -->
-            <section class="stats-card" data-aos="fade-up" data-aos-delay="100">
-                <div class="card-header">
-                    <h3><i class="fas fa-clipboard-list me-2"></i>Reden Toevoegen</h3>
+        <!-- Tab Content -->
+        <div class="tab-content" id="adminTabsContent">
+            <!-- Fines Tab -->
+            <div class="tab-pane fade show active" id="fines" role="tabpanel">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <h3 class="card-title mb-4"><i class="fas fa-euro-sign me-2"></i>Nieuwe Boete</h3>
+                        <form id="addFineForm" class="admin-form">
+                            <div class="form-group">
+                                <label for="finePlayer" class="form-label">Speler</label>
+                                <select id="finePlayer" class="form-select" required>
+                                    <option value="">Selecteer speler</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="fineReason" class="form-label">Reden</label>
+                                <select id="fineReason" class="form-select" required>
+                                    <option value="">Selecteer reden</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="fineAmount" class="form-label">Bedrag</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">€</span>
+                                    <input type="number" id="fineAmount" class="form-control" placeholder="0.00" step="0.01" min="0" required>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="fas fa-plus me-2"></i>Boete Toevoegen
+                            </button>
+                        </form>
+                    </div>
                 </div>
-                <div class="card-body">
-                    <form id="addReasonForm" class="admin-form">
-                        <div class="form-group">
-                            <input type="text" id="reasonDescription" class="form-control" placeholder="Omschrijving van reden" required>
-                        </div>
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-plus me-2"></i>Toevoegen
-                        </button>
-                    </form>
-                </div>
-            </section>
 
-            <!-- Add Fine -->
-            <section class="stats-card" data-aos="fade-up" data-aos-delay="200">
-                <div class="card-header">
-                    <h3><i class="fas fa-euro-sign me-2"></i>Boete Toevoegen</h3>
+                <!-- Recent Fines -->
+                <div class="card shadow-sm mt-4">
+                    <div class="card-body">
+                        <h3 class="card-title mb-4"><i class="fas fa-history me-2"></i>Recente Boetes</h3>
+                        <div class="table-responsive">
+                            <table class="custom-table">
+                                <thead>
+                                    <tr>
+                                        <th>Speler</th>
+                                        <th>Reden</th>
+                                        <th>Bedrag</th>
+                                        <th>Datum</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="recentFines">
+                                    <tr><td colspan="4" class="text-center">Laden...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
-                <div class="card-body">
-                    <form id="addFineForm" class="admin-form">
-                        <div class="form-group">
-                            <select id="finePlayer" class="form-select" required>
-                                <option value="">Selecteer speler</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <select id="fineReason" class="form-select" required>
-                                <option value="">Selecteer reden</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <div class="input-group">
-                                <span class="input-group-text">€</span>
-                                <input type="number" id="fineAmount" class="form-control" placeholder="Bedrag" step="0.01" min="0" required>
+            </div>
+
+            <!-- Manage Tab -->
+            <div class="tab-pane fade" id="manage" role="tabpanel">
+                <div class="row g-4">
+                    <!-- Add Player -->
+                    <div class="col-md-6">
+                        <div class="card shadow-sm h-100">
+                            <div class="card-body">
+                                <h3 class="card-title mb-4"><i class="fas fa-user-plus me-2"></i>Speler Toevoegen</h3>
+                                <form id="addPlayerForm" class="admin-form">
+                                    <div class="form-group">
+                                        <label for="playerName" class="form-label">Naam</label>
+                                        <input type="text" id="playerName" class="form-control" placeholder="Naam van speler" required>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary w-100">
+                                        <i class="fas fa-plus me-2"></i>Speler Toevoegen
+                                    </button>
+                                </form>
                             </div>
                         </div>
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-plus me-2"></i>Toevoegen
-                        </button>
-                    </form>
-                </div>
-            </section>
+                    </div>
 
-            <!-- Recent Fines -->
-            <section class="stats-card" data-aos="fade-up" data-aos-delay="300">
-                <div class="card-header">
-                    <h3><i class="fas fa-history me-2"></i>Recente Boetes</h3>
+                    <!-- Add Reason -->
+                    <div class="col-md-6">
+                        <div class="card shadow-sm h-100">
+                            <div class="card-body">
+                                <h3 class="card-title mb-4"><i class="fas fa-clipboard-list me-2"></i>Reden Toevoegen</h3>
+                                <form id="addReasonForm" class="admin-form">
+                                    <div class="form-group">
+                                        <label for="reasonDescription" class="form-label">Omschrijving</label>
+                                        <input type="text" id="reasonDescription" class="form-control" placeholder="Omschrijving van reden" required>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary w-100">
+                                        <i class="fas fa-plus me-2"></i>Reden Toevoegen
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Reset Section -->
+                    <div class="col-12">
+                        <div class="card shadow-sm border-danger">
+                            <div class="card-body">
+                                <h3 class="card-title mb-4 text-danger"><i class="fas fa-exclamation-triangle me-2"></i>Gegevens Resetten</h3>
+                                <p class="text-muted mb-4">Let op: Deze actie kan niet ongedaan worden gemaakt!</p>
+                                <button id="resetButton" class="btn btn-danger w-100">
+                                    <i class="fas fa-trash me-2"></i>Reset Alle Gegevens
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="table-responsive">
-                    <table class="custom-table">
-                        <thead>
-                            <tr>
-                                <th>Speler</th>
-                                <th>Reden</th>
-                                <th>Bedrag</th>
-                                <th>Datum</th>
-                            </tr>
-                        </thead>
-                        <tbody id="recentFines">
-                            <tr><td colspan="4" class="text-center">Laden...</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </section>
+            </div>
         </div>
     </main>
 
@@ -144,13 +233,6 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
     <script src="admin.js"></script>
-    <script>
-        AOS.init({
-            duration: 800,
-            once: true
-        });
-    </script>
 </body>
 </html> 
