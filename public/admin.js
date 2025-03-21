@@ -5,7 +5,8 @@ function checkAuth() {
     
     if (!token || !expires || parseInt(expires) <= Date.now()) {
         console.log('[DEBUG] Authentication failed, redirecting to login page');
-        window.location.href = 'login.html';
+        // Use absolute URL to avoid any path issues
+        window.location.href = window.location.origin + '/login.html';
         return false;
     }
     
@@ -13,9 +14,17 @@ function checkAuth() {
     return true;
 }
 
-// Run auth check immediately
-if (!checkAuth()) {
-    throw new Error('Authentication required');
+// Run auth check immediately, but wrapped in a try-catch to prevent errors
+try {
+    if (!checkAuth()) {
+        console.log('[DEBUG] Not authenticated, redirecting...');
+        // Instead of throwing an error which might cause issues, just exit the script
+        // The redirect in checkAuth will handle navigation
+    }
+} catch (error) {
+    console.error('[DEBUG] Error during authentication check:', error);
+    // Fallback to login page if there's an error
+    window.location.href = window.location.origin + '/login.html';
 }
 
 // API Base URL - make sure this matches your backend setup
@@ -31,18 +40,29 @@ function debug(message) {
 
 // Theme handling
 function setTheme(isDark) {
-    if (isDark) {
-        document.documentElement.classList.add('dark');
-        localStorage.theme = 'dark';
-        $('#theme-icon').removeClass('fa-moon').addClass('fa-sun');
-    } else {
-        document.documentElement.classList.remove('dark');
-        localStorage.theme = 'light';
-        $('#theme-icon').removeClass('fa-sun').addClass('fa-moon');
+    debug(`Setting theme to ${isDark ? 'dark' : 'light'}`);
+    try {
+        if (isDark) {
+            document.documentElement.classList.add('dark');
+            localStorage.theme = 'dark';
+            $('#theme-icon').removeClass('fa-moon').addClass('fa-sun');
+        } else {
+            document.documentElement.classList.remove('dark');
+            localStorage.theme = 'light';
+            $('#theme-icon').removeClass('fa-sun').addClass('fa-moon');
+        }
+        
+        // Update Select2 dropdowns if they exist
+        if (typeof updateSelect2Theme === 'function') {
+            updateSelect2Theme(isDark);
+        } else {
+            debug('updateSelect2Theme function not available yet');
+        }
+        
+        debug(`Theme set to ${isDark ? 'dark' : 'light'} mode`);
+    } catch (error) {
+        console.error('[DEBUG] Error setting theme:', error);
     }
-    
-    // Update Select2 dropdowns
-    updateSelect2Theme(isDark);
 }
 
 // Initialize theme
@@ -248,7 +268,7 @@ function forceSelect2Visibility() {
     
     // Force visibility of dropdowns when open
     $(document).on('select2:open', function() {
-        setTimeout(() => {
+  setTimeout(() => {
             $('.select2-dropdown').css({
                 'display': 'block',
                 'z-index': '9999'
@@ -326,7 +346,7 @@ function initializeSelect2() {
         }, 50);
         
         console.log('[DEBUG] Select2 initialization successful');
-    } catch (error) {
+  } catch (error) {
         console.error('[DEBUG] Error in initializeSelect2:', error);
     }
 }
@@ -414,15 +434,15 @@ async function fetchAPI(endpoint, options = {}) {
             try {
                 debug(`Trying URL: ${url}`);
                 
-                const response = await fetch(url, {
-                    ...options,
-                    headers: {
-                        'Content-Type': 'application/json',
+    const response = await fetch(url, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
                         'Accept': 'application/json',
-                        ...options.headers
-                    }
-                });
-                
+        ...options.headers
+      }
+    });
+    
                 if (!response.ok) {
                     debug(`URL ${url} failed with ${response.status}`);
                     lastError = new Error(`API Error: ${response.status} ${response.statusText}`);
@@ -430,12 +450,12 @@ async function fetchAPI(endpoint, options = {}) {
                 }
                 
                 // Check content type
-                const contentType = response.headers.get('content-type');
+    const contentType = response.headers.get('content-type');
                 if (!contentType || !contentType.includes('application/json')) {
                     debug(`Response from ${url} is not JSON: ${contentType}`);
-                    
+    
                     // Try to get text content and see if it's actually JSON
-                    const text = await response.text();
+      const text = await response.text();
                     try {
                         const jsonData = JSON.parse(text);
                         debug('Successfully parsed text response as JSON');
@@ -458,8 +478,8 @@ async function fetchAPI(endpoint, options = {}) {
                 // Add the data to localStorage for the main page to use
                 saveDataToLocalStorage(endpoint, data);
                 
-                return data;
-            } catch (error) {
+    return data;
+  } catch (error) {
                 debug(`Error for ${url}: ${error.message}`);
                 lastError = error;
             }
@@ -526,7 +546,7 @@ function saveDataToLocalStorage(endpoint, data) {
             
             localStorage.setItem('fines', JSON.stringify(existingFines));
         }
-    } catch (error) {
+  } catch (error) {
         debug(`Error saving to localStorage: ${error.message}`);
     }
 }
@@ -548,7 +568,7 @@ async function loadData() {
         
         debug('All data loaded successfully');
         $('#debugStatus').text('Data loaded successfully');
-    } catch (error) {
+  } catch (error) {
         debug(`Error loading data: ${error.message}`);
         $('#debugStatus').text(`Error: ${error.message}`);
         showToast('Er is een fout opgetreden bij het laden van de gegevens', 'error');
@@ -602,7 +622,7 @@ async function loadPlayers() {
         initializeSelect2();
         
         console.log('[DEBUG] Players loaded successfully');
-    } catch (error) {
+  } catch (error) {
         console.error('[DEBUG] Error loading players:', error);
         showToast('Fout bij het laden van spelers', 'error');
     }
@@ -637,9 +657,9 @@ async function loadReasons() {
                         <span class="text-gray-800 dark:text-gray-200">${reason.description}</span>
                         <button class="delete-reason-btn text-red-500 hover:text-red-700 opacity-0 group-hover:opacity-100 transition-opacity" 
                                 data-reason-id="${reason.id}">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </div>
+              <i class="fas fa-trash"></i>
+            </button>
+          </div>
                 `);
             });
             
@@ -654,7 +674,7 @@ async function loadReasons() {
         initializeSelect2();
         
         console.log('[DEBUG] Reasons loaded successfully');
-    } catch (error) {
+  } catch (error) {
         console.error('[DEBUG] Error loading reasons:', error);
         showToast('Fout bij het laden van redenen', 'error');
     }
@@ -732,7 +752,7 @@ const handleAddFine = async (event) => {
     if (!playerId) {
         debug('Missing player selection');
         showToast('Selecteer een speler', 'error');
-        return;
+      return;
     }
     
     if (!reasonId) {
@@ -797,7 +817,7 @@ const handleAddFine = async (event) => {
             debug('Failed to add fine - API returned no response');
             showToast('Fout bij toevoegen van boete', 'error');
         }
-    } catch (error) {
+  } catch (error) {
         debug(`Error adding fine: ${error.message}`);
         showToast(`Fout bij toevoegen van boete: ${error.message}`, 'error');
     } finally {
@@ -807,28 +827,28 @@ const handleAddFine = async (event) => {
 
 // Handle Add Player form submission
 const handleAddPlayer = async (event) => {
-    event.preventDefault();
+  event.preventDefault();
     debug('Add player form submitted');
-    
+  
     // Get values from the form
     const name = $('#playerName').val().trim();
-    
+  
     // Basic validation
-    if (!name) {
+  if (!name) {
         debug('Missing player name');
         showToast('Voer een naam in', 'error');
-        return;
-    }
-    
+    return;
+  }
+  
     debug(`Adding player: ${name}`);
     toggleLoading(true);
     
     try {
         const response = await fetchAPI('/players', {
-            method: 'POST',
-            body: JSON.stringify({ name })
-        });
-        
+      method: 'POST',
+      body: JSON.stringify({ name })
+    });
+    
         if (response) {
             debug('Player added successfully');
             
@@ -855,38 +875,38 @@ const handleAddPlayer = async (event) => {
             debug('Failed to add player - API returned no response');
             showToast('Fout bij toevoegen van speler', 'error');
         }
-    } catch (error) {
+  } catch (error) {
         debug(`Error adding player: ${error.message}`);
         showToast(`Fout bij toevoegen van speler: ${error.message}`, 'error');
-    } finally {
-        toggleLoading(false);
-    }
+  } finally {
+    toggleLoading(false);
+  }
 };
 
 // Handle Add Reason form submission
 const handleAddReason = async (event) => {
-    event.preventDefault();
+  event.preventDefault();
     debug('Add reason form submitted');
-    
+  
     // Get values from the form
     const description = $('#reasonDescription').val().trim();
-    
+  
     // Basic validation
-    if (!description) {
+  if (!description) {
         debug('Missing reason description');
         showToast('Voer een beschrijving in', 'error');
-        return;
-    }
-    
+    return;
+  }
+  
     debug(`Adding reason: ${description}`);
     toggleLoading(true);
     
     try {
         const response = await fetchAPI('/reasons', {
-            method: 'POST',
-            body: JSON.stringify({ description })
-        });
-        
+      method: 'POST',
+      body: JSON.stringify({ description })
+    });
+    
         if (response) {
             debug('Reason added successfully');
             
@@ -913,12 +933,12 @@ const handleAddReason = async (event) => {
             debug('Failed to add reason - API returned no response');
             showToast('Fout bij toevoegen van reden', 'error');
         }
-    } catch (error) {
+  } catch (error) {
         debug(`Error adding reason: ${error.message}`);
         showToast(`Fout bij toevoegen van reden: ${error.message}`, 'error');
-    } finally {
-        toggleLoading(false);
-    }
+  } finally {
+    toggleLoading(false);
+  }
 };
 
 // Reset data
@@ -1050,10 +1070,10 @@ async function handleFineDelete(e) {
     }
     
     if (!confirm(`Weet je zeker dat je de boete voor ${playerName} wilt verwijderen?`)) {
-        return;
-    }
-    
-    try {
+    return;
+  }
+  
+  try {
         console.log(`[DEBUG] Deleting fine with ID: ${fineId}`);
         await fetchAPI(`/fines/${fineId}`, {
             method: 'DELETE'
@@ -1216,7 +1236,7 @@ function initialize() {
         setupTheme();
         
         console.log('[DEBUG] Admin page initialized successfully');
-    } catch (error) {
+  } catch (error) {
         console.error('[DEBUG] Initialization error:', error);
     }
 }
@@ -1279,7 +1299,7 @@ function updateStats() {
         $('#fineCount').text(fines.length);
         
         console.log('[DEBUG] Statistics updated successfully');
-    } catch (error) {
+  } catch (error) {
         console.error('[DEBUG] Error updating statistics:', error);
     }
 }
@@ -1361,7 +1381,7 @@ async function checkApiHealth() {
                 
                 results.push(`${endpoint}: ${status} (${duration}ms) - ${count} items`);
                 debug(`Endpoint ${endpoint} test completed: ${status}`);
-            } catch (error) {
+  } catch (error) {
                 results.push(`${endpoint}: ERROR - ${error.message}`);
                 debug(`Error testing endpoint ${endpoint}: ${error.message}`);
             }
@@ -1384,9 +1404,9 @@ async function checkApiHealth() {
             <div class="text-red-500">Health check failed: ${error.message}</div>
         `);
         debug(`API health check failed: ${error.message}`);
-    } finally {
-        toggleLoading(false);
-    }
+  } finally {
+    toggleLoading(false);
+  }
 }
 
 // Handle delete player
@@ -1417,7 +1437,7 @@ function handleDeletePlayer(playerId) {
         localStorage.setItem('fines', JSON.stringify(updatedFines));
         
         // Refresh the UI
-        loadPlayers();
+    loadPlayers();
         updateStats();
         
         showToast('Speler succesvol verwijderd!', 'success');
@@ -1462,7 +1482,7 @@ function handleDeleteReason(reasonId) {
         localStorage.setItem('fines', JSON.stringify(updatedFines));
         
         // Refresh the UI
-        loadReasons();
+    loadReasons();
         updateStats();
         
         showToast('Reden succesvol verwijderd!', 'success');
@@ -1580,7 +1600,7 @@ function setupTheme() {
         });
         
         console.log('[DEBUG] Theme setup completed');
-    } catch (error) {
+  } catch (error) {
         console.error('[DEBUG] Error setting up theme:', error);
     }
 }

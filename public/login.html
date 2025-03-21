@@ -349,9 +349,9 @@
                 
                 showToast('Login succesvol! Doorsturen naar admin panel...');
                 
-                // Redirect to admin panel after a short delay
+                // Redirect to admin panel after a short delay using absolute URL
                 setTimeout(() => {
-                    window.location.href = 'admin.html';
+                    window.location.href = window.location.origin + '/admin.html';
                 }, 1500);
             } else {
                 showToast('Ongeldig wachtwoord', 'error');
