@@ -11,7 +11,11 @@ const {
   getPlayerTotals, 
   getTotalFines,
   getPublicFines,
-  getPlayerHistory
+  getPlayerHistory,
+  getAllFines,
+  getFineById,
+  updateFine,
+  deleteFine
 } = require('./lib/supabase');
 
 const app = express();
@@ -94,6 +98,64 @@ app.post('/api/fines', async (req, res) => {
   } catch (error) {
     console.error('[API] Error adding fine:', error);
     res.status(500).json({ error: 'Failed to add fine', details: error.message });
+  }
+});
+
+app.get('/api/fines', async (req, res) => {
+  try {
+    console.log('[API] Getting all fines...');
+    const fines = await getAllFines();
+    console.log(`[API] Successfully fetched ${fines.length} fines`);
+    res.json(fines);
+  } catch (error) {
+    console.error('[API] Error getting fines:', error);
+    res.status(500).json({ error: 'Failed to get fines', details: error.message });
+  }
+});
+
+app.get('/api/fines/:id', async (req, res) => {
+  try {
+    console.log('[API] Getting fine details for ID:', req.params.id);
+    const fine = await getFineById(req.params.id);
+    
+    if (!fine) {
+      return res.status(404).json({ error: 'Fine not found' });
+    }
+    
+    console.log('[API] Successfully fetched fine details:', fine);
+    res.json(fine);
+  } catch (error) {
+    console.error('[API] Error getting fine details:', error);
+    res.status(500).json({ error: 'Failed to get fine details', details: error.message });
+  }
+});
+
+app.put('/api/fines/:id', async (req, res) => {
+  try {
+    const { player_id, reason_id, amount } = req.body;
+    if (!player_id || !reason_id || !amount) {
+      return res.status(400).json({ error: 'All fields are required' });
+    }
+    
+    console.log('[API] Updating fine:', req.params.id, req.body);
+    const fine = await updateFine(req.params.id, { player_id, reason_id, amount });
+    console.log('[API] Successfully updated fine:', fine);
+    res.json(fine);
+  } catch (error) {
+    console.error('[API] Error updating fine:', error);
+    res.status(500).json({ error: 'Failed to update fine', details: error.message });
+  }
+});
+
+app.delete('/api/fines/:id', async (req, res) => {
+  try {
+    console.log('[API] Deleting fine:', req.params.id);
+    await deleteFine(req.params.id);
+    console.log('[API] Successfully deleted fine');
+    res.json({ success: true });
+  } catch (error) {
+    console.error('[API] Error deleting fine:', error);
+    res.status(500).json({ error: 'Failed to delete fine', details: error.message });
   }
 });
 

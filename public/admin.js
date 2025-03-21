@@ -5,23 +5,41 @@ const API_BASE_URL = '/api';
 function toggleTheme() {
   const body = document.body;
   const themeIcon = document.getElementById('theme-icon');
+  const isDark = body.classList.contains('dark');
   
-  if (body.classList.contains('dark')) {
-    body.classList.remove('dark');
-    localStorage.setItem('theme', 'light');
-    if (themeIcon) themeIcon.className = 'fas fa-moon';
-  } else {
-    body.classList.add('dark');
-    localStorage.setItem('theme', 'dark');
-    if (themeIcon) themeIcon.className = 'fas fa-sun';
+  // Update theme
+  body.classList.toggle('dark', !isDark);
+  localStorage.setItem('theme', isDark ? 'light' : 'dark');
+  
+  // Update icon with animation
+  if (themeIcon) {
+    themeIcon.style.transform = 'scale(0)';
+    setTimeout(() => {
+      themeIcon.className = isDark ? 'fas fa-moon' : 'fas fa-sun';
+      themeIcon.style.transform = 'scale(1)';
+    }, 150);
   }
+  
+  // Update Select2 theme
+  $('.select2-container').toggleClass('select2-container--dark', !isDark);
 }
 
 // Init theme from local storage
 function initTheme() {
   const theme = localStorage.getItem('theme') || 'light';
-  document.body.classList.toggle('dark', theme === 'dark');
-  document.getElementById('theme-icon').className = theme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+  const isDark = theme === 'dark';
+  
+  // Update body class
+  document.body.classList.toggle('dark', isDark);
+  
+  // Update icon
+  const themeIcon = document.getElementById('theme-icon');
+  if (themeIcon) {
+    themeIcon.className = isDark ? 'fas fa-sun' : 'fas fa-moon';
+  }
+  
+  // Update Select2 theme
+  $('.select2-container').toggleClass('select2-container--dark', isDark);
 }
 
 // Utility Functions
@@ -175,6 +193,51 @@ async function loadRecentFines() {
   }
 }
 
+async function loadAllFines() {
+  try {
+    const fines = await fetchAPI('/api/fines');
+    const tbody = document.getElementById('allFines');
+    
+    if (!tbody) return;
+    
+    if (!Array.isArray(fines) || fines.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" class="text-center">Geen boetes gevonden</td></tr>';
+      return;
+    }
+    
+    tbody.innerHTML = fines.map(fine => `
+      <tr data-fine-id="${fine.id}">
+        <td>${fine.player_name || 'Onbekend'}</td>
+        <td>${fine.reason_description || 'Onbekend'}</td>
+        <td>${formatCurrency(fine.amount || 0)}</td>
+        <td>${formatDate(fine.date)}</td>
+        <td>
+          <div class="btn-group">
+            <button class="btn btn-sm btn-primary edit-fine" title="Bewerk">
+              <i class="fas fa-edit"></i>
+            </button>
+            <button class="btn btn-sm btn-danger delete-fine" title="Verwijder">
+              <i class="fas fa-trash"></i>
+            </button>
+          </div>
+        </td>
+      </tr>
+    `).join('');
+    
+    // Add event listeners for edit and delete buttons
+    tbody.querySelectorAll('.edit-fine').forEach(button => {
+      button.addEventListener('click', handleEditFine);
+    });
+    
+    tbody.querySelectorAll('.delete-fine').forEach(button => {
+      button.addEventListener('click', handleDeleteFine);
+    });
+  } catch (error) {
+    console.error('Error loading all fines:', error);
+    showToast('Fout bij laden boetes', true);
+  }
+}
+
 // Form Handlers
 async function handleAddPlayer(event) {
   event.preventDefault();
@@ -239,6 +302,7 @@ async function handleAddReason(event) {
 async function handleAddFine(event) {
   event.preventDefault();
   
+  const form = event.target;
   const playerSelect = document.getElementById('finePlayer');
   const reasonSelect = document.getElementById('fineReason');
   const amountInput = document.getElementById('fineAmount');
@@ -256,8 +320,15 @@ async function handleAddFine(event) {
   
   try {
     toggleLoading(true);
-    await fetchAPI('/api/fines', {
-      method: 'POST',
+    
+    const isEditMode = form.dataset.editMode === 'true';
+    const fineId = form.dataset.editId;
+    
+    const endpoint = isEditMode ? `/api/fines/${fineId}` : '/api/fines';
+    const method = isEditMode ? 'PUT' : 'POST';
+    
+    await fetchAPI(endpoint, {
+      method,
       body: JSON.stringify({
         player_id,
         reason_id,
@@ -265,17 +336,73 @@ async function handleAddFine(event) {
       })
     });
     
-    showToast('Boete toegevoegd');
+    showToast(isEditMode ? 'Boete bijgewerkt' : 'Boete toegevoegd');
+    
+    // Reset form
+    form.dataset.editMode = 'false';
+    form.dataset.editId = '';
     amountInput.value = '';
     $(playerSelect).val(null).trigger('change');
     $(reasonSelect).val(null).trigger('change');
     
-    await loadRecentFines();
+    // Update button text
+    const submitButton = form.querySelector('button[type="submit"]');
+    submitButton.innerHTML = '<i class="fas fa-plus"></i><span>Toevoegen</span>';
+    
+    // Reload data
+    await Promise.all([loadAllFines(), loadRecentFines()]);
   } catch (error) {
-    console.error('Error adding fine:', error);
-    showToast('Fout bij toevoegen boete', true);
+    console.error('Error saving fine:', error);
+    showToast('Fout bij opslaan boete', true);
   } finally {
     toggleLoading(false);
+  }
+}
+
+async function handleEditFine(event) {
+  const row = event.target.closest('tr');
+  const fineId = row.dataset.fineId;
+  
+  try {
+    const fine = await fetchAPI(`/api/fines/${fineId}`);
+    
+    // Populate form with fine data
+    $('#finePlayer').val(fine.player_id).trigger('change');
+    $('#fineReason').val(fine.reason_id).trigger('change');
+    $('#fineAmount').val(fine.amount);
+    
+    // Update form for edit mode
+    const form = document.getElementById('addFineForm');
+    form.dataset.editMode = 'true';
+    form.dataset.editId = fineId;
+    
+    // Update button text
+    const submitButton = form.querySelector('button[type="submit"]');
+    submitButton.innerHTML = '<i class="fas fa-save"></i><span>Opslaan</span>';
+    
+    // Scroll to form
+    form.scrollIntoView({ behavior: 'smooth' });
+  } catch (error) {
+    console.error('Error loading fine details:', error);
+    showToast('Fout bij laden boete details', true);
+  }
+}
+
+async function handleDeleteFine(event) {
+  const row = event.target.closest('tr');
+  const fineId = row.dataset.fineId;
+  
+  if (!confirm('Weet je zeker dat je deze boete wilt verwijderen?')) {
+    return;
+  }
+  
+  try {
+    await fetchAPI(`/api/fines/${fineId}`, { method: 'DELETE' });
+    showToast('Boete verwijderd');
+    await Promise.all([loadAllFines(), loadRecentFines()]);
+  } catch (error) {
+    console.error('Error deleting fine:', error);
+    showToast('Fout bij verwijderen boete', true);
   }
 }
 
@@ -293,7 +420,8 @@ async function handleReset() {
     await Promise.all([
       loadPlayers(),
       loadReasons(),
-      loadRecentFines()
+      loadRecentFines(),
+      loadAllFines()
     ]);
   } catch (error) {
     console.error('Error resetting data:', error);
@@ -313,6 +441,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loadPlayers();
     loadReasons();
     loadRecentFines();
+    loadAllFines();
     
     // Set up form handlers
     const addPlayerForm = document.getElementById('addPlayerForm');
