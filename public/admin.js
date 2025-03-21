@@ -1554,37 +1554,4 @@ function setupTheme() {
 $(document).ready(function() {
     console.log('[DEBUG] Document ready');
     initialize();
-});
-
-// Function to delete a fine
-async function deleteFine(fineId) {
-    if (!fineId) {
-        showToast('Kan deze boete niet verwijderen: ongeldige ID', 'error');
-        return;
-    }
-    
-    debug(`Deleting fine with ID: ${fineId}`);
-    toggleLoading(true);
-    
-    try {
-        // Try to delete via API
-        const apiSuccess = await fetchAPI(`/fines/${fineId}`, {
-            method: 'DELETE'
-        });
-        
-        // Always delete from localStorage even if API fails
-        const finesData = JSON.parse(localStorage.getItem('fines') || '[]');
-        const updatedFines = finesData.filter(fine => fine.id != fineId);
-        localStorage.setItem('fines', JSON.stringify(updatedFines));
-        
-        showToast('Boete succesvol verwijderd');
-        
-        // Reload recent fines
-        loadRecentFines();
-    } catch (error) {
-        debug(`Error deleting fine: ${error.message}`);
-        showToast(`Fout bij verwijderen van boete: ${error.message}`, 'error');
-    } finally {
-        toggleLoading(false);
-    }
-} 
+}); 
