@@ -63,8 +63,9 @@ function formatCurrency(amount) {
 // API Functions
 async function fetchAPI(endpoint, options = {}) {
   try {
-    console.log(`[API] Fetching ${endpoint}...`);
-    const response = await fetch(endpoint, {
+    const url = endpoint.startsWith('/api') ? endpoint : `/api${endpoint}`;
+    console.log(`[API] Fetching ${url}...`);
+    const response = await fetch(url, {
       ...options,
       headers: {
         'Content-Type': 'application/json',
@@ -72,20 +73,24 @@ async function fetchAPI(endpoint, options = {}) {
       }
     });
     
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
     const contentType = response.headers.get('content-type');
+    let data;
+    
     if (contentType && contentType.includes('application/json')) {
-      const data = await response.json();
-      console.log(`[API] Response from ${endpoint}:`, data);
-      return data;
+      data = await response.json();
     } else {
       const text = await response.text();
       console.error(`[API] Non-JSON response: ${text}`);
       throw new Error('Unexpected response format from server');
     }
+    
+    if (!response.ok) {
+      console.error(`[API] Error response:`, data);
+      throw new Error(data.error || `HTTP error! status: ${response.status}`);
+    }
+    
+    console.log(`[API] Response from ${url}:`, data);
+    return data;
   } catch (error) {
     console.error(`[API] Error:`, error);
     showToast(error.message, true);
@@ -161,7 +166,7 @@ async function loadRecentFines() {
         <td>${fine.player_name || 'Onbekend'}</td>
         <td>${fine.reason_description || 'Onbekend'}</td>
         <td>${formatCurrency(fine.amount || 0)}</td>
-        <td>${formatDate(fine.created_at)}</td>
+        <td>${formatDate(fine.date)}</td>
       </tr>
     `).join('');
   } catch (error) {
