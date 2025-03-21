@@ -155,10 +155,19 @@ async function fetchAPI(endpoint, options = {}) {
     toggleLoading(true);
     try {
         debug(`Fetching API: ${endpoint}`);
-        const response = await fetch(`${API_BASE_URL}/${endpoint}`, options);
+        // Ensure endpoint starts with a slash
+        const path = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+        const response = await fetch(`${API_BASE_URL}${path}`, options);
         if (!response.ok) {
             throw new Error(`API Error: ${response.status} ${response.statusText}`);
         }
+        
+        // Check if the response is valid JSON
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            throw new Error(`Invalid response format: expected JSON but got ${contentType}`);
+        }
+        
         const data = await response.json();
         return data;
     } catch (error) {
@@ -205,7 +214,7 @@ function createPlayerHistoryCard(fine) {
 async function loadTotalAmount() {
     try {
         debug('Loading total amount');
-        const data = await fetchAPI('total-amount');
+        const data = await fetchAPI('/total-amount');
         if (!$('#totalAmount').length) {
             debug('Error: Total amount element not found');
             return;
@@ -224,7 +233,7 @@ async function loadTotalAmount() {
 async function loadRecentFines() {
     try {
         debug('Loading recent fines');
-        const data = await fetchAPI('recent-fines');
+        const data = await fetchAPI('/recent-fines');
         if (!$('#recentFines').length) {
             debug('Error: Recent fines element not found');
             return;
@@ -246,7 +255,7 @@ async function loadRecentFines() {
 async function loadLeaderboard() {
     try {
         debug('Loading leaderboard');
-        const data = await fetchAPI('leaderboard');
+        const data = await fetchAPI('/leaderboard');
         if (!$('#leaderboard').length) {
             debug('Error: Leaderboard element not found');
             return;
@@ -284,7 +293,7 @@ async function loadLeaderboard() {
 async function loadPlayers() {
     try {
         debug('Loading players for dropdown');
-        const data = await fetchAPI('players');
+        const data = await fetchAPI('/players');
         if (!$('#playerSelect').length) {
             debug('Error: Player select element not found');
             return;
@@ -314,8 +323,8 @@ async function loadPlayerHistory(playerId) {
             return;
         }
         
-        const data = await fetchAPI(`player-fines/${playerId}`);
-        const player = await fetchAPI(`player/${playerId}`);
+        const data = await fetchAPI(`/player-fines/${playerId}`);
+        const player = await fetchAPI(`/player/${playerId}`);
         
         $('#playerHistoryName').text(player.name);
         

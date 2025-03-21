@@ -26,6 +26,15 @@
         }
     </script>
     <style>
+        /* Ensure the background covers the entire page */
+        html, body {
+            min-height: 100vh;
+        }
+        
+        html.dark {
+            background-color: #111827;
+        }
+        
         /* Professional background pattern */
         body {
             background-image: 
@@ -33,6 +42,7 @@
                 radial-gradient(circle at 45px 45px, rgba(0, 0, 0, 0.02) 2px, transparent 0);
             background-size: 60px 60px;
             background-position: 0 0, 30px 30px;
+            background-attachment: fixed;
         }
         
         .dark body {
@@ -41,6 +51,7 @@
                 radial-gradient(circle at 45px 45px, rgba(255, 255, 255, 0.02) 2px, transparent 0);
             background-size: 60px 60px;
             background-position: 0 0, 30px 30px;
+            background-attachment: fixed;
         }
         
         /* Card styles */

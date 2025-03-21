@@ -1,6 +1,14 @@
 // API Base URL
 const API_BASE_URL = '/api';
 
+// Debug setting
+const DEBUG = true;
+function debug(message) {
+    if (DEBUG) {
+        console.log(`[DEBUG] ${message}`);
+    }
+}
+
 // Theme handling
 function setTheme(isDark) {
     if (isDark) {
