@@ -83,4 +83,53 @@ const AUTH = {
             themeIcon.className = `fas fa-${isDark ? 'sun' : 'moon'} text-xl`;
         }
     }
+};
+
+// Simple authentication system
+const Auth = {
+    TOKEN_KEY: 'authToken',
+    EXPIRES_KEY: 'authExpires',
+    PASSWORD: 'Mandje123',
+    
+    login(password) {
+        if (password !== this.PASSWORD) {
+            return false;
+        }
+        
+        const token = btoa(`admin:${Date.now()}`);
+        const expires = Date.now() + (7 * 24 * 60 * 60 * 1000); // 7 days
+        
+        localStorage.setItem(this.TOKEN_KEY, token);
+        localStorage.setItem(this.EXPIRES_KEY, expires.toString());
+        
+        return true;
+    },
+    
+    check() {
+        try {
+            const token = localStorage.getItem(this.TOKEN_KEY);
+            const expires = localStorage.getItem(this.EXPIRES_KEY);
+            
+            if (!token || !expires) {
+                return false;
+            }
+            
+            const expiryTime = parseInt(expires);
+            if (isNaN(expiryTime) || expiryTime <= Date.now()) {
+                this.logout();
+                return false;
+            }
+            
+            return true;
+        } catch (error) {
+            console.error('Auth check error:', error);
+            return false;
+        }
+    },
+    
+    logout() {
+        localStorage.removeItem(this.TOKEN_KEY);
+        localStorage.removeItem(this.EXPIRES_KEY);
+        window.location.href = 'login.html';
+    }
 }; 

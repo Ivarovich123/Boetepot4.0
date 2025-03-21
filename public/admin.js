@@ -1,35 +1,10 @@
-// Check authentication
-function checkAuth() {
-    try {
-        const token = localStorage.getItem('authToken');
-        const expires = localStorage.getItem('authExpires');
-        
-        // If no token exists, redirect to login
-        if (!token || !expires) {
-            debug('No auth token found, redirecting to login');
-            window.location.href = 'login.html';
-            return false;
-        }
-        
-        // Check if token is expired
-        const expiryTime = parseInt(expires);
-        if (isNaN(expiryTime) || expiryTime <= Date.now()) {
-            debug('Auth token expired, redirecting to login');
-            // Clear expired tokens
-            localStorage.removeItem('authToken');
-            localStorage.removeItem('authExpires');
-            window.location.href = 'login.html';
-            return false;
-        }
-        
-        debug('Authentication successful');
-        return true;
-    } catch (error) {
-        debug(`Auth check error: ${error.message}`);
-        window.location.href = 'login.html';
-        return false;
-    }
+// Check authentication on page load
+if (!Auth.check()) {
+    window.location.href = 'login.html';
 }
+
+// Initialize theme
+Theme.init();
 
 // API Base URL - make sure this matches your backend setup
 const API_BASE_URL = window.location.hostname === 'localhost' ? 'http://localhost:3000/api' : '/api';
