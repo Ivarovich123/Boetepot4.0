@@ -29,6 +29,7 @@
         /* Custom Select2 Styles */
         .select2-container {
             width: 100% !important;
+            display: block !important;
         }
         .select2-container .select2-selection--single {
             height: 42px !important;
@@ -91,6 +92,21 @@
         /* Fix hidden content */
         #content-beheer {
             display: none;
+        }
+        
+        /* Fix for loading spinner */
+        #loadingSpinner.flex {
+            display: flex !important;
+        }
+        
+        /* Fix for select2 display in tab content */
+        #content-boetes, #content-beheer {
+            overflow: visible !important;
+        }
+        
+        /* Force visibility of select2 dropdown */
+        .select2-container--open {
+            z-index: 9999 !important;
         }
     </style>
 </head>
@@ -168,6 +184,14 @@
                             </button>
                         </div>
                     </form>
+                    <!-- Fallback UI for debugging -->
+                    <div id="fallback-debug" class="mt-6 p-4 bg-gray-100 dark:bg-gray-800 rounded-lg">
+                        <h4 class="font-bold mb-2">Status:</h4>
+                        <div id="debug-status" class="text-sm mb-4"></div>
+                        <button onclick="document.getElementById('debug-status').textContent='Loading data manually...'; loadData(); setTimeout(() => document.getElementById('debug-status').textContent='Manual data load completed', 2000)" class="px-3 py-1 bg-blue-600 text-white rounded">
+                            Manually Load Data
+                        </button>
+                    </div>
                 </div>
             </section>
 

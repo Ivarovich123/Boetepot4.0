@@ -239,26 +239,26 @@ function initializeSelect2() {
 
 // Update Select2 theme
 function updateSelect2Theme(isDark) {
-    $('.select2-container--classic .select2-selection--single').css({
+    $('.select2-container--default .select2-selection--single').css({
         'background-color': isDark ? 'rgb(17, 24, 39)' : 'white',
         'border-color': isDark ? 'rgb(55, 65, 81)' : 'rgb(209, 213, 219)',
         'color': isDark ? 'white' : 'inherit'
     });
     
-    $('.select2-container--classic .select2-selection--single .select2-selection__rendered').css({
+    $('.select2-container--default .select2-selection--single .select2-selection__rendered').css({
         'color': isDark ? 'white' : 'inherit'
     });
     
-    $('.select2-container--classic .select2-dropdown').css({
+    $('.select2-container--default .select2-dropdown').css({
         'background-color': isDark ? 'rgb(17, 24, 39)' : 'white',
         'border-color': isDark ? 'rgb(55, 65, 81)' : 'rgb(209, 213, 219)'
     });
     
-    $('.select2-container--classic .select2-results__option').css({
+    $('.select2-container--default .select2-results__option').css({
         'color': isDark ? 'white' : 'inherit'
     });
     
-    $('.select2-container--classic .select2-search__field').css({
+    $('.select2-container--default .select2-search__field').css({
         'background-color': isDark ? 'rgb(17, 24, 39)' : 'white',
         'color': isDark ? 'white' : 'inherit'
     });
@@ -590,6 +590,10 @@ $(document).ready(function() {
     
     console.log('[DEBUG] All required DOM elements found');
     
+    // Make sure content is visible initially
+    $('#content-boetes').css('display', 'block');
+    $('#content-beheer').css('display', 'none');
+    
     // Set up tab switching
     $('#tab-boetes').on('click', function() {
         console.log('[DEBUG] Switching to boetes tab');
@@ -606,9 +610,23 @@ $(document).ready(function() {
     console.log('[DEBUG] Initial active tab:', activeTab);
     switchTab(activeTab);
     
+    // Initialize theme
+    const isDarkMode = document.documentElement.classList.contains('dark');
+    console.log('[DEBUG] Initial theme - Dark mode:', isDarkMode);
+    setTheme(isDarkMode);
+    
     // Wait a short time to ensure DOM is fully ready before loading data
     setTimeout(() => {
         console.log('[DEBUG] Starting initial data load');
+        // Force visibility of containers again
+        if (activeTab === 'boetes') {
+            $('#content-boetes').css('display', 'block');
+            $('#content-beheer').css('display', 'none');
+        } else {
+            $('#content-boetes').css('display', 'none');
+            $('#content-beheer').css('display', 'block');
+        }
+        
         loadData();
     }, 300);
 }); 
