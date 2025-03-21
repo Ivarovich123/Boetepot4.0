@@ -180,11 +180,11 @@ function showToast(message, type = 'info') {
 
 // Format currency with proper error handling
 function formatCurrency(amount) {
-    if (typeof amount !== 'number' || isNaN(amount)) {
+  if (typeof amount !== 'number' || isNaN(amount)) {
         debug(`Invalid amount for formatting: ${amount}`);
-        return '€0,00';
-    }
-    return new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(amount);
+    return '€0,00';
+  }
+  return new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(amount);
 }
 
 // Format date with proper error handling
@@ -408,11 +408,11 @@ async function fetchAPI(endpoint, options = {}) {
                 debug(`Trying URL: ${url}`);
                 
                 const fetchOptions = {
-                    ...options,
-                    headers: {
-                        'Content-Type': 'application/json',
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
                         'Accept': 'application/json',
-                        ...options.headers
+        ...options.headers
                     },
                     signal: abortController.signal
                 };
@@ -436,8 +436,8 @@ async function fetchAPI(endpoint, options = {}) {
                 // Try to parse as JSON
                 const data = await response.json();
                 debug(`API response successful with ${typeof data} from ${url}`);
-                return data;
-            } catch (error) {
+    return data;
+  } catch (error) {
                 debug(`Error for ${url}: ${error.message}`);
                 lastError = error;
             }
@@ -568,7 +568,7 @@ async function loadTotalAmount() {
         $('#totalAmount').html(`
             <div class="text-5xl font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 rounded-2xl px-8 py-4 mb-2 shadow-md">${formatCurrency(total)}</div>
         `);
-    } catch (error) {
+  } catch (error) {
         debug(`Error loading total amount: ${error.message}`);
         $('#totalAmount').html(`
             <div class="text-5xl font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 rounded-2xl px-8 py-4 mb-2 shadow-md">€0,00</div>
@@ -578,42 +578,42 @@ async function loadTotalAmount() {
 
 // Load recent fines - improved error handling
 async function loadRecentFines() {
-    try {
+  try {
         debug('Loading recent fines');
         const data = await fetchAPI('/recent-fines');
         if (!$('#recentFines').length) {
             debug('Error: Recent fines element not found');
-            return;
-        }
-        
+      return;
+    }
+    
         if (!data || data.length === 0) {
             $('#recentFines').html('<div class="text-center py-4 text-gray-500 dark:text-gray-400">Geen recente boetes gevonden</div>');
-            return;
-        }
-        
+      return;
+    }
+    
         const finesHtml = data.map(fine => createFineCard(fine)).join('');
         $('#recentFines').html(finesHtml);
-    } catch (error) {
+  } catch (error) {
         debug(`Error loading recent fines: ${error.message}`);
         $('#recentFines').html('<div class="text-center py-4 text-red-500">Er is een fout opgetreden bij het laden van recente boetes</div>');
-    }
+  }
 }
 
 // Load leaderboard - improved error handling
 async function loadLeaderboard() {
-    try {
+  try {
         debug('Loading leaderboard');
         const data = await fetchAPI('/leaderboard');
         if (!$('#leaderboard').length) {
             debug('Error: Leaderboard element not found');
-            return;
-        }
-        
+      return;
+    }
+    
         if (!data || data.length === 0) {
             $('#leaderboard').html('<div class="text-center py-4 text-gray-500 dark:text-gray-400">Geen spelers gevonden</div>');
-            return;
-        }
-        
+      return;
+    }
+    
         const leaderboardHtml = data.map((player, index) => `
             <div class="bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
                 <div class="flex justify-between items-center">
@@ -629,8 +629,8 @@ async function loadLeaderboard() {
                     <div class="text-lg font-bold text-gray-800 dark:text-gray-100">${formatCurrency(player.totalFined || 0)}</div>
                 </div>
             </div>
-        `).join('');
-        
+    `).join('');
+    
         $('#leaderboard').html(leaderboardHtml);
     } catch (error) {
         debug(`Error loading leaderboard: ${error.message}`);
@@ -659,23 +659,23 @@ async function loadPlayers() {
         } else {
             debug('No player data returned or invalid format');
         }
-    } catch (error) {
+  } catch (error) {
         debug(`Error loading players: ${error.message}`);
-    }
+  }
 }
 
 // Load player history - improved error handling
 async function loadPlayerHistory(playerId) {
-    try {
+  try {
         debug(`Loading history for player ID: ${playerId}`);
         
         if (!playerId) {
             debug('No player selected, hiding player history content');
             $('#playerHistoryContent').addClass('hidden');
             $('#playerHistoryEmpty').removeClass('hidden');
-            return;
-        }
-        
+      return;
+    }
+    
         debug(`Fetching player ${playerId} and their fines`);
         
         const [playerData, finesData] = await Promise.all([
@@ -690,9 +690,9 @@ async function loadPlayerHistory(playerId) {
             debug('No valid player data received');
             $('#playerHistoryContent').addClass('hidden');
             $('#playerHistoryEmpty').removeClass('hidden').html('<div class="text-center py-4 text-red-500">Spelersinformatie kon niet worden geladen</div>');
-            return;
-        }
-        
+      return;
+    }
+    
         $('#playerHistoryName').text(playerData.name || 'Onbekend');
         
         // Calculate total with proper error handling
@@ -714,7 +714,7 @@ async function loadPlayerHistory(playerId) {
         $('#playerHistoryContent').removeClass('hidden');
         
         debug(`Loaded ${finesData ? finesData.length : 0} fines for player ${playerData?.name || 'unknown'}`);
-    } catch (error) {
+  } catch (error) {
         debug(`Error loading player history: ${error.message}`);
         $('#playerHistoryContent').addClass('hidden');
         $('#playerHistoryEmpty').removeClass('hidden').html('<div class="text-center py-4 text-red-500">Er is een fout opgetreden bij het laden van de spelersgeschiedenis</div>');
@@ -819,23 +819,23 @@ function setupPlayerHistory() {
         players.forEach(player => {
             playerSelect.append(`<option value="${player.id}">${player.name}</option>`);
         });
-        
-        // Initialize Select2
+    
+    // Initialize Select2
         initializeSelect2();
         
         // Handle player selection change
         $('#playerHistorySelect').on('change', function() {
-            const playerId = $(this).val();
-            if (playerId) {
-                loadPlayerHistory(playerId);
-            } else {
+      const playerId = $(this).val();
+      if (playerId) {
+        loadPlayerHistory(playerId);
+      } else {
                 // Clear the history section
                 $('#playerHistory').empty();
             }
         });
         
         console.log('[DEBUG] Player history setup completed');
-    } catch (error) {
+  } catch (error) {
         console.error('[DEBUG] Error setting up player history:', error);
     }
 }

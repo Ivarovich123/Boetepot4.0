@@ -1,17 +1,34 @@
 // Check authentication
 function checkAuth() {
-    const token = localStorage.getItem('authToken');
-    const expires = localStorage.getItem('authExpires');
-    
-    // Simple authentication check without redirect loop prevention
-    if (!token || !expires || parseInt(expires) <= Date.now()) {
-        console.log('[DEBUG] Authentication failed, redirecting to login page');
-        window.location.href = 'login.html'; // Use relative URL
+    try {
+        const token = localStorage.getItem('authToken');
+        const expires = localStorage.getItem('authExpires');
+        
+        // If no token exists, redirect to login
+        if (!token || !expires) {
+            debug('No auth token found, redirecting to login');
+            window.location.href = 'login.html';
+            return false;
+        }
+        
+        // Check if token is expired
+        const expiryTime = parseInt(expires);
+        if (isNaN(expiryTime) || expiryTime <= Date.now()) {
+            debug('Auth token expired, redirecting to login');
+            // Clear expired tokens
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('authExpires');
+            window.location.href = 'login.html';
+            return false;
+        }
+        
+        debug('Authentication successful');
+        return true;
+    } catch (error) {
+        debug(`Auth check error: ${error.message}`);
+        window.location.href = 'login.html';
         return false;
     }
-    
-    console.log('[DEBUG] Authentication successful');
-    return true;
 }
 
 // API Base URL - make sure this matches your backend setup
@@ -1615,19 +1632,35 @@ function setupTheme() {
 
 // Document ready handler
 $(document).ready(function() {
-    console.log('[DEBUG] Document ready');
+    debug('Document ready');
     
-    // Check authentication before initializing the page
-    setTimeout(() => {
-        try {
-            if (checkAuth()) {
-                console.log('[DEBUG] Authentication successful, initializing page');
-                initialize();
-            } else {
-                console.log('[DEBUG] Authentication failed, not initializing page');
-            }
-        } catch (error) {
-            console.error('[DEBUG] Error during authentication check:', error);
+    // Initialize theme
+    if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.classList.add('dark');
+        $('#theme-icon').removeClass('fa-moon').addClass('fa-sun');
+    } else {
+        document.documentElement.classList.remove('dark');
+        $('#theme-icon').removeClass('fa-sun').addClass('fa-moon');
+    }
+    
+    // Theme toggle button event listener
+    $('#theme-toggle').on('click', function() {
+        debug('Theme toggle clicked');
+        const isDark = document.documentElement.classList.contains('dark');
+        if (isDark) {
+            document.documentElement.classList.remove('dark');
+            localStorage.theme = 'light';
+            $('#theme-icon').removeClass('fa-sun').addClass('fa-moon');
+        } else {
+            document.documentElement.classList.add('dark');
+            localStorage.theme = 'dark';
+            $('#theme-icon').removeClass('fa-moon').addClass('fa-sun');
         }
-    }, 200); // Slight delay to ensure everything is loaded
+    });
+    
+    // Check authentication and initialize page
+    if (checkAuth()) {
+        debug('Authentication successful, initializing page');
+        initialize();
+    }
 }); 
