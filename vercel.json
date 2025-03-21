@@ -3,16 +3,14 @@
   "public": true,
   "cleanUrls": true,
   "trailingSlash": false,
-  "static": {
-    "headers": [
-      {
-        "source": "/(.*)",
-        "headers": [
-          { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }
-        ]
-      }
-    ]
-  },
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }
+      ]
+    }
+  ],
   "redirects": [
     { "source": "/admin", "destination": "/admin.html" },
     { "source": "/login", "destination": "/login.html" }
