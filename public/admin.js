@@ -1,6 +1,35 @@
 // API Base URL
 const API_BASE_URL = '/api';
 
+// Theme Toggle
+function toggleTheme() {
+  const body = document.body;
+  const themeIcon = document.getElementById('theme-icon');
+  
+  if (body.classList.contains('dark')) {
+    body.classList.remove('dark');
+    localStorage.setItem('theme', 'light');
+    if (themeIcon) themeIcon.className = 'fas fa-moon';
+  } else {
+    body.classList.add('dark');
+    localStorage.setItem('theme', 'dark');
+    if (themeIcon) themeIcon.className = 'fas fa-sun';
+  }
+}
+
+// Init theme from local storage
+function initTheme() {
+  const savedTheme = localStorage.getItem('theme');
+  const themeIcon = document.getElementById('theme-icon');
+  
+  if (savedTheme === 'dark') {
+    document.body.classList.add('dark');
+    if (themeIcon) themeIcon.className = 'fas fa-sun';
+  } else {
+    if (themeIcon) themeIcon.className = 'fas fa-moon';
+  }
+}
+
 // Utility Functions
 function toggleLoading(show) {
   const spinner = document.getElementById('loadingSpinner');
@@ -49,9 +78,19 @@ async function fetchAPI(endpoint, options = {}) {
       }
     });
     
-    const data = await response.json();
+    const contentType = response.headers.get('content-type');
+    let data;
+    
+    if (contentType && contentType.includes('application/json')) {
+      data = await response.json();
+    } else {
+      const text = await response.text();
+      console.error(`[API] Non-JSON response: ${text}`);
+      throw new Error('Unexpected response format from server');
+    }
     
     if (!response.ok) {
+      console.error(`[API] Error response:`, data);
       throw new Error(data.error || `HTTP error! status: ${response.status}`);
     }
     
@@ -252,31 +291,44 @@ async function handleAddFine(event) {
   }
 }
 
-// Initialize
+// Initialize app
 document.addEventListener('DOMContentLoaded', () => {
-  console.log('[Init] Document loaded, initializing...');
-  
-  // Initialize forms
-  const addPlayerForm = document.getElementById('addPlayerForm');
-  const addReasonForm = document.getElementById('addReasonForm');
-  const addFineForm = document.getElementById('addFineForm');
-  
-  if (addPlayerForm) addPlayerForm.addEventListener('submit', handleAddPlayer);
-  if (addReasonForm) addReasonForm.addEventListener('submit', handleAddReason);
-  if (addFineForm) addFineForm.addEventListener('submit', handleAddFine);
-  
-  // Load data
-  loadPlayers();
-  loadReasons();
-  loadRecentFines();
-  
-  // Initialize theme
-  const savedTheme = localStorage.getItem('theme');
-  if (savedTheme === 'dark') {
-    document.body.classList.add('dark');
-    const icon = document.getElementById('theme-icon');
-    if (icon) icon.className = 'fas fa-sun';
+  try {
+    // Initialize theme
+    initTheme();
+    
+    // Load data
+    loadPlayers();
+    loadReasons();
+    loadRecentFines();
+    
+    // Set up form handlers
+    const addPlayerForm = document.getElementById('addPlayerForm');
+    const addReasonForm = document.getElementById('addReasonForm');
+    const addFineForm = document.getElementById('addFineForm');
+    
+    if (addPlayerForm) {
+      addPlayerForm.addEventListener('submit', handleAddPlayer);
+    }
+    
+    if (addReasonForm) {
+      addReasonForm.addEventListener('submit', handleAddReason);
+    }
+    
+    if (addFineForm) {
+      addFineForm.addEventListener('submit', handleAddFine);
+    }
+    
+    // Initialize Select2
+    $('.form-select').select2({
+      theme: 'classic',
+      placeholder: 'Selecteer...',
+      allowClear: true,
+      width: '100%'
+    });
+    
+    console.log('Admin initialized');
+  } catch (error) {
+    console.error('Error initializing admin:', error);
   }
-  
-  console.log('[Init] Initialization complete');
 }); 

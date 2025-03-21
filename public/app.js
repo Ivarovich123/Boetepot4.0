@@ -19,16 +19,14 @@ function showToast(message, isError = false) {
   }
 }
 
-function formatDate(dateString, includeYear = false) {
+function formatDate(dateString) {
   if (!dateString) return 'Onbekend';
   try {
     const date = new Date(dateString);
     if (isNaN(date.getTime())) return 'Ongeldige datum';
     
     const months = ['Januari', 'Februari', 'Maart', 'April', 'Mei', 'Juni', 'Juli', 'Augustus', 'September', 'Oktober', 'November', 'December'];
-    return includeYear 
-      ? `${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`
-      : `${date.getDate()} ${months[date.getMonth()]}`;
+    return `${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`;
   } catch (error) {
     console.error('Error formatting date:', error);
     return 'Ongeldige datum';
@@ -36,7 +34,39 @@ function formatDate(dateString, includeYear = false) {
 }
 
 function formatCurrency(amount) {
-  return `€${parseFloat(amount).toFixed(2)}`;
+  if (isNaN(amount)) {
+    return '€0,00';
+  }
+  return `€${parseFloat(amount).toFixed(2).replace('.', ',')}`;
+}
+
+// Theme Toggle
+function toggleTheme() {
+  const body = document.body;
+  const themeIcon = document.getElementById('theme-icon');
+  
+  if (body.classList.contains('dark')) {
+    body.classList.remove('dark');
+    localStorage.setItem('theme', 'light');
+    if (themeIcon) themeIcon.className = 'fas fa-moon';
+  } else {
+    body.classList.add('dark');
+    localStorage.setItem('theme', 'dark');
+    if (themeIcon) themeIcon.className = 'fas fa-sun';
+  }
+}
+
+// Init theme from local storage
+function initTheme() {
+  const savedTheme = localStorage.getItem('theme');
+  const themeIcon = document.getElementById('theme-icon');
+  
+  if (savedTheme === 'dark') {
+    document.body.classList.add('dark');
+    if (themeIcon) themeIcon.className = 'fas fa-sun';
+  } else {
+    if (themeIcon) themeIcon.className = 'fas fa-moon';
+  }
 }
 
 // API Functions
@@ -51,15 +81,27 @@ async function fetchAPI(endpoint, options = {}) {
       }
     });
     
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+    const contentType = response.headers.get('content-type');
+    let data;
+    
+    if (contentType && contentType.includes('application/json')) {
+      data = await response.json();
+    } else {
+      const text = await response.text();
+      console.error(`[API] Non-JSON response: ${text}`);
+      throw new Error('Unexpected response format from server');
     }
     
-    const data = await response.json();
+    if (!response.ok) {
+      console.error(`[API] Error response:`, data);
+      throw new Error(data.error || `HTTP error! status: ${response.status}`);
+    }
+    
     console.log(`[API] Response from ${endpoint}:`, data);
     return data;
   } catch (error) {
     console.error(`[API] Error fetching ${endpoint}:`, error);
+    showToast(error.message || 'Er is een fout opgetreden', true);
     throw error;
   }
 }
@@ -97,31 +139,36 @@ async function loadTotalFines() {
     
     const total = parseFloat(data.total || 0);
     
-    // Simple animation fallback if CountUp fails
+    // Simple animation for the counter
     const duration = 2000;
-    const start = 0;
-    const end = total;
-    const startTime = performance.now();
+    const steps = 50;
+    const stepTime = duration / steps;
+    const increment = total / steps;
+    let current = 0;
+    let step = 0;
     
-    function updateCounter(currentTime) {
-      const elapsed = currentTime - startTime;
-      const progress = Math.min(elapsed / duration, 1);
-      
-      // Easing function for smooth animation
-      const easeOutQuart = 1 - Math.pow(1 - progress, 4);
-      const current = start + (end - start) * easeOutQuart;
+    const interval = setInterval(() => {
+      step++;
+      if (step >= steps) {
+        clearInterval(interval);
+        current = total; // Ensure we end at the exact total
+      } else {
+        // Use easing function for smoother animation
+        const progress = step / steps;
+        const easedProgress = 1 - Math.pow(1 - progress, 3); // Cubic ease out
+        current = total * easedProgress;
+      }
       
       totalElement.textContent = formatCurrency(current);
-      
-      if (progress < 1) {
-        requestAnimationFrame(updateCounter);
-      }
-    }
-    
-    requestAnimationFrame(updateCounter);
+    }, stepTime);
   } catch (error) {
     console.error('[Total] Error loading total:', error);
     showToast('Fout bij laden van totaal bedrag', true);
+    
+    const totalElement = document.getElementById('totalAmount');
+    if (totalElement) {
+      totalElement.textContent = '€0,00';
+    }
   }
 }
 
@@ -262,45 +309,38 @@ async function initializePlayerSearch() {
   }
 }
 
-// Theme Toggle
-function toggleTheme() {
-  document.body.classList.toggle('dark');
-  localStorage.setItem('theme', document.body.classList.contains('dark') ? 'dark' : 'light');
-  
-  const icon = document.getElementById('theme-icon');
-  if (icon) {
-    icon.className = document.body.classList.contains('dark') ? 'fas fa-sun' : 'fas fa-moon';
-  }
-}
-
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
-  console.log('[Init] Document loaded, initializing...');
-  
-  // Load all data
-  loadTotalFines();
-  loadRecentFines();
-  loadLeaderboard();
-  
-  // Initialize player search
-  initializePlayerSearch();
-  
-  // Initialize theme
-  const savedTheme = localStorage.getItem('theme');
-  if (savedTheme === 'dark') {
-    document.body.classList.add('dark');
+  try {
+    // Initialize theme
+    initTheme();
+    
+    // Initialize Select2
+    if ($.fn.select2) {
+      $('#playerSelect').select2({
+        placeholder: 'Zoek een speler...',
+        allowClear: true,
+        width: '100%'
+      });
+    } else {
+      console.warn('Select2 not loaded');
+    }
+    
+    // Set up player select event listener
+    const playerSelect = document.getElementById('playerSelect');
+    if (playerSelect) {
+      playerSelect.addEventListener('change', loadPlayerHistory);
+    }
+    
+    // Load all data
+    loadTotalFines();
+    loadRecentFines();
+    loadLeaderboard();
+    loadPlayers();
+    
+    console.log('App initialized');
+  } catch (error) {
+    console.error('Error initializing app:', error);
+    showToast('Er is een fout opgetreden bij het initialiseren van de app', true);
   }
-  
-  // Add theme toggle button to header
-  const header = document.querySelector('header');
-  if (header) {
-    const themeButton = document.createElement('button');
-    themeButton.className = 'btn btn-link position-absolute end-0 me-3';
-    themeButton.innerHTML = `<i id="theme-icon" class="fas ${savedTheme === 'dark' ? 'fa-sun' : 'fa-moon'} fs-4"></i>`;
-    themeButton.onclick = toggleTheme;
-    header.style.position = 'relative';
-    header.appendChild(themeButton);
-  }
-  
-  console.log('[Init] Initialization complete');
 }); 
