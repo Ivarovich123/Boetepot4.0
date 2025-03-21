@@ -30,6 +30,8 @@
         .select2-container {
             width: 100% !important;
             display: block !important;
+            position: relative !important;
+            z-index: 1050 !important;
         }
         .select2-container .select2-selection--single {
             height: 42px !important;
@@ -60,6 +62,7 @@
             margin-top: 0.25rem !important;
             border-color: rgb(209, 213, 219) !important;
             background-color: white !important;
+            z-index: 1051 !important;
         }
         .dark .select2-dropdown {
             background-color: rgb(17, 24, 39) !important;
@@ -102,11 +105,33 @@
         /* Fix for select2 display in tab content */
         #content-boetes, #content-beheer {
             overflow: visible !important;
+            position: relative !important;
         }
         
         /* Force visibility of select2 dropdown */
         .select2-container--open {
             z-index: 9999 !important;
+            display: block !important;
+        }
+        
+        /* Ensure the container has a proper display */
+        .select2-container--default {
+            display: block !important;
+        }
+        
+        /* For debugging */
+        #fallback-debug {
+            border: 1px solid #e2e8f0;
+            border-radius: 0.5rem;
+            overflow: hidden;
+        }
+        
+        #debug-status {
+            max-height: 150px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
         }
     </style>
 </head>

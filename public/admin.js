@@ -113,7 +113,13 @@ function formatDate(dateString) {
 
 // Show/hide loading spinner
 function toggleLoading(show) {
-    $('#loadingSpinner').toggleClass('flex hidden', show);
+    console.log(`[DEBUG] ${show ? 'Showing' : 'Hiding'} loading spinner`);
+    if (show) {
+        $('#loadingSpinner').removeClass('hidden').addClass('flex');
+    } else {
+        $('#loadingSpinner').removeClass('flex').addClass('hidden');
+    }
+    console.log(`[DEBUG] Loading spinner classes:`, $('#loadingSpinner').attr('class'));
 }
 
 // Show toast message
@@ -175,6 +181,43 @@ function createFineCard(fine) {
     }
 }
 
+// Force Select2 visibility
+function forceSelect2Visibility() {
+    console.log('[DEBUG] Forcing Select2 visibility');
+    
+    // Force display style
+    $('.select2-container').each(function() {
+        const $this = $(this);
+        const display = $this.css('display');
+        
+        if (display === 'none') {
+            console.warn('[DEBUG] Found hidden Select2 container, forcing display');
+            $this.css('display', 'block');
+        }
+        
+        // Ensure proper z-index
+        if (parseInt($this.css('z-index')) < 1000) {
+            $this.css('z-index', '1000');
+        }
+        
+        // Force proper positioning
+        const position = $this.css('position');
+        if (position !== 'absolute' && position !== 'relative') {
+            $this.css('position', 'relative');
+        }
+    });
+    
+    // Force visibility of dropdowns when open
+    $(document).on('select2:open', function() {
+        setTimeout(() => {
+            $('.select2-dropdown').css({
+                'display': 'block',
+                'z-index': '9999'
+            });
+        }, 10);
+    });
+}
+
 // Initialize Select2
 function initializeSelect2() {
     console.log('[DEBUG] Inside initializeSelect2 function');
@@ -229,6 +272,9 @@ function initializeSelect2() {
         setTimeout(() => {
             console.log('[DEBUG] Forcing display refresh...');
             $('.select2').css('width', '100%').trigger('change');
+            
+            // Force Select2 visibility
+            forceSelect2Visibility();
         }, 50);
         
         console.log('[DEBUG] Select2 initialization successful');
@@ -266,6 +312,12 @@ function updateSelect2Theme(isDark) {
 
 // API Functions
 async function fetchAPI(endpoint, options = {}) {
+    // Set a timeout to ensure loading spinner doesn't stay on forever
+    const timeoutId = setTimeout(() => {
+        console.warn(`[API] Request timeout for ${endpoint}`);
+        toggleLoading(false);
+    }, 10000); // 10 second timeout
+    
     try {
         // Show loading indicator
         toggleLoading(true);
@@ -280,13 +332,27 @@ async function fetchAPI(endpoint, options = {}) {
         const url = `${API_BASE_URL}${path}`;
         console.log(`[DEBUG] Full request URL: ${url}`);
         
-        const response = await fetch(url, {
-            ...options,
-            headers: {
-                'Content-Type': 'application/json',
-                ...options.headers
-            }
-        });
+        // Use AbortController for timeout
+        const controller = new AbortController();
+        const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => {
+                controller.abort();
+                reject(new Error('Request timeout'));
+            }, 8000)
+        );
+        
+        // Race between fetch and timeout
+        const response = await Promise.race([
+            fetch(url, {
+                ...options,
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...options.headers
+                },
+                signal: controller.signal
+            }),
+            timeoutPromise
+        ]);
         
         console.log(`[DEBUG] Response status:`, response.status);
         
@@ -313,9 +379,26 @@ async function fetchAPI(endpoint, options = {}) {
     } catch (error) {
         console.error(`[API] Error fetching ${endpoint}:`, error);
         console.error(`[DEBUG] Error details:`, { message: error.message, stack: error.stack });
-        showToast(error.message || 'Er is een fout opgetreden bij het verwerken van het verzoek', 'error');
+        
+        // Show helpful error message
+        let errorMessage = 'Er is een fout opgetreden bij het verwerken van het verzoek';
+        if (error.message === 'Request timeout') {
+            errorMessage = 'De server reageert niet, controleer de verbinding';
+        } else if (error.message === 'Failed to fetch' || error.message.includes('NetworkError')) {
+            errorMessage = 'Kan geen verbinding maken met de server';
+        }
+        
+        showToast(errorMessage, 'error');
+        
+        // Return empty data with appropriate type based on endpoint
+        if (endpoint.includes('players') || endpoint.includes('reasons') || endpoint.includes('fines')) {
+            return [];
+        }
         throw error;
     } finally {
+        // Clear the timeout
+        clearTimeout(timeoutId);
+        
         // Hide loading indicator
         toggleLoading(false);
     }
@@ -326,6 +409,9 @@ async function loadData() {
     try {
         console.log('[DEBUG] Starting loadData() function');
         console.log('[DEBUG] API_BASE_URL =', API_BASE_URL);
+        
+        // Show loading spinner
+        toggleLoading(true);
         
         // Load players
         console.log('[DEBUG] Fetching players...');
@@ -418,6 +504,14 @@ async function loadData() {
     } catch (error) {
         console.error('[DEBUG] Error in loadData():', error);
         showToast('Er is een fout opgetreden bij het laden van de gegevens', 'error');
+    } finally {
+        // Ensure loading spinner is hidden
+        toggleLoading(false);
+        
+        // Update debug status
+        if (document.getElementById('debug-status')) {
+            document.getElementById('debug-status').textContent = 'Data loaded: ' + new Date().toLocaleTimeString();
+        }
     }
 }
 
@@ -564,6 +658,164 @@ $('#resetButton').on('click', async function() {
     }
 });
 
+// Validate Select2 initialization
+function validateSelect2() {
+    console.log('[DEBUG] Validating Select2 setup...');
+    
+    // Check if Select2 containers exist
+    const select2Count = $('.select2-container').length;
+    console.log(`[DEBUG] Found ${select2Count} Select2 containers`);
+    
+    // Check each Select2 element
+    ['#playerSelect', '#reasonSelect', '#fineSelect'].forEach(selector => {
+        const $el = $(selector);
+        const hasSelect2 = $el.hasClass('select2-hidden-accessible');
+        
+        console.log(`[DEBUG] ${selector}: exists=${$el.length > 0}, select2-initialized=${hasSelect2}`);
+        
+        if ($el.length > 0 && !hasSelect2) {
+            console.warn(`[DEBUG] Re-initializing ${selector}`);
+            try {
+                $el.select2({
+                    theme: 'default',
+                    placeholder: $el.data('placeholder') || 'Selecteer een optie',
+                    allowClear: true,
+                    width: '100%',
+                    dropdownParent: $el.parent()
+                });
+            } catch (err) {
+                console.error(`[DEBUG] Error initializing ${selector}:`, err);
+            }
+        }
+    });
+    
+    // Update Select2 theme
+    const isDark = document.documentElement.classList.contains('dark');
+    updateSelect2Theme(isDark);
+}
+
+// API Health Check
+async function checkApiHealth() {
+    console.log('[DEBUG] Running API health check');
+    document.getElementById('debug-status').textContent = 'Running API health check...';
+    
+    try {
+        // Test endpoints
+        const endpoints = ['/players', '/reasons', '/recent-fines'];
+        const results = {};
+        
+        for (const endpoint of endpoints) {
+            try {
+                console.log(`[DEBUG] Testing endpoint: ${endpoint}`);
+                const startTime = performance.now();
+                await fetch(`${API_BASE_URL}${endpoint}`);
+                const duration = Math.round(performance.now() - startTime);
+                results[endpoint] = { status: 'OK', duration: `${duration}ms` };
+            } catch (err) {
+                results[endpoint] = { status: 'ERROR', error: err.message };
+            }
+        }
+        
+        // Format results
+        const resultStr = Object.entries(results)
+            .map(([endpoint, result]) => `${endpoint}: ${result.status} ${result.duration || result.error || ''}`)
+            .join('\n');
+        
+        document.getElementById('debug-status').innerHTML = `API Health Check Results:<br><pre>${resultStr}</pre>`;
+        console.log('[DEBUG] Health check complete:', results);
+    } catch (error) {
+        console.error('[DEBUG] Health check failed:', error);
+        document.getElementById('debug-status').textContent = `Health check failed: ${error.message}`;
+    }
+}
+
+// DOM checker and repair function
+function checkAndRepairDOM() {
+    console.log('[DEBUG] Running DOM check and repair');
+    
+    // Check if all forms are properly initialized
+    const forms = ['addFineForm', 'addPlayerForm', 'addReasonForm', 'deleteFineForm'];
+    forms.forEach(formId => {
+        const form = document.getElementById(formId);
+        if (form) {
+            // Ensure form has submit handler
+            const hasHandler = $._data(form, 'events')?.submit?.length > 0;
+            console.log(`[DEBUG] Form ${formId}: exists=true, has submit handler=${hasHandler}`);
+            
+            if (!hasHandler) {
+                console.warn(`[DEBUG] Re-attaching submit handler to ${formId}`);
+                // Reattach form handlers based on form ID
+                switch(formId) {
+                    case 'addFineForm':
+                        $(form).off('submit').on('submit', async function(e) {
+                            e.preventDefault();
+                            
+                            const playerId = $('#playerSelect').val();
+                            const reasonId = $('#reasonSelect').val();
+                            const amount = parseFloat($('#amount').val());
+                            
+                            if (!playerId || !reasonId || isNaN(amount)) {
+                                showToast('Vul alle velden correct in', 'error');
+                                return;
+                            }
+                            
+                            try {
+                                await fetchAPI('/fines', {
+                                    method: 'POST',
+                                    body: JSON.stringify({ 
+                                        player_id: playerId, 
+                                        reason_id: reasonId,
+                                        amount 
+                                    })
+                                });
+                                
+                                showToast('Boete succesvol toegevoegd');
+                                this.reset();
+                                $('#playerSelect').val('').trigger('change');
+                                $('#reasonSelect').val('').trigger('change');
+                                await loadData();
+                                
+                            } catch (error) {
+                                console.error('Error adding fine:', error);
+                            }
+                        });
+                        break;
+                    // Similar for other forms
+                }
+            }
+        } else {
+            console.error(`[DEBUG] Form ${formId} not found in DOM`);
+        }
+    });
+    
+    // Check Select2 elements
+    validateSelect2();
+    
+    // Repair any broken CSS 
+    $('.select2-container').css({
+        'display': 'block',
+        'position': 'relative',
+        'z-index': '1050'
+    });
+    
+    // Check if content is visible
+    const boetesVisible = $('#content-boetes').is(':visible');
+    const beheerVisible = $('#content-beheer').is(':visible');
+    
+    console.log(`[DEBUG] Content visibility: boetes=${boetesVisible}, beheer=${beheerVisible}`);
+    
+    // If no content is visible, force display of boetes tab
+    if (!boetesVisible && !beheerVisible) {
+        console.warn('[DEBUG] No content visible, forcing display of boetes tab');
+        $('#content-boetes').css('display', 'block');
+        $('#content-beheer').css('display', 'none');
+        $('#tab-boetes').addClass('tab-active');
+        $('#tab-beheer').removeClass('tab-active');
+    }
+    
+    document.getElementById('debug-status').textContent = 'DOM check completed: ' + new Date().toLocaleTimeString();
+}
+
 // Initialize
 $(document).ready(function() {
     console.log('[DEBUG] Document ready event fired');
@@ -627,6 +879,33 @@ $(document).ready(function() {
             $('#content-beheer').css('display', 'block');
         }
         
-        loadData();
+        loadData().then(() => {
+            // Validate Select2 after data is loaded
+            setTimeout(validateSelect2, 500);
+        });
     }, 300);
+
+    // Add health check button to debug panel
+    if (document.getElementById('fallback-debug')) {
+        const healthBtn = document.createElement('button');
+        healthBtn.className = 'px-3 py-1 ml-2 bg-green-600 text-white rounded';
+        healthBtn.textContent = 'API Health Check';
+        healthBtn.onclick = checkApiHealth;
+        
+        const debugPanel = document.getElementById('fallback-debug');
+        const existingBtn = debugPanel.querySelector('button');
+        existingBtn.parentNode.insertBefore(healthBtn, existingBtn.nextSibling);
+    }
+
+    // Add DOM repair button to debug panel
+    if (document.getElementById('fallback-debug')) {
+        const repairBtn = document.createElement('button');
+        repairBtn.className = 'px-3 py-1 ml-2 bg-yellow-600 text-white rounded';
+        repairBtn.textContent = 'Repair DOM';
+        repairBtn.onclick = checkAndRepairDOM;
+        
+        const debugPanel = document.getElementById('fallback-debug');
+        const existingBtn = debugPanel.querySelector('button');
+        existingBtn.parentNode.insertBefore(repairBtn, existingBtn.nextSibling);
+    }
 }); 
