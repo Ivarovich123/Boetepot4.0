@@ -122,8 +122,10 @@
                             </select>
                         </div>
                         <div>
-                            <label for="reason" class="block text-sm font-medium mb-2">Reden</label>
-                            <input type="text" id="reason" name="reason" class="w-full rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-900" required>
+                            <label for="reasonSelect" class="block text-sm font-medium mb-2">Reden</label>
+                            <select id="reasonSelect" name="reason" class="w-full rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-900" required>
+                                <option value="">Selecteer een reden</option>
+                            </select>
                         </div>
                         <div>
                             <label for="amount" class="block text-sm font-medium mb-2">Bedrag</label>
@@ -153,6 +155,27 @@
                     <div>
                         <label for="playerName" class="block text-sm font-medium mb-2">Naam</label>
                         <input type="text" id="playerName" name="name" class="w-full rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-900" required>
+                    </div>
+                    <div class="flex justify-end">
+                        <button type="submit" class="w-full md:w-auto px-6 py-3 bg-blue-600 text-white text-lg font-medium rounded-lg hover:bg-blue-700 transition-colors">
+                            Toevoegen
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+        <!-- Add Reason Form -->
+        <section class="mb-6">
+            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6">
+                <h2 class="text-2xl font-semibold mb-6 flex items-center">
+                    <i class="fas fa-tag text-blue-600 mr-3"></i>
+                    Nieuwe Reden
+                </h2>
+                <form id="addReasonForm" class="space-y-6">
+                    <div>
+                        <label for="reasonDescription" class="block text-sm font-medium mb-2">Omschrijving</label>
+                        <input type="text" id="reasonDescription" name="description" class="w-full rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-900" required>
                     </div>
                     <div class="flex justify-end">
                         <button type="submit" class="w-full md:w-auto px-6 py-3 bg-blue-600 text-white text-lg font-medium rounded-lg hover:bg-blue-700 transition-colors">

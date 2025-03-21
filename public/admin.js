@@ -105,6 +105,23 @@ function initializeSelect2() {
         dropdownParent: $('#playerSelect').parent()
     });
     
+    // Initialize reason select
+    $('#reasonSelect').select2({
+        theme: 'classic',
+        placeholder: 'Selecteer een reden',
+        allowClear: true,
+        width: '100%',
+        dropdownParent: $('#reasonSelect').parent(),
+        tags: true,
+        createTag: function(params) {
+            return {
+                id: params.term,
+                text: params.term,
+                newTag: true
+            };
+        }
+    });
+    
     // Initialize fine select
     $('#fineSelect').select2({
         theme: 'classic',
@@ -145,27 +162,71 @@ function updateSelect2Theme(isDark) {
     });
 }
 
+// API Functions
+async function fetchAPI(endpoint, options = {}) {
+    try {
+        toggleLoading(true);
+        console.log(`[API] Fetching ${API_BASE_URL}${endpoint}...`);
+        
+        const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            }
+        });
+        
+        let data;
+        const contentType = response.headers.get('content-type');
+        
+        if (contentType && contentType.includes('application/json')) {
+            data = await response.json();
+        } else {
+            data = await response.text();
+            console.warn(`[API] Non-JSON response: ${data.substring(0, 100)}...`);
+        }
+        
+        if (!response.ok) {
+            console.error(`[API] Error response:`, data);
+            throw new Error(typeof data === 'object' && data.error ? data.error : `HTTP error! status: ${response.status}`);
+        }
+        
+        console.log(`[API] Response from ${endpoint}:`, data);
+        return data;
+    } catch (error) {
+        console.error(`[API] Error fetching ${endpoint}:`, error);
+        showToast(error.message || 'Er is een fout opgetreden bij het verwerken van het verzoek', 'error');
+        throw error;
+    } finally {
+        toggleLoading(false);
+    }
+}
+
 // Load data
 async function loadData() {
     try {
-        toggleLoading(true);
-        
         // Load players
-        const playersResponse = await fetch(`${API_BASE_URL}/players`);
-        const players = await playersResponse.json();
-        
-        if (!playersResponse.ok) throw new Error('Failed to load players');
+        const players = await fetchAPI('/players');
         
         $('#playerSelect').empty().append('<option value="">Selecteer een speler</option>');
-        players.forEach(player => {
-            $('#playerSelect').append(`<option value="${player.id}">${player.name}</option>`);
-        });
+        if (Array.isArray(players)) {
+            players.forEach(player => {
+                $('#playerSelect').append(`<option value="${player.id}">${player.name}</option>`);
+            });
+        }
+        
+        // Load reasons
+        const reasons = await fetchAPI('/reasons');
+        
+        $('#reasonSelect').empty().append('<option value="">Selecteer een reden</option>');
+        if (Array.isArray(reasons)) {
+            reasons.forEach(reason => {
+                $('#reasonSelect').append(`<option value="${reason.id}">${reason.description}</option>`);
+            });
+        }
         
         // Load recent fines
-        const finesResponse = await fetch(`${API_BASE_URL}/recent-fines`);
-        const fines = await finesResponse.json();
-        
-        if (!finesResponse.ok) throw new Error('Failed to load fines');
+        const fines = await fetchAPI('/recent-fines');
         
         // Update recent fines display
         $('#recentFines').html(
@@ -176,10 +237,12 @@ async function loadData() {
         
         // Update fine select for deletion
         $('#fineSelect').empty().append('<option value="">Selecteer een boete</option>');
-        fines.forEach(fine => {
-            const label = `${fine.player_name} - ${fine.reason_description} - ${formatCurrency(fine.amount)} - ${formatDate(fine.date)}`;
-            $('#fineSelect').append(`<option value="${fine.id}">${label}</option>`);
-        });
+        if (Array.isArray(fines)) {
+            fines.forEach(fine => {
+                const label = `${fine.player_name} - ${fine.reason_description} - ${formatCurrency(fine.amount)}`;
+                $('#fineSelect').append(`<option value="${fine.id}">${label}</option>`);
+            });
+        }
         
         // Initialize Select2
         initializeSelect2();
@@ -187,45 +250,42 @@ async function loadData() {
     } catch (error) {
         console.error('Error loading data:', error);
         showToast('Er is een fout opgetreden bij het laden van de gegevens', 'error');
-    } finally {
-        toggleLoading(false);
     }
 }
+
+// Form Handlers
 
 // Add fine
 $('#addFineForm').on('submit', async function(e) {
     e.preventDefault();
     
     const playerId = $('#playerSelect').val();
-    const reason = $('#reason').val().trim();
+    const reasonId = $('#reasonSelect').val();
     const amount = parseFloat($('#amount').val());
     
-    if (!playerId || !reason || isNaN(amount)) {
+    if (!playerId || !reasonId || isNaN(amount)) {
         showToast('Vul alle velden correct in', 'error');
         return;
     }
     
     try {
-        toggleLoading(true);
-        
-        const response = await fetch(`${API_BASE_URL}/fines`, {
+        await fetchAPI('/fines', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ player_id: playerId, reason_description: reason, amount })
+            body: JSON.stringify({ 
+                player_id: playerId, 
+                reason_id: reasonId,
+                amount 
+            })
         });
-        
-        if (!response.ok) throw new Error('Failed to add fine');
         
         showToast('Boete succesvol toegevoegd');
         this.reset();
         $('#playerSelect').val('').trigger('change');
+        $('#reasonSelect').val('').trigger('change');
         await loadData();
         
     } catch (error) {
         console.error('Error adding fine:', error);
-        showToast('Er is een fout opgetreden bij het toevoegen van de boete', 'error');
-    } finally {
-        toggleLoading(false);
     }
 });
 
@@ -241,15 +301,10 @@ $('#addPlayerForm').on('submit', async function(e) {
     }
     
     try {
-        toggleLoading(true);
-        
-        const response = await fetch(`${API_BASE_URL}/players`, {
+        await fetchAPI('/players', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ name })
         });
-        
-        if (!response.ok) throw new Error('Failed to add player');
         
         showToast('Speler succesvol toegevoegd');
         this.reset();
@@ -257,9 +312,32 @@ $('#addPlayerForm').on('submit', async function(e) {
         
     } catch (error) {
         console.error('Error adding player:', error);
-        showToast('Er is een fout opgetreden bij het toevoegen van de speler', 'error');
-    } finally {
-        toggleLoading(false);
+    }
+});
+
+// Add reason
+$('#addReasonForm').on('submit', async function(e) {
+    e.preventDefault();
+    
+    const description = $('#reasonDescription').val().trim();
+    
+    if (!description) {
+        showToast('Vul een beschrijving in', 'error');
+        return;
+    }
+    
+    try {
+        await fetchAPI('/reasons', {
+            method: 'POST',
+            body: JSON.stringify({ description })
+        });
+        
+        showToast('Reden succesvol toegevoegd');
+        this.reset();
+        await loadData();
+        
+    } catch (error) {
+        console.error('Error adding reason:', error);
     }
 });
 
@@ -270,7 +348,7 @@ $('#deleteFineForm').on('submit', async function(e) {
     const fineId = $('#fineSelect').val();
     
     if (!fineId) {
-        showToast('Selecteer een boete', 'error');
+        showToast('Selecteer een boete om te verwijderen', 'error');
         return;
     }
     
@@ -279,53 +357,46 @@ $('#deleteFineForm').on('submit', async function(e) {
     }
     
     try {
-        toggleLoading(true);
-        
-        const response = await fetch(`${API_BASE_URL}/fines/${fineId}`, {
+        await fetchAPI(`/fines/${fineId}`, {
             method: 'DELETE'
         });
         
-        if (!response.ok) throw new Error('Failed to delete fine');
-        
         showToast('Boete succesvol verwijderd');
+        this.reset();
         $('#fineSelect').val('').trigger('change');
         await loadData();
         
     } catch (error) {
         console.error('Error deleting fine:', error);
-        showToast('Er is een fout opgetreden bij het verwijderen van de boete', 'error');
-    } finally {
-        toggleLoading(false);
     }
 });
 
 // Reset data
 $('#resetButton').on('click', async function() {
-    if (!confirm('Weet je heel zeker dat je alle gegevens wilt resetten? Dit kan niet ongedaan worden gemaakt!')) {
+    if (!confirm('WAARSCHUWING: Dit zal ALLE boetes verwijderen. Deze actie kan niet ongedaan worden gemaakt! Weet je zeker dat je wilt doorgaan?')) {
+        return;
+    }
+    
+    const confirmation = prompt('Typ "RESET" om te bevestigen:');
+    if (confirmation !== 'RESET') {
+        showToast('Reset geannuleerd', 'error');
         return;
     }
     
     try {
-        toggleLoading(true);
-        
-        const response = await fetch(`${API_BASE_URL}/reset`, {
+        await fetchAPI('/reset', {
             method: 'POST'
         });
         
-        if (!response.ok) throw new Error('Failed to reset data');
-        
-        showToast('Alle gegevens zijn succesvol gereset');
+        showToast('Alle gegevens zijn gereset');
         await loadData();
         
     } catch (error) {
         console.error('Error resetting data:', error);
-        showToast('Er is een fout opgetreden bij het resetten van de gegevens', 'error');
-    } finally {
-        toggleLoading(false);
     }
 });
 
-// Initialize app
-$(document).ready(() => {
+// Initialize
+$(document).ready(function() {
     loadData();
 }); 

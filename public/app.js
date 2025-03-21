@@ -17,20 +17,22 @@ function showToast(message, isError = false) {
   }
 
   const toast = document.createElement('div');
-  toast.className = `toast ${isError ? 'error' : 'success'}`;
-  toast.textContent = message;
+  toast.className = `flex items-center p-4 mb-4 rounded-lg ${isError ? 'bg-red-600' : 'bg-green-600'} text-white`;
+  toast.innerHTML = `
+    <i class="fas ${isError ? 'fa-exclamation-circle' : 'fa-check-circle'} mr-3"></i>
+    <span>${message}</span>
+  `;
   
   toastContainer.appendChild(toast);
   
-  // Trigger reflow to enable animation
-  toast.offsetHeight;
-  
-  // Show toast
-  toast.classList.add('show');
+  // Fade in
+  setTimeout(() => {
+    toast.style.opacity = '1';
+  }, 10);
   
   // Remove toast after animation
   setTimeout(() => {
-    toast.classList.remove('show');
+    toast.style.opacity = '0';
     setTimeout(() => toast.remove(), 300);
   }, 3000);
 }
@@ -64,36 +66,72 @@ function formatCurrency(amount) {
 // Theme handling
 function initTheme() {
   const theme = localStorage.getItem('theme') || 'light';
-  document.body.classList.toggle('dark', theme === 'dark');
-  document.getElementById('theme-icon').className = theme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+  document.documentElement.classList.toggle('dark', theme === 'dark');
+  document.getElementById('theme-icon').className = theme === 'dark' ? 'fas fa-sun text-xl' : 'fas fa-moon text-xl';
+  
+  // Update Select2 theme if initialized
+  if ($.fn.select2) {
+    updateSelect2Theme(theme === 'dark');
+  }
 }
 
 function toggleTheme() {
-  const body = document.body;
-  const themeIcon = document.getElementById('theme-icon');
-  const isDark = body.classList.contains('dark');
+  const isDark = document.documentElement.classList.contains('dark');
+  const newTheme = isDark ? 'light' : 'dark';
   
   // Update theme
-  body.classList.toggle('dark', !isDark);
-  localStorage.setItem('theme', isDark ? 'light' : 'dark');
+  document.documentElement.classList.toggle('dark', !isDark);
+  localStorage.setItem('theme', newTheme);
   
   // Update icon with animation
+  const themeIcon = document.getElementById('theme-icon');
   if (themeIcon) {
     themeIcon.style.transform = 'scale(0)';
     setTimeout(() => {
-      themeIcon.className = isDark ? 'fas fa-moon' : 'fas fa-sun';
+      themeIcon.className = isDark ? 'fas fa-moon text-xl' : 'fas fa-sun text-xl';
       themeIcon.style.transform = 'scale(1)';
     }, 150);
   }
   
-  // Dispatch event for other components
-  window.dispatchEvent(new CustomEvent('themechange', { detail: { theme: isDark ? 'light' : 'dark' } }));
+  // Update Select2 theme if initialized
+  if ($.fn.select2) {
+    updateSelect2Theme(!isDark);
+  }
+}
+
+// Update Select2 theme
+function updateSelect2Theme(isDark) {
+  $('.select2-container--default .select2-selection--single').css({
+    'background-color': isDark ? 'rgb(17, 24, 39)' : 'white',
+    'border-color': isDark ? 'rgb(55, 65, 81)' : 'rgb(209, 213, 219)',
+    'color': isDark ? 'white' : 'inherit'
+  });
+  
+  $('.select2-container--default .select2-selection--single .select2-selection__rendered').css({
+    'color': isDark ? 'white' : 'inherit'
+  });
+  
+  $('.select2-container--default .select2-dropdown').css({
+    'background-color': isDark ? 'rgb(17, 24, 39)' : 'white',
+    'border-color': isDark ? 'rgb(55, 65, 81)' : 'rgb(209, 213, 219)'
+  });
+  
+  $('.select2-container--default .select2-results__option').css({
+    'color': isDark ? 'white' : 'inherit'
+  });
+  
+  $('.select2-container--default .select2-search__field').css({
+    'background-color': isDark ? 'rgb(17, 24, 39)' : 'white',
+    'color': isDark ? 'white' : 'inherit'
+  });
 }
 
 // API Functions
 async function fetchAPI(endpoint, options = {}) {
   try {
     console.log(`[API] Fetching ${endpoint}...`);
+    toggleLoading(true);
+    
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       ...options,
       headers: {
@@ -124,6 +162,8 @@ async function fetchAPI(endpoint, options = {}) {
     console.error(`[API] Error fetching ${endpoint}:`, error);
     showToast(error.message || 'Er is een fout opgetreden', true);
     throw error;
+  } finally {
+    toggleLoading(false);
   }
 }
 
@@ -140,43 +180,9 @@ async function loadTotalFines() {
     }
     
     const total = parseFloat(data.total || 0);
-    
-    // Enhanced animation for the counter
-    const duration = 2000;
-    const steps = 60;
-    const stepTime = duration / steps;
-    let start = 0;
-    
-    // Use requestAnimationFrame for smoother animation
-    let lastTime = performance.now();
-    let currentStep = 0;
-    
-    const animate = (currentTime) => {
-      const deltaTime = currentTime - lastTime;
-      
-      if (deltaTime >= stepTime) {
-        currentStep++;
-        const progress = currentStep / steps;
-        const easedProgress = 1 - Math.pow(1 - progress, 3); // Cubic ease out
-        const current = total * easedProgress;
-        
-        totalElement.textContent = formatCurrency(current);
-        lastTime = currentTime;
-        
-        if (currentStep < steps) {
-          requestAnimationFrame(animate);
-        } else {
-          totalElement.textContent = formatCurrency(total); // Ensure final value is exact
-        }
-      } else {
-        requestAnimationFrame(animate);
-      }
-    };
-    
-    requestAnimationFrame(animate);
+    totalElement.textContent = formatCurrency(total);
   } catch (error) {
     console.error('[Total] Error loading total:', error);
-    showToast('Fout bij laden van totaal bedrag', true);
     
     const totalElement = document.getElementById('totalAmount');
     if (totalElement) {
@@ -197,23 +203,28 @@ async function loadRecentFines() {
     }
     
     if (!Array.isArray(fines) || fines.length === 0) {
-      recentFinesElement.innerHTML = '<tr><td colspan="4">Geen recente boetes gevonden</td></tr>';
+      recentFinesElement.innerHTML = '<div class="text-center py-4 text-gray-500">Geen recente boetes gevonden</div>';
       return;
     }
     
-    const rows = fines.map(fine => `
-      <tr>
-        <td>${fine.player_name || 'Onbekend'}</td>
-        <td>${fine.reason_description || 'Onbekend'}</td>
-        <td>${formatCurrency(fine.amount || 0)}</td>
-        <td>${formatDate(fine.date)}</td>
-      </tr>
+    const cards = fines.map(fine => `
+      <div class="bg-gray-50 dark:bg-gray-900 rounded-xl p-4 space-y-3">
+        <div class="flex items-center justify-between">
+          <div class="font-semibold">${fine.player_name || 'Onbekend'}</div>
+          <div class="text-lg font-bold text-blue-600 dark:text-blue-500">${formatCurrency(fine.amount)}</div>
+        </div>
+        <div class="text-gray-600 dark:text-gray-400">${fine.reason_description || 'Onbekend'}</div>
+        <div class="text-sm text-gray-500 dark:text-gray-500">${formatDate(fine.date)}</div>
+      </div>
     `).join('');
     
-    recentFinesElement.innerHTML = rows;
+    recentFinesElement.innerHTML = cards;
   } catch (error) {
     console.error('[Recent] Error:', error);
-    showToast('Fout bij laden recente boetes', true);
+    const recentFinesElement = document.getElementById('recentFines');
+    if (recentFinesElement) {
+      recentFinesElement.innerHTML = '<div class="text-center py-4 text-gray-500">Fout bij laden recente boetes</div>';
+    }
   }
 }
 
@@ -229,7 +240,7 @@ async function loadLeaderboard() {
     }
     
     if (!Array.isArray(totals) || totals.length === 0) {
-      leaderboardElement.innerHTML = '<tr><td colspan="3">Geen spelers gevonden</td></tr>';
+      leaderboardElement.innerHTML = '<div class="text-center py-4 text-gray-500">Geen spelers gevonden</div>';
       return;
     }
     
@@ -238,166 +249,153 @@ async function loadLeaderboard() {
       .sort((a, b) => (b.total || 0) - (a.total || 0))
       .slice(0, 5);
     
-    const rows = topPlayers.map((player, index) => `
-      <tr>
-        <td>${index + 1}</td>
-        <td>${player.name || 'Onbekend'}</td>
-        <td>${formatCurrency(player.total || 0)}</td>
-      </tr>
+    const cards = topPlayers.map((player, index) => `
+      <div class="bg-gray-50 dark:bg-gray-900 rounded-xl p-4">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center space-x-4">
+            <div class="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-white font-semibold">
+              ${index + 1}
+            </div>
+            <div class="font-semibold">${player.name || 'Onbekend'}</div>
+          </div>
+          <div class="text-lg font-bold text-blue-600 dark:text-blue-500">${formatCurrency(player.total || 0)}</div>
+        </div>
+      </div>
     `).join('');
     
-    leaderboardElement.innerHTML = rows;
+    leaderboardElement.innerHTML = cards;
   } catch (error) {
     console.error('[Leaderboard] Error:', error);
-    showToast('Fout bij laden leaderboard', true);
+    const leaderboardElement = document.getElementById('leaderboard');
+    if (leaderboardElement) {
+      leaderboardElement.innerHTML = '<div class="text-center py-4 text-gray-500">Fout bij laden leaderboard</div>';
+    }
   }
 }
 
 async function loadPlayerHistory(playerId) {
   try {
-    console.log('[History] Loading player history...');
-    const response = await fetchAPI(`/api/player-history/${playerId}`);
-    
-    const historyElement = document.getElementById('playerHistory');
-    const historyTitleElement = document.getElementById('playerHistoryTitle');
-    
-    if (!historyElement) {
-      console.error('[History] Element not found');
-      return;
-    }
-    
-    if (!response || !response.player_name || !response.fines || response.fines.length === 0) {
-      historyElement.innerHTML = '<tr><td colspan="3" class="text-center">Geen boetes gevonden</td></tr>';
-      if (historyTitleElement) {
-        historyTitleElement.innerHTML = '<i class="fas fa-user-clock"></i>Speler Historie';
+    if (!playerId) {
+      const playerHistoryElement = document.getElementById('playerHistory');
+      if (playerHistoryElement) {
+        playerHistoryElement.innerHTML = '<div class="text-center py-4 text-gray-500">Selecteer een speler...</div>';
       }
       return;
     }
     
-    const total = response.fines.reduce((sum, fine) => sum + (fine.amount || 0), 0);
+    console.log(`[History] Loading player ${playerId} history...`);
+    const history = await fetchAPI(`/player-history/${playerId}`);
     
-    if (historyTitleElement) {
-      historyTitleElement.innerHTML = `<i class="fas fa-user-clock"></i>Historie van ${response.player_name}`;
+    const playerHistoryElement = document.getElementById('playerHistory');
+    if (!playerHistoryElement) {
+      console.error('[History] Element not found');
+      return;
     }
     
-    const rows = response.fines.map(fine => `
-      <tr>
-        <td>${formatDate(fine.date)}</td>
-        <td>${fine.reason_description || 'Onbekend'}</td>
-        <td>${formatCurrency(fine.amount || 0)}</td>
-      </tr>
+    if (!Array.isArray(history) || history.length === 0) {
+      playerHistoryElement.innerHTML = '<div class="text-center py-4 text-gray-500">Geen boetes gevonden voor deze speler</div>';
+      return;
+    }
+    
+    const cards = history.map(fine => `
+      <div class="bg-gray-50 dark:bg-gray-900 rounded-xl p-4 space-y-3">
+        <div class="flex items-center justify-between">
+          <div class="text-gray-600 dark:text-gray-400">${fine.reason_description || 'Onbekend'}</div>
+          <div class="text-lg font-bold text-blue-600 dark:text-blue-500">${formatCurrency(fine.amount)}</div>
+        </div>
+        <div class="text-sm text-gray-500 dark:text-gray-500">${formatDate(fine.date)}</div>
+      </div>
     `).join('');
     
-    historyElement.innerHTML = rows + `
-      <tr class="table-info">
-        <td colspan="2"><strong>Totaal</strong></td>
-        <td><strong>${formatCurrency(total)}</strong></td>
-      </tr>
-    `;
+    playerHistoryElement.innerHTML = cards;
   } catch (error) {
     console.error('[History] Error:', error);
-    showToast('Fout bij laden speler historie', true);
+    const playerHistoryElement = document.getElementById('playerHistory');
+    if (playerHistoryElement) {
+      playerHistoryElement.innerHTML = '<div class="text-center py-4 text-gray-500">Fout bij laden spelergeschiedenis</div>';
+    }
   }
 }
+
 async function initializePlayerSelect() {
   try {
     console.log('[Players] Loading players for select...');
     const players = await fetchAPI('/players');
     
-    const select = $('#playerSelect');
-    if (!select.length) {
-      console.error('[Players] Select element not found');
+    const playerSelectElement = document.getElementById('playerSelect');
+    if (!playerSelectElement) {
+      console.error('[Players] Element not found');
       return;
     }
     
-    select.empty().append('<option value="">Selecteer speler</option>');
-    
-    if (Array.isArray(players)) {
-      players.forEach(player => {
-        select.append(new Option(player.name, player.id));
-      });
+    if (!Array.isArray(players) || players.length === 0) {
+      playerSelectElement.innerHTML = '<option value="">Geen spelers gevonden</option>';
+      return;
     }
     
+    // Add the empty option
+    let options = '<option value="">Selecteer een speler...</option>';
+    
+    // Add player options
+    options += players.map(player => 
+      `<option value="${player.id}">${player.name}</option>`
+    ).join('');
+    
+    // Update the select element
+    playerSelectElement.innerHTML = options;
+    
     // Initialize Select2
-    select.select2({
-      theme: 'classic',
-      placeholder: 'Selecteer speler',
+    $(playerSelectElement).select2({
+      placeholder: 'Selecteer een speler',
       allowClear: true,
-      width: '100%'
-    }).on('change', function() {
-      const playerId = $(this).val();
-      if (playerId) {
-        loadPlayerHistory(playerId);
-      } else {
-        const historyElement = document.getElementById('playerHistory');
-        if (historyElement) {
-          historyElement.innerHTML = '<tr><td colspan="3">Selecteer een speler</td></tr>';
-        }
+      theme: 'default'
+    });
+
+    // Update Select2 theme
+    updateSelect2Theme(document.documentElement.classList.contains('dark'));
+    
+    // Setup event handler for player selection
+    $(playerSelectElement).on('change', function() {
+      const playerId = this.value;
+      loadPlayerHistory(playerId);
+      
+      // Update history title
+      const historyTitle = document.getElementById('playerHistoryTitle');
+      if (historyTitle) {
+        const playerName = playerId ? 
+          playerSelectElement.options[playerSelectElement.selectedIndex].text : 
+          'Speler';
+        historyTitle.innerHTML = `
+          <i class="fas fa-user-clock text-blue-600 mr-3"></i>
+          ${playerId ? playerName : 'Speler Historie'}
+        `;
       }
     });
   } catch (error) {
-    console.error('[Players] Error:', error);
-    showToast('Fout bij laden spelers', true);
+    console.error('[Players] Error initializing select:', error);
+    const playerSelectElement = document.getElementById('playerSelect');
+    if (playerSelectElement) {
+      playerSelectElement.innerHTML = '<option value="">Fout bij laden spelers</option>';
+    }
   }
 }
 
-// Initialize app
-document.addEventListener('DOMContentLoaded', () => {
+// Initialize everything
+document.addEventListener('DOMContentLoaded', async () => {
+  // Set up theme toggle
+  initTheme();
+  document.getElementById('theme-toggle').addEventListener('click', toggleTheme);
+  
   try {
-    // Initialize theme
-    initTheme();
-    
-    // Initialize Select2 for player select
-    $('#playerSelect').select2({
-      theme: 'classic',
-      placeholder: 'Selecteer een speler',
-      allowClear: true,
-      width: '100%'
-    }).on('select2:open', function() {
-      document.querySelector('.select2-search__field').focus();
-    });
-    
-    // Load data
-    Promise.all([
+    // Load data in parallel
+    await Promise.all([
       loadTotalFines(),
       loadRecentFines(),
-      loadLeaderboard()
-    ]).catch(error => {
-      console.error('Error loading initial data:', error);
-      showToast('Fout bij laden van gegevens', true);
-    });
-    
-    // Initialize AOS
-    AOS.init({
-      duration: 800,
-      once: true,
-      offset: 50,
-      easing: 'ease-in-out'
-    });
-    
-    // Theme change listener for Select2
-    window.addEventListener('themechange', () => {
-      // Destroy and reinitialize Select2 to update theme
-      const select = $('#playerSelect');
-      const value = select.val();
-      select.select2('destroy').select2({
-        theme: 'classic',
-        placeholder: 'Selecteer een speler',
-        allowClear: true,
-        width: '100%'
-      });
-      select.val(value).trigger('change');
-    });
-    
-    // Set up theme toggle
-    const themeButton = document.getElementById('theme-toggle');
-    if (themeButton) {
-      themeButton.addEventListener('click', toggleTheme);
-    }
-    
-    console.log('App initialized');
+      loadLeaderboard(),
+      initializePlayerSelect()
+    ]);
   } catch (error) {
     console.error('Error initializing app:', error);
-    showToast('Fout bij initialiseren', true);
+    showToast('Er zijn fouten opgetreden bij het laden van gegevens. Probeer de pagina te verversen.', true);
   }
 }); 
