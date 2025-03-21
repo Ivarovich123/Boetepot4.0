@@ -1,1509 +1,843 @@
-// Check authentication at the very beginning
-console.log("Admin.js loaded - checking authentication");
-if (!Auth || !Auth.check()) {
-    console.log("Authentication failed, redirecting to login");
-    window.location.href = 'login.html';
-}
-
-// API Base URL - make sure this matches your backend setup
-const API_BASE_URL = window.location.hostname === 'localhost' ? 'http://localhost:3000/api' : '/api';
-
-// Debug setting
-const DEBUG = true;
-function debug(message) {
-    if (DEBUG) {
-        console.log(`[DEBUG] ${message}`);
-    }
-}
-
-// Initialize theme immediately
+// Simple authentication and admin functionality
 document.addEventListener('DOMContentLoaded', function() {
-    console.log("DOMContentLoaded - initializing theme");
+    // Configuration
+    const ADMIN_PASSWORD = 'Mandje123'; // Hardcoded password
+    const AUTH_TOKEN_KEY = 'boetepot_admin_token';
+    const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+        ? 'http://localhost:3000/api' 
+        : '/api';
     
-    // Apply theme from localStorage
-    if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-        document.documentElement.classList.add('dark');
-        const icon = document.getElementById('theme-icon');
-        if (icon) icon.className = 'fas fa-sun text-xl';
-    } else {
-        document.documentElement.classList.remove('dark');
-        const icon = document.getElementById('theme-icon');
-        if (icon) icon.className = 'fas fa-moon text-xl';
+    // Debug flag - set to true for console logs
+    const DEBUG = true;
+    
+    // DOM Elements
+    const loginModal = document.getElementById('loginModal');
+    const loginForm = document.getElementById('loginForm');
+    const loginError = document.getElementById('loginError');
+    const adminContent = document.querySelectorAll('.admin-content');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const themeToggle = document.getElementById('themeToggle');
+    const themeIcon = document.getElementById('themeIcon');
+    
+    // Theme management
+    function initTheme() {
+        // Check for saved theme preference or use system preference
+        const savedTheme = localStorage.getItem('theme');
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        
+        if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+            document.body.classList.add('dark');
+            themeIcon.classList.remove('fa-moon');
+            themeIcon.classList.add('fa-sun');
+        } else {
+            document.body.classList.remove('dark');
+            themeIcon.classList.remove('fa-sun');
+            themeIcon.classList.add('fa-moon');
+        }
+        
+        // Update Select2 theme
+        updateSelect2Theme();
     }
     
-    // Add theme toggle event listener
-    const themeToggle = document.getElementById('theme-toggle');
-    if (themeToggle) {
-        themeToggle.addEventListener('click', function() {
-            console.log("Theme toggle clicked");
-            const isDark = document.documentElement.classList.contains('dark');
-            if (isDark) {
-                document.documentElement.classList.remove('dark');
-                localStorage.theme = 'light';
-                const icon = document.getElementById('theme-icon');
-                if (icon) icon.className = 'fas fa-moon text-xl';
-            } else {
-                document.documentElement.classList.add('dark');
-                localStorage.theme = 'dark';
-                const icon = document.getElementById('theme-icon');
-                if (icon) icon.className = 'fas fa-sun text-xl';
-            }
+    function toggleTheme() {
+        if (document.body.classList.contains('dark')) {
+            document.body.classList.remove('dark');
+            themeIcon.classList.remove('fa-sun');
+            themeIcon.classList.add('fa-moon');
+            localStorage.setItem('theme', 'light');
+        } else {
+            document.body.classList.add('dark');
+            themeIcon.classList.remove('fa-moon');
+            themeIcon.classList.add('fa-sun');
+            localStorage.setItem('theme', 'dark');
+        }
+        
+        // Update Select2 theme
+        updateSelect2Theme();
+    }
+    
+    function updateSelect2Theme() {
+        // Force Select2 to adopt the current theme
+        setTimeout(() => {
+            const isDark = document.body.classList.contains('dark');
+            const select2Containers = document.querySelectorAll('.select2-container');
+            select2Containers.forEach(container => {
+                const selection = container.querySelector('.select2-selection');
+                if (selection) {
+                    if (isDark) {
+                        selection.style.backgroundColor = 'var(--input-bg)';
+                        selection.style.borderColor = 'var(--input-border)';
+                        selection.style.color = 'var(--input-text)';
+                    } else {
+                        selection.style.backgroundColor = '';
+                        selection.style.borderColor = '';
+                        selection.style.color = '';
+                    }
+                }
+            });
+        }, 100);
+    }
+    
+    // Authentication Functions
+    function generateToken() {
+        return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    }
+    
+    function checkAuth() {
+        const token = localStorage.getItem(AUTH_TOKEN_KEY);
+        return !!token; // Return true if token exists
+    }
+    
+    function login(password) {
+        if (password === ADMIN_PASSWORD) {
+            // Create and store auth token
+            const token = generateToken();
+            localStorage.setItem(AUTH_TOKEN_KEY, token);
             
-            // Update Select2 components if they exist
-            updateSelect2Theme(!isDark);
-        });
+            // Show admin content
+            adminContent.forEach(el => el.style.display = 'block');
+            loginModal.style.display = 'none';
+            
+            // Show success message
+            showToast('Successfully logged in!', 'success');
+            
+            // Load admin data
+            loadAllData();
+            return true;
+        } else {
+            loginError.classList.remove('hidden');
+            return false;
+        }
     }
     
-    // Setup tabs
-    setupTabs();
+    function logout() {
+        // Clear auth token
+        localStorage.removeItem(AUTH_TOKEN_KEY);
+        
+        // Hide admin content and show login modal
+        adminContent.forEach(el => el.style.display = 'none');
+        loginModal.style.display = 'flex';
+        
+        // Clear any sensitive data
+        clearAllData();
+    }
     
-    // Initialize Select2 components
-    initializeSelect2();
+    // Utility Functions
+    function debug(message) {
+        if (DEBUG) {
+            console.log(`[DEBUG] ${message}`);
+            const debugStatus = document.getElementById('debugStatus');
+            if (debugStatus) {
+                debugStatus.textContent += `\n${message}`;
+            }
+        }
+    }
     
-    // Load data
-    loadData();
-});
+    function formatCurrency(amount) {
+        return new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(amount);
+    }
+    
+    function formatDate(dateString) {
+        if (!dateString) return 'Onbekend';
+        try {
+            const date = new Date(dateString);
+            return new Intl.DateTimeFormat('nl-NL', { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric'
+            }).format(date);
+        } catch (error) {
+            console.error('Error formatting date:', error);
+            return 'Ongeldige datum';
+        }
+    }
+    
+    function showLoading(show = true) {
+        const spinner = document.getElementById('loadingSpinner');
+        if (spinner) {
+            if (show) {
+                spinner.classList.remove('hidden');
+                spinner.classList.add('flex');
+            } else {
+                spinner.classList.remove('flex');
+                spinner.classList.add('hidden');
+            }
+        }
+    }
+    
+    function showToast(message, type = 'info') {
+        const toastContainer = document.getElementById('toastContainer');
+        if (!toastContainer) return;
 
-// Update Select2 theme
-function updateSelect2Theme(isDark) {
-    debug(`Updating Select2 theme to ${isDark ? 'dark' : 'light'}`);
-    try {
-        if (typeof $ === 'undefined' || !$.fn || !$.fn.select2) {
-            debug('Select2 not available, skipping theme update');
+        const toast = document.createElement('div');
+        toast.className = `p-4 mb-3 rounded-lg shadow-lg flex items-center justify-between max-w-md transition-all duration-500 transform translate-x-full opacity-0`;
+        
+        // Set color based on type
+        if (type === 'success') {
+            toast.classList.add('bg-green-500', 'text-white');
+        } else if (type === 'error') {
+            toast.classList.add('bg-red-500', 'text-white');
+        } else {
+            toast.classList.add('bg-blue-500', 'text-white');
+        }
+        
+        toast.innerHTML = `
+            <div class="flex items-center">
+                <i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle'} mr-3"></i>
+                <span>${message}</span>
+            </div>
+            <button class="ml-4 text-white focus:outline-none">
+                <i class="fas fa-times"></i>
+            </button>
+        `;
+        
+        toastContainer.appendChild(toast);
+        
+        // Animation
+        setTimeout(() => {
+            toast.classList.remove('translate-x-full', 'opacity-0');
+        }, 10);
+        
+        // Close button functionality
+        const closeBtn = toast.querySelector('button');
+        closeBtn.addEventListener('click', () => {
+            toast.classList.add('translate-x-full', 'opacity-0');
+            setTimeout(() => {
+                toast.remove();
+            }, 500);
+        });
+        
+        // Auto close after 5 seconds
+        setTimeout(() => {
+            toast.classList.add('translate-x-full', 'opacity-0');
+            setTimeout(() => {
+                toast.remove();
+            }, 500);
+        }, 5000);
+    }
+    
+    // Tab functionality
+    function setupTabs() {
+        const tabBoetes = document.getElementById('tab-boetes');
+        const tabPlayers = document.getElementById('tab-players');
+        const tabReasons = document.getElementById('tab-reasons');
+        const finesTab = document.getElementById('finesTab');
+        const playersTab = document.getElementById('playersTab');
+        const reasonsTab = document.getElementById('reasonsTab');
+        
+        // Check if elements exist
+        if (!tabBoetes || !tabPlayers || !tabReasons || !finesTab || !playersTab || !reasonsTab) {
+            debug('Tab elements missing!');
             return;
         }
         
-        $('.select2-container--default .select2-selection--single').css({
-            'background-color': isDark ? 'var(--input-bg)' : 'var(--input-bg)',
-            'border-color': isDark ? 'var(--input-border)' : 'var(--input-border)',
-            'color': isDark ? 'var(--input-text)' : 'var(--input-text)'
-        });
-        
-        $('.select2-container--default .select2-selection--single .select2-selection__rendered').css({
-            'color': isDark ? 'var(--input-text)' : 'var(--input-text)'
-        });
-        
-        $('.select2-dropdown').css({
-            'background-color': isDark ? 'var(--input-bg)' : 'var(--input-bg)',
-            'border-color': isDark ? 'var(--input-border)' : 'var(--input-border)'
-        });
-        
-        $('.select2-search--dropdown .select2-search__field').css({
-            'background-color': isDark ? 'var(--input-bg)' : 'var(--input-bg)',
-            'border-color': isDark ? 'var(--input-border)' : 'var(--input-border)',
-            'color': isDark ? 'var(--input-text)' : 'var(--input-text)'
-        });
-        
-        $('.select2-results__option').css('color', isDark ? 'var(--input-text)' : 'var(--input-text)');
-    } catch (error) {
-        debug(`Error updating Select2 theme: ${error.message}`);
-    }
-}
-
-// Initialize theme
-Theme.init();
-
-// Format currency
-function formatCurrency(amount) {
-    return new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(amount);
-}
-
-// Format date
-function formatDate(dateString) {
-    if (!dateString) return 'Onbekend';
-    try {
-        const date = new Date(dateString);
-        return new Intl.DateTimeFormat('nl-NL', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
-        }).format(date);
-    } catch (error) {
-        console.error('Error formatting date:', error);
-        return 'Ongeldige datum';
-    }
-}
-
-// Show/hide loading spinner
-function toggleLoading(show) {
-    const spinner = document.getElementById('loadingSpinner');
-    if (spinner) {
-        if (show) {
-            spinner.classList.remove('hidden');
-            spinner.classList.add('flex');
-        } else {
-            spinner.classList.remove('flex');
-            spinner.classList.add('hidden');
-        }
-    }
-}
-
-// Show toast message
-function showToast(message, type = 'success') {
-    const toast = document.createElement('div');
-    toast.className = `flex items-center p-4 mb-4 rounded-lg ${type === 'success' ? 'bg-green-600' : 'bg-red-600'} text-white`;
-    toast.innerHTML = `
-        <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'} mr-3"></i>
-        <span>${message}</span>
-    `;
-    
-    const container = document.getElementById('toastContainer');
-    if (container) {
-        container.appendChild(toast);
-        
-        setTimeout(() => {
-            toast.remove();
-        }, 3000);
-    }
-}
-
-// Create a card for a fine
-function createFineCard(fine, canDelete = true) {
-    try {
-        const formattedAmount = formatCurrency(fine.amount);
-        const playerName = fine.player_name || 'Onbekend';
-        const reasonDesc = fine.reason_description || 'Onbekend';
-        const formattedDate = formatDate(fine.date);
-        
-        let deleteButton = '';
-        if (canDelete) {
-            deleteButton = `
-                <button class="delete-fine-btn absolute top-2 right-2 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 p-1.5 rounded-full hover:bg-red-200 dark:hover:bg-red-800/50 transition-colors" 
-                        data-id="${fine.id}" data-name="${playerName}" aria-label="Verwijder boete">
-                    <i class="fas fa-times"></i>
-                </button>
-            `;
-        }
-        
-        return `
-            <div class="fine-card bg-gray-50 dark:bg-gray-900 rounded-xl p-4 space-y-3 relative ${canDelete ? 'pr-12' : ''}">
-                ${deleteButton}
-                <div class="flex items-center justify-between">
-                    <div class="font-semibold">${playerName}</div>
-                    <div class="text-lg font-bold text-blue-600 dark:text-blue-500">${formattedAmount}</div>
-                </div>
-                <div class="text-gray-600 dark:text-gray-400">${reasonDesc}</div>
-                <div class="text-sm text-gray-500 dark:text-gray-500">${formattedDate}</div>
-            </div>
-        `;
-    } catch (error) {
-        console.error('Error in createFineCard:', error);
-        return `
-            <div class="bg-red-50 dark:bg-red-900/20 rounded-xl p-4 text-red-600 dark:text-red-400">
-                Er is een fout opgetreden bij het weergeven van deze boete
-            </div>
-        `;
-    }
-}
-
-// Force Select2 visibility
-function forceSelect2Visibility() {
-    console.log('[DEBUG] Forcing Select2 visibility');
-    
-    // Force display style
-    $('.select2-container').each(function() {
-        const $this = $(this);
-        const display = $this.css('display');
-        
-        if (display === 'none') {
-            console.warn('[DEBUG] Found hidden Select2 container, forcing display');
-            $this.css('display', 'block');
-        }
-        
-        // Ensure proper z-index
-        if (parseInt($this.css('z-index')) < 1000) {
-            $this.css('z-index', '1000');
-        }
-        
-        // Force proper positioning
-        const position = $this.css('position');
-        if (position !== 'absolute' && position !== 'relative') {
-            $this.css('position', 'relative');
-        }
-    });
-    
-    // Force visibility of dropdowns when open
-    $(document).on('select2:open', function() {
-  setTimeout(() => {
-            $('.select2-dropdown').css({
-                'display': 'block',
-                'z-index': '9999'
+        function activateTab(tabId) {
+            // Reset all tabs
+            [tabBoetes, tabPlayers, tabReasons].forEach(tab => {
+                tab.classList.remove('tab-active');
             });
-        }, 10);
-    });
-}
-
-// Initialize Select2
-function initializeSelect2() {
-    console.log('[DEBUG] Inside initializeSelect2 function');
-    
-    // Clean up existing instances
-    console.log('[DEBUG] Removing existing Select2 containers...');
-    $('.select2-container').remove();
-    
-    try {
-        // Initialize player select
-        console.log('[DEBUG] Initializing playerSelect...');
-        $('#playerSelect').select2({
-            theme: 'default',
-            placeholder: 'Selecteer een speler',
-            allowClear: true,
-            width: '100%',
-            dropdownParent: $('#playerSelect').parent(),
-            language: {
-                searching: function() {
-                    return "Zoeken...";
-                },
-                noResults: function() {
-                    return "Geen resultaten gevonden";
-                }
-            },
-            templateResult: formatPlayerOption,
-            templateSelection: formatPlayerOption
-        });
-        console.log('[DEBUG] playerSelect initialized');
-        
-        // Initialize reason select
-        console.log('[DEBUG] Initializing reasonSelect...');
-        $('#reasonSelect').select2({
-            theme: 'default',
-            placeholder: 'Selecteer een reden',
-            allowClear: true,
-            width: '100%',
-            dropdownParent: $('#reasonSelect').parent(),
-            language: {
-                searching: function() {
-                    return "Zoeken...";
-                },
-                noResults: function() {
-                    return "Geen resultaten gevonden";
-                }
-            },
-            templateResult: formatReasonOption,
-            templateSelection: formatReasonOption,
-            tags: true,
-            createTag: function(params) {
-                return {
-                    id: params.term,
-                    text: params.term,
-                    newTag: true
-                };
-            }
-        });
-        console.log('[DEBUG] reasonSelect initialized');
-        
-        // Force display update
-        setTimeout(() => {
-            console.log('[DEBUG] Forcing display refresh...');
-            $('.select2').css('width', '100%').trigger('change');
             
-            // Force Select2 visibility
-            forceSelect2Visibility();
-        }, 50);
-        
-        console.log('[DEBUG] Select2 initialization successful');
-  } catch (error) {
-        console.error('[DEBUG] Error in initializeSelect2:', error);
-    }
-}
-
-// Format Select2 options to look nicer
-function formatPlayerOption(player) {
-    if (!player.id) return player.text;
-    return $(`<div class="flex items-center p-1">
-        <div class="w-8 h-8 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-500 rounded-full flex items-center justify-center font-bold mr-2">
-            ${player.text.charAt(0).toUpperCase()}
-        </div>
-        <span>${player.text}</span>
-    </div>`);
-}
-
-function formatReasonOption(reason) {
-    if (!reason.id) return reason.text;
-    return $(`<div class="p-1">
-        <span class="font-medium">${reason.text}</span>
-    </div>`);
-}
-
-// Initialize Select2 for search
-$(document).on('select2:open', function() {
-    setTimeout(function() {
-        $('.select2-search__field').attr('placeholder', 'Zoeken...');
-        $('.select2-search__field:visible').focus();
-    }, 100);
-});
-
-// API Functions
-async function fetchAPI(endpoint, options = {}) {
-    const url = `${API_BASE_URL}/${endpoint}`;
-    try {
-        debug(`Fetching ${url}`);
-        const response = await fetch(url, {
-            ...options,
-            headers: {
-                'Content-Type': 'application/json',
-                ...options.headers
+            // Hide all content
+            [finesTab, playersTab, reasonsTab].forEach(content => {
+                content.classList.add('hidden');
+            });
+            
+            // Activate selected tab
+            if (tabId === 'players') {
+                tabPlayers.classList.add('tab-active');
+                playersTab.classList.remove('hidden');
+                localStorage.setItem('activeTab', 'players');
+            } else if (tabId === 'reasons') {
+                tabReasons.classList.add('tab-active');
+                reasonsTab.classList.remove('hidden');
+                localStorage.setItem('activeTab', 'reasons');
+            } else {
+                // Default to fines tab
+                tabBoetes.classList.add('tab-active');
+                finesTab.classList.remove('hidden');
+                localStorage.setItem('activeTab', 'boetes');
             }
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
         }
-
-        const data = await response.json();
-        return data;
-    } catch (error) {
-        debug(`API Error: ${error.message}`);
-        throw error;
-    }
-}
-
-// Save data to localStorage based on endpoint
-function saveDataToLocalStorage(endpoint, data) {
-    try {
-        debug(`Saving data from ${endpoint} to localStorage`);
         
-        if (endpoint.includes('/players')) {
-            localStorage.setItem('players', JSON.stringify(data));
-            debug(`Saved ${data.length} players to localStorage`);
-        } 
-        else if (endpoint.includes('/reasons')) {
-            localStorage.setItem('reasons', JSON.stringify(data));
-            debug(`Saved ${data.length} reasons to localStorage`);
-        } 
-        else if (endpoint.includes('/fines')) {
-            // For fines endpoint data, we want to keep what we have and add new fines
-            const existingFinesStr = localStorage.getItem('fines') || '[]';
-            let existingFines = [];
-            
-            try {
-                existingFines = JSON.parse(existingFinesStr);
-            } catch (e) {
-                debug(`Error parsing existing fines: ${e.message}`);
-                existingFines = [];
-            }
-            
-            // If data is a single fine object (from a POST response)
-            if (!Array.isArray(data) && data.id) {
-                // Check if the fine already exists
-                const exists = existingFines.some(fine => fine.id === data.id);
-                if (!exists) {
-                    existingFines.push(data);
-                    debug(`Added new fine with ID ${data.id}`);
-                }
-            } 
-            // If data is an array of fines (from a GET response)
-            else if (Array.isArray(data)) {
-                // Merge new fines with existing ones, avoiding duplicates
-                const uniqueFines = [...existingFines];
-                
-                data.forEach(newFine => {
-                    if (!uniqueFines.some(fine => fine.id === newFine.id)) {
-                        uniqueFines.push(newFine);
-                    }
-                });
-                
-                existingFines = uniqueFines;
-                debug(`Updated fines in localStorage. Total: ${existingFines.length}`);
-            }
-            
-            localStorage.setItem('fines', JSON.stringify(existingFines));
-        }
-  } catch (error) {
-        debug(`Error saving to localStorage: ${error.message}`);
+        // Set default active tab from localStorage or default to fines
+        const activeTab = localStorage.getItem('activeTab') || 'boetes';
+        activateTab(activeTab);
+        
+        // Add click event listeners
+        tabBoetes.addEventListener('click', () => activateTab('boetes'));
+        tabPlayers.addEventListener('click', () => activateTab('players'));
+        tabReasons.addEventListener('click', () => activateTab('reasons'));
     }
-}
-
-// Load all data from API
-async function loadData() {
-    toggleLoading(true);
-    try {
+    
+    // API & Data Functions
+    async function apiRequest(endpoint, method = 'GET', data = null) {
+        try {
+            const url = `${API_BASE_URL}${endpoint}`;
+            const options = {
+                method,
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            };
+            
+            if (data && (method === 'POST' || method === 'PUT')) {
+                options.body = JSON.stringify(data);
+            }
+            
+            debug(`Making ${method} request to ${url}`);
+            showLoading(true);
+            
+            const response = await fetch(url, options);
+            
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.message || `API error: ${response.status}`);
+            }
+            
+            return await response.json();
+        } catch (error) {
+            debug(`API Error: ${error.message}`);
+            showToast(`API Error: ${error.message}`, 'error');
+            throw error;
+        } finally {
+            showLoading(false);
+        }
+    }
+    
+    // Data loading functions
+    async function loadPlayers() {
+        try {
+            const players = await apiRequest('/players');
+            populatePlayerSelect(players);
+            renderPlayersList(players);
+            return players;
+        } catch (error) {
+            debug(`Failed to load players: ${error.message}`);
+            return [];
+        }
+    }
+    
+    async function loadReasons() {
+        try {
+            const reasons = await apiRequest('/reasons');
+            populateReasonSelect(reasons);
+            renderReasonsList(reasons);
+            return reasons;
+        } catch (error) {
+            debug(`Failed to load reasons: ${error.message}`);
+            return [];
+        }
+    }
+    
+    async function loadFines() {
+        try {
+            const fines = await apiRequest('/fines');
+            renderFinesList(fines);
+            return fines;
+        } catch (error) {
+            debug(`Failed to load fines: ${error.message}`);
+            return [];
+        }
+    }
+    
+    async function loadAllData() {
+        debug('Loading all data...');
         await Promise.all([
             loadPlayers(),
             loadReasons(),
-            loadRecentFines()
+            loadFines()
         ]);
-        showToast('Data succesvol geladen');
-    } catch (error) {
-        showToast('Fout bij het laden van data', 'error');
-    } finally {
-        toggleLoading(false);
+        debug('All data loaded successfully');
     }
-}
-
-// Specific data loading functions
-async function loadPlayers() {
-    try {
-        console.log('[DEBUG] Loading players');
+    
+    function clearAllData() {
+        // Clear UI elements
+        const recentFines = document.getElementById('recentFines');
+        const playersList = document.getElementById('playersList');
+        const reasonsList = document.getElementById('reasonsList');
         
-        // Get players from localStorage
-        const players = JSON.parse(localStorage.getItem('players') || '[]');
+        if (recentFines) recentFines.innerHTML = '';
+        if (playersList) playersList.innerHTML = '';
+        if (reasonsList) reasonsList.innerHTML = '';
         
-        // Update the player select
-        const playerSelect = $('#playerSelect');
-        playerSelect.empty();
-        playerSelect.append('<option value="">Selecteer een speler</option>');
+        // Reset selects
+        const playerSelect = document.getElementById('playerSelect');
+        const reasonSelect = document.getElementById('reasonSelect');
+        if (playerSelect) playerSelect.innerHTML = '';
+        if (reasonSelect) reasonSelect.innerHTML = '';
+    }
+    
+    // UI Rendering Functions
+    function populatePlayerSelect(players) {
+        const select = document.getElementById('playerSelect');
+        if (!select) return;
         
-        // Also update the players list
-        const playersList = $('#playersList');
-        playersList.empty();
+        select.innerHTML = '';
         
-        if (players.length === 0) {
-            playersList.html('<p class="text-gray-500 dark:text-gray-400 text-center py-4">Geen spelers gevonden</p>');
-        } else {
-            players.forEach(player => {
-                // Add to select
-                playerSelect.append(`<option value="${player.id}">${player.name}</option>`);
-                
-                // Add to list with delete button
-                playersList.append(`
-                    <div class="flex justify-between items-center bg-gray-50 dark:bg-gray-800 p-3 rounded-lg mb-2 group">
-                        <span class="text-gray-800 dark:text-gray-200">${player.name}</span>
-                        <button class="delete-player-btn text-red-500 hover:text-red-700 opacity-0 group-hover:opacity-100 transition-opacity" 
-                                data-player-id="${player.id}">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </div>
-                `);
+        // Add empty option
+        const emptyOption = document.createElement('option');
+        emptyOption.value = '';
+        emptyOption.textContent = 'Selecteer een speler';
+        select.appendChild(emptyOption);
+        
+        // Add player options
+        players.forEach(player => {
+            const option = document.createElement('option');
+            option.value = player.id;
+            option.textContent = player.name;
+            select.appendChild(option);
+        });
+        
+        // Initialize Select2
+        try {
+            $(select).select2({
+                placeholder: "Selecteer een speler",
+                allowClear: true,
+                width: '100%'
             });
             
-            // Add event listeners for delete buttons
-            $('.delete-player-btn').on('click', function() {
-                const playerId = $(this).data('player-id');
-                handleDeletePlayer(playerId);
-            });
+            // Update Select2 to match theme
+            updateSelect2Theme();
+        } catch (error) {
+            debug(`Error initializing Select2: ${error.message}`);
         }
-        
-        // Reinitialize Select2
-        initializeSelect2();
-        
-        console.log('[DEBUG] Players loaded successfully');
-  } catch (error) {
-        console.error('[DEBUG] Error loading players:', error);
-        showToast('Fout bij het laden van spelers', 'error');
     }
-}
-
-async function loadReasons() {
-    try {
-        console.log('[DEBUG] Loading reasons');
+    
+    function populateReasonSelect(reasons) {
+        const select = document.getElementById('reasonSelect');
+        if (!select) return;
         
-        // Get reasons from localStorage
-        const reasons = JSON.parse(localStorage.getItem('reasons') || '[]');
+        select.innerHTML = '';
         
-        // Update the reason select
-        const reasonSelect = $('#reasonSelect');
-        reasonSelect.empty();
-        reasonSelect.append('<option value="">Selecteer een reden</option>');
+        // Add empty option
+        const emptyOption = document.createElement('option');
+        emptyOption.value = '';
+        emptyOption.textContent = 'Selecteer een reden';
+        select.appendChild(emptyOption);
         
-        // Also update the reasons list
-        const reasonsList = $('#reasonsList');
-        reasonsList.empty();
+        // Add reason options
+        reasons.forEach(reason => {
+            const option = document.createElement('option');
+            option.value = reason.id;
+            option.textContent = reason.description;
+            select.appendChild(option);
+        });
         
-        if (reasons.length === 0) {
-            reasonsList.html('<p class="text-gray-500 dark:text-gray-400 text-center py-4">Geen redenen gevonden</p>');
-        } else {
-            reasons.forEach(reason => {
-                // Add to select
-                reasonSelect.append(`<option value="${reason.id}">${reason.description}</option>`);
-                
-                // Add to list with delete button
-                reasonsList.append(`
-                    <div class="flex justify-between items-center bg-gray-50 dark:bg-gray-800 p-3 rounded-lg mb-2 group">
-                        <span class="text-gray-800 dark:text-gray-200">${reason.description}</span>
-                        <button class="delete-reason-btn text-red-500 hover:text-red-700 opacity-0 group-hover:opacity-100 transition-opacity" 
-                                data-reason-id="${reason.id}">
-              <i class="fas fa-trash"></i>
-            </button>
-          </div>
-                `);
+        // Initialize Select2
+        try {
+            $(select).select2({
+                placeholder: "Selecteer een reden",
+                allowClear: true,
+                width: '100%'
             });
             
-            // Add event listeners for delete buttons
-            $('.delete-reason-btn').on('click', function() {
-                const reasonId = $(this).data('reason-id');
-                handleDeleteReason(reasonId);
-            });
+            // Update Select2 to match theme
+            updateSelect2Theme();
+        } catch (error) {
+            debug(`Error initializing Select2: ${error.message}`);
         }
-        
-        // Reinitialize Select2
-        initializeSelect2();
-        
-        console.log('[DEBUG] Reasons loaded successfully');
-  } catch (error) {
-        console.error('[DEBUG] Error loading reasons:', error);
-        showToast('Fout bij het laden van redenen', 'error');
     }
-}
-
-async function loadRecentFines() {
-    try {
-        const fines = await fetchAPI('fines');
-        const container = $('#recentFines');
-        container.empty();
+    
+    function renderFinesList(fines) {
+        const container = document.getElementById('recentFines');
+        if (!container) return;
+        
+        container.innerHTML = '';
         
         if (fines.length === 0) {
-            container.html(`
+            container.innerHTML = `
                 <div class="text-center py-8 text-gray-500 dark:text-gray-400">
-                    Geen recente boetes gevonden
+                    <i class="fas fa-info-circle text-2xl mb-3"></i>
+                    <p>Geen boetes gevonden.</p>
                 </div>
-            `);
+            `;
             return;
         }
-
+        
+        // Sort fines by date (newest first)
+        fines.sort((a, b) => new Date(b.created_at || b.date) - new Date(a.created_at || a.date));
+        
         fines.forEach(fine => {
-            container.append(createFineCard(fine));
+            createFineCard(container, fine);
         });
-
-        // Add event listeners to delete buttons
-        $('.delete-fine-btn').off('click').on('click', handleFineDelete);
-    } catch (error) {
-        debug(`Error loading fines: ${error.message}`);
-        throw error;
-    }
-}
-
-// Form Handlers
-
-// Handle Add Fine form submission
-const handleAddFine = async (event) => {
-    event.preventDefault();
-    debug('Add fine form submitted');
-    
-    // Get values from the form
-    const playerId = $('#playerSelect').val();
-    const reasonId = $('#reasonSelect').val();
-    const amount = parseFloat($('#amount').val());
-    
-    // Basic validation
-    if (!playerId) {
-        debug('Missing player selection');
-        showToast('Selecteer een speler', 'error');
-      return;
     }
     
-    if (!reasonId) {
-        debug('Missing reason selection');
-        showToast('Selecteer een reden', 'error');
-        return;
-    }
-    
-    if (isNaN(amount) || amount <= 0) {
-        debug(`Invalid amount: ${amount}`);
-        showToast('Voer een geldig bedrag in', 'error');
-        return;
-    }
-    
-    debug(`Adding fine: player=${playerId}, reason=${reasonId}, amount=${amount}`);
-    toggleLoading(true);
-    
-    try {
-        const response = await fetchAPI('fines', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                player_id: parseInt(playerId),
-                reason_id: parseInt(reasonId),
-                amount: amount
-            })
+    function createFineCard(container, fine) {
+        const card = document.createElement('div');
+        card.className = 'bg-gray-50 dark:bg-gray-900 rounded-lg p-4 mb-4 border border-gray-200 dark:border-gray-700';
+        
+        card.innerHTML = `
+            <div class="flex justify-between items-start">
+                <div>
+                    <h3 class="font-semibold text-lg">${fine.player_name}</h3>
+                    <p class="text-gray-600 dark:text-gray-400">${fine.reason_description}</p>
+                    <p class="text-gray-500 dark:text-gray-500 text-sm mt-1">${formatDate(fine.created_at || fine.date)}</p>
+                </div>
+                <div class="flex items-center">
+                    <span class="font-bold text-lg mr-4">${formatCurrency(fine.amount)}</span>
+                    <button data-fine-id="${fine.id}" class="delete-fine-btn text-red-500 hover:text-red-700">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        // Add event listener for delete button
+        const deleteBtn = card.querySelector('.delete-fine-btn');
+        deleteBtn.addEventListener('click', async () => {
+            if (confirm('Weet je zeker dat je deze boete wilt verwijderen?')) {
+                await deleteFine(fine.id);
+            }
         });
         
-        if (response) {
-            debug('Fine added successfully');
-            showToast('Boete succesvol toegevoegd', 'success');
-            
-            // Add the new fine to localStorage even if API failed
-            const playersData = JSON.parse(localStorage.getItem('players') || '[]');
-            const reasonsData = JSON.parse(localStorage.getItem('reasons') || '[]');
-            const finesData = JSON.parse(localStorage.getItem('fines') || '[]');
-            
-            const player = playersData.find(p => p.id == playerId);
-            const reason = reasonsData.find(r => r.id == reasonId);
-            
-            // Create a new fine object
-            const newFine = {
-                id: Date.now(), // Use timestamp as temporary ID
-                player_id: parseInt(playerId),
-                reason_id: parseInt(reasonId),
-                amount: amount,
-                timestamp: new Date().toISOString(),
-                player_name: player?.name || 'Onbekend',
-                reason_description: reason?.description || 'Onbekend'
-            };
-            
-            // Add to fines in localStorage
-            finesData.push(newFine);
-            localStorage.setItem('fines', JSON.stringify(finesData));
-            debug('Added fine to localStorage');
-            
-            resetForm();
-            await loadRecentFines();
-        } else {
-            debug('Failed to add fine - API returned no response');
-            showToast('Fout bij toevoegen van boete', 'error');
-        }
-  } catch (error) {
-        debug(`Error adding fine: ${error.message}`);
-        showToast(`Fout bij toevoegen van boete: ${error.message}`, 'error');
-    } finally {
-        toggleLoading(false);
-    }
-};
-
-// Handle Add Player form submission
-const handleAddPlayer = async (event) => {
-  event.preventDefault();
-    debug('Add player form submitted');
-  
-    // Get values from the form
-    const name = $('#playerName').val().trim();
-  
-    // Basic validation
-  if (!name) {
-        debug('Missing player name');
-        showToast('Voer een naam in', 'error');
-    return;
-  }
-  
-    debug(`Adding player: ${name}`);
-    toggleLoading(true);
-    
-    try {
-        const response = await fetchAPI('players', {
-      method: 'POST',
-      body: JSON.stringify({ name })
-    });
-    
-        if (response) {
-            debug('Player added successfully');
-            
-            // Add to localStorage even if API fails
-            const playersData = JSON.parse(localStorage.getItem('players') || '[]');
-            
-            // Use the response or create a new player object
-            const newPlayer = response || {
-                id: Date.now(), // Use timestamp as temporary ID
-                name: name
-            };
-            
-            // Check if player already exists in localStorage
-            if (!playersData.some(player => player.id === newPlayer.id)) {
-                playersData.push(newPlayer);
-                localStorage.setItem('players', JSON.stringify(playersData));
-                debug(`Added player ${name} to localStorage`);
-            }
-            
-            showToast('Speler succesvol toegevoegd', 'success');
-            $('#playerName').val('');
-            await loadPlayers();
-        } else {
-            debug('Failed to add player - API returned no response');
-            showToast('Fout bij toevoegen van speler', 'error');
-        }
-  } catch (error) {
-        debug(`Error adding player: ${error.message}`);
-        showToast(`Fout bij toevoegen van speler: ${error.message}`, 'error');
-  } finally {
-    toggleLoading(false);
-  }
-};
-
-// Handle Add Reason form submission
-const handleAddReason = async (event) => {
-  event.preventDefault();
-    debug('Add reason form submitted');
-  
-    // Get values from the form
-    const description = $('#reasonDescription').val().trim();
-  
-    // Basic validation
-  if (!description) {
-        debug('Missing reason description');
-        showToast('Voer een beschrijving in', 'error');
-    return;
-  }
-  
-    debug(`Adding reason: ${description}`);
-    toggleLoading(true);
-    
-    try {
-        const response = await fetchAPI('reasons', {
-      method: 'POST',
-      body: JSON.stringify({ description })
-    });
-    
-        if (response) {
-            debug('Reason added successfully');
-            
-            // Add to localStorage even if API fails
-            const reasonsData = JSON.parse(localStorage.getItem('reasons') || '[]');
-            
-            // Use the response or create a new reason object
-            const newReason = response || {
-                id: Date.now(), // Use timestamp as temporary ID
-                description: description
-            };
-            
-            // Check if reason already exists in localStorage
-            if (!reasonsData.some(reason => reason.id === newReason.id)) {
-                reasonsData.push(newReason);
-                localStorage.setItem('reasons', JSON.stringify(reasonsData));
-                debug(`Added reason ${description} to localStorage`);
-            }
-            
-            showToast('Reden succesvol toegevoegd', 'success');
-            $('#reasonDescription').val('');
-            await loadReasons();
-        } else {
-            debug('Failed to add reason - API returned no response');
-            showToast('Fout bij toevoegen van reden', 'error');
-        }
-  } catch (error) {
-        debug(`Error adding reason: ${error.message}`);
-        showToast(`Fout bij toevoegen van reden: ${error.message}`, 'error');
-  } finally {
-    toggleLoading(false);
-  }
-};
-
-// Reset data
-$('#resetButton').on('click', async function() {
-    if (!confirm('WAARSCHUWING: Dit zal ALLE boetes verwijderen. Deze actie kan niet ongedaan worden gemaakt! Weet je zeker dat je wilt doorgaan?')) {
-        return;
+        container.appendChild(card);
     }
     
-    const confirmation = prompt('Typ "RESET" om te bevestigen:');
-    if (confirmation !== 'RESET') {
-        showToast('Reset geannuleerd', 'error');
-    return;
-  }
-  
-  try {
-        await fetchAPI('/reset', {
-            method: 'POST'
-        });
+    function renderPlayersList(players) {
+        const container = document.getElementById('playersList');
+        if (!container) return;
         
-        showToast('Alle gegevens zijn gereset');
-        await loadData();
+        container.innerHTML = '';
         
-  } catch (error) {
-        console.error('Error resetting data:', error);
-    }
-});
-
-// Validate Select2 initialization
-function validateSelect2() {
-    console.log('[DEBUG] Validating Select2 setup...');
-    
-    // Check if Select2 containers exist
-    const select2Count = $('.select2-container').length;
-    console.log(`[DEBUG] Found ${select2Count} Select2 containers`);
-    
-    // Check each Select2 element
-    ['#playerSelect', '#reasonSelect'].forEach(selector => {
-        const $el = $(selector);
-        const hasSelect2 = $el.hasClass('select2-hidden-accessible');
-        
-        console.log(`[DEBUG] ${selector}: exists=${$el.length > 0}, select2-initialized=${hasSelect2}`);
-        
-        if ($el.length > 0 && !hasSelect2) {
-            console.warn(`[DEBUG] Re-initializing ${selector}`);
-            try {
-                $el.select2({
-                    theme: 'default',
-                    placeholder: $el.data('placeholder') || 'Selecteer een optie',
-                    allowClear: true,
-                    width: '100%',
-                    dropdownParent: $el.parent()
-                });
-            } catch (err) {
-                console.error(`[DEBUG] Error initializing ${selector}:`, err);
-            }
-        }
-    });
-    
-    // Update Select2 theme
-    const isDark = document.documentElement.classList.contains('dark');
-    updateSelect2Theme(isDark);
-}
-
-// Debug functions
-function enableDebugMode() {
-    debug('Debug mode enabled');
-    
-    // Set debug flag
-    window.DEBUG = true;
-    
-    // Create toggle function for the debug panel
-    window.toggleDebugPanel = function() {
-        const panel = $('#debugPanel');
-        panel.toggleClass('hidden');
-        debug('Debug panel toggled');
-    };
-    
-    // Set up API health check
-    window.checkApiHealth = async function() {
-        debug('Running API health check');
-        $('#debugStatus').text('Running API health check...');
-        
-        try {
-            // Test endpoints
-            const endpoints = ['/players', '/reasons', '/recent-fines'];
-            const results = {};
-            
-            for (const endpoint of endpoints) {
-                try {
-                    debug(`Testing endpoint: ${endpoint}`);
-                    const startTime = performance.now();
-                    const response = await fetchAPI(endpoint);
-                    const duration = Math.round(performance.now() - startTime);
-                    results[endpoint] = { 
-                        status: response ? 'OK' : 'ERROR', 
-                        duration: `${duration}ms`,
-                        data: response ? `Got ${Array.isArray(response) ? response.length : 'non-array'} items` : 'No data'
-                    };
-                } catch (err) {
-                    results[endpoint] = { status: 'ERROR', error: err.message };
-                }
-            }
-            
-            // Format results
-            const resultStr = Object.entries(results)
-                .map(([endpoint, result]) => `${endpoint}: ${result.status} ${result.duration || ''} ${result.error || ''} ${result.data || ''}`)
-                .join('\n');
-            
-            $('#debugStatus').html(`API Health Check Results:<br><pre>${resultStr}</pre>`);
-            debug('Health check complete:', results);
-        } catch (error) {
-            debug(`Health check failed: ${error.message}`);
-            $('#debugStatus').text(`Health check failed: ${error.message}`);
-        }
-    };
-}
-
-// Handle fine deletion directly from the card
-async function handleFineDelete(e) {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    const fineId = $(this).data('id');
-    const playerName = $(this).data('name');
-    
-    if (!fineId) {
-        showToast('Kan deze boete niet verwijderen: ongeldige ID', 'error');
-        return;
-    }
-    
-    if (!confirm(`Weet je zeker dat je de boete voor ${playerName} wilt verwijderen?`)) {
-    return;
-  }
-  
-  try {
-        console.log(`[DEBUG] Deleting fine with ID: ${fineId}`);
-        await fetchAPI(`fines/${fineId}`, {
-            method: 'DELETE'
-        });
-        
-        showToast('Boete succesvol verwijderd');
-        
-        // Reload all data
-        await loadData();
-        
-    } catch (error) {
-        console.error('[DEBUG] Error deleting fine:', error);
-        showToast('Fout bij verwijderen van boete', 'error');
-    }
-}
-
-// DOM checker and repair function
-function checkAndRepairDOM() {
-    debug('Running DOM check and repair');
-    
-    // List of required DOM elements
-    const requiredElements = [
-        '#tab-boetes', 
-        '#tab-beheer', 
-        '#content-boetes', 
-        '#content-beheer',
-        '#playerSelect',
-        '#reasonSelect',
-        '#recentFines'
-    ];
-    
-    // Check if all required elements exist
-    const missingElements = requiredElements.filter(selector => $(selector).length === 0);
-    
-    if (missingElements.length > 0) {
-        debug(`Missing DOM elements: ${missingElements.join(', ')}`);
-        return false;
-    }
-    
-    debug('All required DOM elements found');
-    
-    // Set up tab functionality
-    $('#tab-boetes').off('click').on('click', function() {
-        debug('Switching to Boetes tab');
-        $('#tab-boetes').addClass('text-blue-600 dark:text-blue-500 border-blue-600 dark:border-blue-500')
-            .removeClass('border-transparent hover:text-blue-600 dark:hover:text-blue-500 hover:border-blue-600 dark:hover:border-blue-500 text-gray-500 dark:text-gray-400');
-        $('#tab-beheer').removeClass('text-blue-600 dark:text-blue-500 border-blue-600 dark:border-blue-500')
-            .addClass('border-transparent hover:text-blue-600 dark:hover:text-blue-500 hover:border-blue-600 dark:hover:border-blue-500 text-gray-500 dark:text-gray-400');
-        $('#content-boetes').removeClass('hidden');
-        $('#content-beheer').addClass('hidden');
-        localStorage.setItem('activeTab', 'boetes');
-    });
-    
-    $('#tab-beheer').off('click').on('click', function() {
-        debug('Switching to Beheer tab');
-        $('#tab-beheer').addClass('text-blue-600 dark:text-blue-500 border-blue-600 dark:border-blue-500')
-            .removeClass('border-transparent hover:text-blue-600 dark:hover:text-blue-500 hover:border-blue-600 dark:hover:border-blue-500 text-gray-500 dark:text-gray-400');
-        $('#tab-boetes').removeClass('text-blue-600 dark:text-blue-500 border-blue-600 dark:border-blue-500')
-            .addClass('border-transparent hover:text-blue-600 dark:hover:text-blue-500 hover:border-blue-600 dark:hover:border-blue-500 text-gray-500 dark:text-gray-400');
-        $('#content-beheer').removeClass('hidden');
-        $('#content-boetes').addClass('hidden');
-        localStorage.setItem('activeTab', 'beheer');
-    });
-    
-    // Check if all forms are properly initialized
-    const forms = ['addFineForm', 'addPlayerForm', 'addReasonForm'];
-    forms.forEach(formId => {
-        const form = document.getElementById(formId);
-        if (form) {
-            debug(`Form ${formId} found`);
-        } else {
-            debug(`Form ${formId} not found in DOM`);
-        }
-    });
-    
-    // Set up delete buttons
-    $('.delete-fine-btn').off('click').on('click', handleFineDelete);
-    
-    // Check Select2 elements
-    validateSelect2();
-    
-    // Repair any broken CSS 
-    $('.select2-container').css({
-        'display': 'block',
-        'position': 'relative',
-        'z-index': '1050'
-    });
-    
-    // Check if content is visible
-    const boetesVisible = $('#content-boetes').is(':visible');
-    const beheerVisible = $('#content-beheer').is(':visible');
-    
-    debug(`Content visibility: boetes=${boetesVisible}, beheer=${beheerVisible}`);
-    
-    // If no content is visible, force display of boetes tab
-    if (!boetesVisible && !beheerVisible) {
-        debug('No content visible, forcing display of boetes tab');
-        $('#content-boetes').css('display', 'block');
-        $('#content-beheer').css('display', 'none');
-        $('#tab-boetes').addClass('tab-active');
-        $('#tab-beheer').removeClass('tab-active');
-    }
-    
-    // Apply theme
-    applyTheme();
-    
-    $('#debugStatus').text('DOM check completed: ' + new Date().toLocaleTimeString());
-    return true;
-}
-
-// Setup event handlers
-function bindEvents() {
-    $('#addPlayerForm').off('submit').on('submit', handleAddPlayer);
-    $('#addReasonForm').off('submit').on('submit', handleAddReason);
-    $('#addFineForm').off('submit').on('submit', handleAddFine);
-    $('#resetButton').off('click').on('click', handleReset);
-    $('#manualLoadButton').off('click').on('click', loadData);
-    $('#checkApiButton').off('click').on('click', checkApiHealth);
-    
-    // Bind event for delete buttons using delegation
-    $(document).off('click', '.delete-fine-btn').on('click', '.delete-fine-btn', function() {
-        const fineId = $(this).data('id');
-        const playerName = $(this).data('name');
-        
-        if (confirm(`Weet je zeker dat je de boete van ${playerName} wilt verwijderen?`)) {
-            deleteFine(fineId);
-        }
-    });
-    
-    debug('All event handlers bound successfully');
-}
-
-// Initialize the admin page
-function initialize() {
-    try {
-        console.log('[DEBUG] Initializing admin page...');
-        
-        // Check if we're on the admin page by looking for typical admin elements
-        if (!document.querySelector('.container') || !document.getElementById('addFineForm')) {
-            console.error('[DEBUG] Admin page elements not found');
+        if (players.length === 0) {
+            container.innerHTML = `
+                <div class="text-center py-8 text-gray-500 dark:text-gray-400">
+                    <i class="fas fa-info-circle text-2xl mb-3"></i>
+                    <p>Geen spelers gevonden.</p>
+                </div>
+            `;
             return;
         }
         
-        // Add management sections
-        addManagementSections();
+        // Sort players by name
+        players.sort((a, b) => a.name.localeCompare(b.name));
+        
+        players.forEach(player => {
+            const item = document.createElement('div');
+            item.className = 'bg-gray-50 dark:bg-gray-900 rounded-lg p-4 mb-4 border border-gray-200 dark:border-gray-700 flex justify-between items-center';
+            
+            item.innerHTML = `
+                <span class="font-medium">${player.name}</span>
+                <button data-player-id="${player.id}" class="delete-player-btn text-red-500 hover:text-red-700">
+                    <i class="fas fa-trash"></i>
+                </button>
+            `;
+            
+            // Add event listener for delete button
+            const deleteBtn = item.querySelector('.delete-player-btn');
+            deleteBtn.addEventListener('click', async () => {
+                if (confirm(`Weet je zeker dat je "${player.name}" wilt verwijderen? Dit verwijdert ook alle bijbehorende boetes!`)) {
+                    await deletePlayer(player.id);
+                }
+            });
+            
+            container.appendChild(item);
+        });
+    }
+    
+    function renderReasonsList(reasons) {
+        const container = document.getElementById('reasonsList');
+        if (!container) return;
+        
+        container.innerHTML = '';
+        
+        if (reasons.length === 0) {
+            container.innerHTML = `
+                <div class="text-center py-8 text-gray-500 dark:text-gray-400">
+                    <i class="fas fa-info-circle text-2xl mb-3"></i>
+                    <p>Geen redenen gevonden.</p>
+                </div>
+            `;
+            return;
+        }
+        
+        // Sort reasons by description
+        reasons.sort((a, b) => a.description.localeCompare(b.description));
+        
+        reasons.forEach(reason => {
+            const item = document.createElement('div');
+            item.className = 'bg-gray-50 dark:bg-gray-900 rounded-lg p-4 mb-4 border border-gray-200 dark:border-gray-700 flex justify-between items-center';
+            
+            item.innerHTML = `
+                <span class="font-medium">${reason.description}</span>
+                <button data-reason-id="${reason.id}" class="delete-reason-btn text-red-500 hover:text-red-700">
+                    <i class="fas fa-trash"></i>
+                </button>
+            `;
+            
+            // Add event listener for delete button
+            const deleteBtn = item.querySelector('.delete-reason-btn');
+            deleteBtn.addEventListener('click', async () => {
+                if (confirm(`Weet je zeker dat je "${reason.description}" wilt verwijderen? Dit verwijdert ook alle bijbehorende boetes!`)) {
+                    await deleteReason(reason.id);
+                }
+            });
+            
+            container.appendChild(item);
+        });
+    }
+    
+    // CRUD Operations
+    async function addFine(data) {
+        try {
+            await apiRequest('/fines', 'POST', data);
+            showToast('Boete succesvol toegevoegd!', 'success');
+            await loadFines(); // Reload fines
+            return true;
+        } catch (error) {
+            debug(`Failed to add fine: ${error.message}`);
+            return false;
+        }
+    }
+    
+    async function deleteFine(id) {
+        try {
+            await apiRequest(`/fines/${id}`, 'DELETE');
+            showToast('Boete succesvol verwijderd!', 'success');
+            await loadFines(); // Reload fines
+            return true;
+        } catch (error) {
+            debug(`Failed to delete fine: ${error.message}`);
+            return false;
+        }
+    }
+    
+    async function addPlayer(data) {
+        try {
+            await apiRequest('/players', 'POST', data);
+            showToast('Speler succesvol toegevoegd!', 'success');
+            await loadPlayers(); // Reload players
+            return true;
+        } catch (error) {
+            debug(`Failed to add player: ${error.message}`);
+            return false;
+        }
+    }
+    
+    async function deletePlayer(id) {
+        try {
+            await apiRequest(`/players/${id}`, 'DELETE');
+            showToast('Speler succesvol verwijderd!', 'success');
+            await Promise.all([loadPlayers(), loadFines()]); // Reload players and fines
+            return true;
+        } catch (error) {
+            debug(`Failed to delete player: ${error.message}`);
+            return false;
+        }
+    }
+    
+    async function addReason(data) {
+        try {
+            await apiRequest('/reasons', 'POST', data);
+            showToast('Reden succesvol toegevoegd!', 'success');
+            await loadReasons(); // Reload reasons
+            return true;
+        } catch (error) {
+            debug(`Failed to add reason: ${error.message}`);
+            return false;
+        }
+    }
+    
+    async function deleteReason(id) {
+        try {
+            await apiRequest(`/reasons/${id}`, 'DELETE');
+            showToast('Reden succesvol verwijderd!', 'success');
+            await Promise.all([loadReasons(), loadFines()]); // Reload reasons and fines
+            return true;
+        } catch (error) {
+            debug(`Failed to delete reason: ${error.message}`);
+            return false;
+        }
+    }
+    
+    async function resetAllData() {
+        try {
+            await apiRequest('/reset', 'POST');
+            showToast('Alle data succesvol gereset!', 'success');
+            await loadAllData(); // Reload all data
+            return true;
+        } catch (error) {
+            debug(`Failed to reset data: ${error.message}`);
+            return false;
+        }
+    }
+    
+    // Event Listeners
+    function setupEventListeners() {
+        // Theme toggle
+        themeToggle.addEventListener('click', toggleTheme);
+        
+        // Login form
+        loginForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const password = document.getElementById('password').value;
+            login(password);
+        });
+        
+        // Logout button
+        logoutBtn.addEventListener('click', logout);
+        
+        // Add Fine Form
+        const addFineForm = document.getElementById('addFineForm');
+        if (addFineForm) {
+            addFineForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                const playerId = document.getElementById('playerSelect').value;
+                const reasonId = document.getElementById('reasonSelect').value;
+                const amount = document.getElementById('amount').value;
+                
+                if (!playerId) {
+                    showToast('Selecteer een speler!', 'error');
+                    return;
+                }
+                
+                if (!reasonId) {
+                    showToast('Selecteer een reden!', 'error');
+                    return;
+                }
+                
+                if (!amount || isNaN(amount) || parseFloat(amount) <= 0) {
+                    showToast('Voer een geldig bedrag in!', 'error');
+                    return;
+                }
+                
+                const success = await addFine({
+                    player_id: playerId,
+                    reason_id: reasonId,
+                    amount: parseFloat(amount)
+                });
+                
+                if (success) {
+                    // Reset form
+                    document.getElementById('playerSelect').value = '';
+                    document.getElementById('reasonSelect').value = '';
+                    document.getElementById('amount').value = '';
+                    
+                    // Reset Select2
+                    try {
+                        $('#playerSelect').val('').trigger('change');
+                        $('#reasonSelect').val('').trigger('change');
+                    } catch (error) {
+                        debug(`Error resetting Select2: ${error.message}`);
+                    }
+                }
+            });
+        }
+        
+        // Add Player Form
+        const addPlayerForm = document.getElementById('addPlayerForm');
+        if (addPlayerForm) {
+            addPlayerForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                const playerName = document.getElementById('playerName').value.trim();
+                
+                if (!playerName) {
+                    showToast('Voer een geldige naam in!', 'error');
+                    return;
+                }
+                
+                const success = await addPlayer({
+                    name: playerName
+                });
+                
+                if (success) {
+                    // Reset form
+                    document.getElementById('playerName').value = '';
+                }
+            });
+        }
+        
+        // Add Reason Form
+        const addReasonForm = document.getElementById('addReasonForm');
+        if (addReasonForm) {
+            addReasonForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                const reasonDescription = document.getElementById('reasonDescription').value.trim();
+                
+                if (!reasonDescription) {
+                    showToast('Voer een geldige beschrijving in!', 'error');
+                    return;
+                }
+                
+                const success = await addReason({
+                    description: reasonDescription
+                });
+                
+                if (success) {
+                    // Reset form
+                    document.getElementById('reasonDescription').value = '';
+                }
+            });
+        }
+        
+        // Reset Button
+        const resetButton = document.getElementById('resetButton');
+        if (resetButton) {
+            resetButton.addEventListener('click', async function() {
+                if (confirm('WAARSCHUWING: Dit zal ALLE data verwijderen! Weet je zeker dat je door wilt gaan?')) {
+                    if (confirm('Dit is je laatste kans! Alle boetes, spelers en redenen worden verwijderd. Dit kan niet ongedaan worden gemaakt!')) {
+                        await resetAllData();
+                    }
+                }
+            });
+        }
+        
+        // Manual Load Button
+        const manualLoadButton = document.getElementById('manualLoadButton');
+        if (manualLoadButton) {
+            manualLoadButton.addEventListener('click', loadAllData);
+        }
+        
+        // Clear Storage Button
+        const clearStorageButton = document.getElementById('clearStorageButton');
+        if (clearStorageButton) {
+            clearStorageButton.addEventListener('click', function() {
+                if (confirm('Weet je zeker dat je alle lokale opslag wilt wissen? Je wordt uitgelogd.')) {
+                    localStorage.clear();
+                    showToast('Lokale opslag gewist!', 'info');
+                    setTimeout(() => {
+                        location.reload();
+                    }, 1500);
+                }
+            });
+        }
+    }
+    
+    // Initialization
+    function init() {
+        debug('Initializing admin panel...');
+        
+        // Init theme
+        initTheme();
+        
+        // Check authentication
+        if (checkAuth()) {
+            debug('User is authenticated');
+            // Hide login modal, show admin content
+            adminContent.forEach(el => el.style.display = 'block');
+            loginModal.style.display = 'none';
+            
+            // Setup tabs
+            setupTabs();
+            
+            // Load data
+            loadAllData();
+        } else {
+            debug('User is not authenticated');
+            // Show login modal, hide admin content
+            adminContent.forEach(el => el.style.display = 'none');
+            loginModal.style.display = 'flex';
+        }
         
         // Setup event listeners
-        bindEvents();
+        setupEventListeners();
         
-        // Setup tabs
-        setupTabs();
-        
-        // Load data
-        loadPlayers();
-        loadReasons();
-        loadRecentFines();
-        updateStats();
-        
-        // Setup theme
-        setupTheme();
-        
-        console.log('[DEBUG] Admin page initialized successfully');
-  } catch (error) {
-        console.error('[DEBUG] Initialization error:', error);
-    }
-}
-
-// Handle Reset - ensure it works with localStorage
-function handleReset() {
-    try {
-        if (confirm('WAARSCHUWING: Dit zal ALLE data verwijderen. Deze actie kan niet ongedaan worden gemaakt. Weet je het zeker?')) {
-            console.log('[DEBUG] Resetting all data...');
-            
-            // Clear all localStorage data
-            localStorage.removeItem('players');
-            localStorage.removeItem('reasons');
-            localStorage.removeItem('fines');
-            
-            // For compatibility, also try to clear via API
-            try {
-                fetchAPI('/reset', { method: 'POST' })
-                    .catch(error => {
-                        console.log('[DEBUG] API reset failed, but localStorage was cleared:', error);
-                    });
-            } catch (error) {
-                console.log('[DEBUG] API not available for reset, using localStorage only');
-            }
-            
-            showToast('Alle data is succesvol verwijderd!', 'success');
-            
-            // Force update stats
-            updateStats();
-            
-            // Reload data to refresh UI
-            loadPlayers();
-            loadReasons();
-            loadRecentFines();
-            
-            $('#debugStatus').text('Data reset successful');
-        }
-    } catch (error) {
-        console.error('[DEBUG] Error in reset:', error);
-        showToast('Er is een fout opgetreden bij het resetten van de data', 'error');
-        $('#debugStatus').text(`Reset failed: ${error.message}`);
-    }
-}
-
-// Stats update function
-function updateStats() {
-    try {
-        console.log('[DEBUG] Updating statistics...');
-        
-        // Get data from localStorage
-        const players = JSON.parse(localStorage.getItem('players') || '[]');
-        const fines = JSON.parse(localStorage.getItem('fines') || '[]');
-        
-        // Calculate total
-        const totalAmount = fines.reduce((sum, fine) => sum + (parseFloat(fine.amount) || 0), 0);
-        
-        // Update UI stats
-        $('#totalAmount').text(formatCurrency(totalAmount));
-        $('#playerCount').text(players.length);
-        $('#fineCount').text(fines.length);
-        
-        console.log('[DEBUG] Statistics updated successfully');
-  } catch (error) {
-        console.error('[DEBUG] Error updating statistics:', error);
-    }
-}
-
-// Apply theme function
-function applyTheme() {
-    debug('Applying current theme');
-    const isDarkMode = localStorage.theme === 'dark' || 
-        (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
-    
-    if (isDarkMode) {
-        document.documentElement.classList.add('dark');
-        $('#theme-icon').removeClass('fa-moon').addClass('fa-sun');
-    } else {
-        document.documentElement.classList.remove('dark');
-        $('#theme-icon').removeClass('fa-sun').addClass('fa-moon');
+        debug('Initialization complete');
     }
     
-    // Update Select2 theme
-    updateSelect2Theme(isDarkMode);
-}
-
-// Toggle theme function
-function toggleTheme() {
-    debug('Toggling theme');
-    const isDarkMode = document.documentElement.classList.contains('dark');
-    
-    if (isDarkMode) {
-        localStorage.theme = 'light';
-        document.documentElement.classList.remove('dark');
-        $('#theme-icon').removeClass('fa-sun').addClass('fa-moon');
-    } else {
-        localStorage.theme = 'dark';
-        document.documentElement.classList.add('dark');
-        $('#theme-icon').removeClass('fa-moon').addClass('fa-sun');
-    }
-    
-    // Update Select2 theme
-    updateSelect2Theme(!isDarkMode);
-}
-
-// Reset form helper function
-function resetForm() {
-    debug('Resetting form fields');
-    // Reset the add fine form
-    $('#addFineForm')[0].reset();
-    
-    // Reset Select2 dropdowns
-    $('#playerSelect').val(null).trigger('change');
-    $('#reasonSelect').val(null).trigger('change');
-    
-    // Reset other inputs if needed
-    $('#amount').val('');
-}
-
-// API Health Check function
-async function checkApiHealth() {
-    debug('Running API health check');
-    $('#debugStatus').html('Running API health check...');
-    
-    const results = [];
-    const endpoints = ['/players', '/reasons', '/recent-fines'];
-    
-    toggleLoading(true);
-    
-    try {
-        // Test each endpoint sequentially
-        for (const endpoint of endpoints) {
-            try {
-                debug(`Testing endpoint: ${endpoint}`);
-                const startTime = performance.now();
-                
-                // Try to fetch from the endpoint
-                const response = await fetchAPI(endpoint);
-                const duration = Math.round(performance.now() - startTime);
-                
-                const status = response ? 'OK' : 'ERROR';
-                const count = response && Array.isArray(response) ? response.length : 'N/A';
-                
-                results.push(`${endpoint}: ${status} (${duration}ms) - ${count} items`);
-                debug(`Endpoint ${endpoint} test completed: ${status}`);
-  } catch (error) {
-                results.push(`${endpoint}: ERROR - ${error.message}`);
-                debug(`Error testing endpoint ${endpoint}: ${error.message}`);
-            }
-        }
-        
-        // Update the debug status display
-        $('#debugStatus').html(`
-            <div class="font-semibold mb-2">API Health Check Results:</div>
-            <div class="space-y-1">
-                ${results.map(result => 
-                    `<div class="text-sm ${result.includes('ERROR') ? 'text-red-500' : 'text-green-500'}">${result}</div>`
-                ).join('')}
-            </div>
-            <div class="mt-2 text-xs text-gray-500">Completed at: ${new Date().toLocaleTimeString()}</div>
-        `);
-        
-        debug('API health check completed');
-    } catch (error) {
-        $('#debugStatus').html(`
-            <div class="text-red-500">Health check failed: ${error.message}</div>
-        `);
-        debug(`API health check failed: ${error.message}`);
-  } finally {
-    toggleLoading(false);
-  }
-}
-
-// Handle delete player
-function handleDeletePlayer(playerId) {
-    if (!playerId) return;
-    
-    // Confirm deletion
-    if (!confirm('Weet je zeker dat je deze speler wilt verwijderen? Dit kan niet ongedaan worden gemaakt.')) {
-        return;
-    }
-    
-    try {
-        // Get existing players
-        const players = JSON.parse(localStorage.getItem('players') || '[]');
-        const fines = JSON.parse(localStorage.getItem('fines') || '[]');
-        
-        // Filter out the player to delete
-        const updatedPlayers = players.filter(player => player.id !== parseInt(playerId));
-        
-        // Remove any fines associated with this player
-        const updatedFines = fines.filter(fine => {
-            const finePlayerId = fine.player_id || fine.playerId;
-            return finePlayerId !== parseInt(playerId);
-        });
-        
-        // Save the updated data
-        localStorage.setItem('players', JSON.stringify(updatedPlayers));
-        localStorage.setItem('fines', JSON.stringify(updatedFines));
-        
-        // Refresh the UI
-    loadPlayers();
-        updateStats();
-        
-        showToast('Speler succesvol verwijderd!', 'success');
-    } catch (error) {
-        console.error('[DEBUG] Error deleting player:', error);
-        showToast('Fout bij het verwijderen van de speler', 'error');
-    }
-}
-
-// Handle delete reason
-function handleDeleteReason(reasonId) {
-    if (!reasonId) return;
-    
-    // Confirm deletion
-    if (!confirm('Weet je zeker dat je deze reden wilt verwijderen? Dit kan niet ongedaan worden gemaakt.')) {
-        return;
-    }
-    
-    try {
-        // Get existing reasons
-        const reasons = JSON.parse(localStorage.getItem('reasons') || '[]');
-        const fines = JSON.parse(localStorage.getItem('fines') || '[]');
-        
-        // Filter out the reason to delete
-        const updatedReasons = reasons.filter(reason => reason.id !== parseInt(reasonId));
-        
-        // Update fines with this reason (set reason to null)
-        const updatedFines = fines.map(fine => {
-            const fineReasonId = fine.reason_id || fine.reasonId;
-            if (fineReasonId === parseInt(reasonId)) {
-                return {
-                    ...fine,
-                    reason_id: null,
-                    reasonId: null
-                };
-            }
-            return fine;
-        });
-        
-        // Save the updated data
-        localStorage.setItem('reasons', JSON.stringify(updatedReasons));
-        localStorage.setItem('fines', JSON.stringify(updatedFines));
-        
-        // Refresh the UI
-    loadReasons();
-        updateStats();
-        
-        showToast('Reden succesvol verwijderd!', 'success');
-    } catch (error) {
-        console.error('[DEBUG] Error deleting reason:', error);
-        showToast('Fout bij het verwijderen van de reden', 'error');
-    }
-}
-
-// Add UI sections for player and reason management
-function addManagementSections() {
-    // Add players and reasons management sections if they don't exist
-    if ($('#playersList').length === 0) {
-        $('#playersTab .tab-content').append(`
-            <div class="mt-6">
-                <h3 class="text-lg font-medium mb-2 text-gray-900 dark:text-gray-100">Spelers beheren</h3>
-                <div id="playersList" class="space-y-2 max-h-60 overflow-y-auto p-2"></div>
-            </div>
-        `);
-    }
-    
-    if ($('#reasonsList').length === 0) {
-        $('#reasonsTab .tab-content').append(`
-            <div class="mt-6">
-                <h3 class="text-lg font-medium mb-2 text-gray-900 dark:text-gray-100">Redenen beheren</h3>
-                <div id="reasonsList" class="space-y-2 max-h-60 overflow-y-auto p-2"></div>
-            </div>
-        `);
-    }
-}
-
-// Setup tabs functionality
-function setupTabs() {
-    debug('Setting up tabs');
-    
-    // Set first tab as active by default
-    const tabBoetes = document.getElementById('tab-boetes');
-    const tabPlayers = document.getElementById('tab-players');
-    const tabReasons = document.getElementById('tab-reasons');
-    
-    const finesTab = document.getElementById('finesTab');
-    const playersTab = document.getElementById('playersTab');
-    const reasonsTab = document.getElementById('reasonsTab');
-    
-    if (!tabBoetes || !tabPlayers || !tabReasons || !finesTab || !playersTab || !reasonsTab) {
-        debug('Tab elements not found, skipping tab setup');
-        return;
-    }
-    
-    // Set active tab from localStorage if available
-    const activeTab = localStorage.getItem('activeTab');
-    if (activeTab) {
-        switch (activeTab) {
-            case 'boetes':
-                activateTab(tabBoetes, finesTab);
-                break;
-            case 'players':
-                activateTab(tabPlayers, playersTab);
-                break;
-            case 'reasons':
-                activateTab(tabReasons, reasonsTab);
-                break;
-            default:
-                activateTab(tabBoetes, finesTab);
-        }
-    } else {
-        // Default to boetes tab
-        activateTab(tabBoetes, finesTab);
-    }
-    
-    // Setup tab click handlers
-    tabBoetes.addEventListener('click', function() {
-        activateTab(tabBoetes, finesTab);
-        localStorage.setItem('activeTab', 'boetes');
-    });
-    
-    tabPlayers.addEventListener('click', function() {
-        activateTab(tabPlayers, playersTab);
-        localStorage.setItem('activeTab', 'players');
-    });
-    
-    tabReasons.addEventListener('click', function() {
-        activateTab(tabReasons, reasonsTab);
-        localStorage.setItem('activeTab', 'reasons');
-    });
-    
-    debug('Tab setup completed');
-}
-
-// Helper function to activate a tab
-function activateTab(tabElement, contentElement) {
-    debug(`Activating tab: ${tabElement.id}`);
-    
-    // Reset all tabs
-    const allTabs = document.querySelectorAll('[id^="tab-"]');
-    const allContents = document.querySelectorAll('.tab-content');
-    
-    // Remove active class from all tabs
-    allTabs.forEach(tab => {
-        tab.classList.remove('tab-active');
-        tab.classList.add('border-transparent', 'hover:text-blue-600', 'dark:hover:text-blue-500', 'hover:border-blue-600', 'dark:hover:border-blue-500', 'text-gray-500', 'dark:text-gray-400');
-    });
-    
-    // Hide all content
-    allContents.forEach(content => {
-        content.classList.add('hidden');
-    });
-    
-    // Activate selected tab
-    tabElement.classList.add('tab-active');
-    tabElement.classList.remove('border-transparent', 'hover:text-blue-600', 'dark:hover:text-blue-500', 'hover:border-blue-600', 'dark:hover:border-blue-500', 'text-gray-500', 'dark:text-gray-400');
-    
-    // Show selected content
-    contentElement.classList.remove('hidden');
-}
-
-// Setup theme functionality
-function setupTheme() {
-    try {
-        console.log('[DEBUG] Setting up theme');
-        
-        // Set initial theme
-        const isDarkMode = localStorage.getItem('theme') === 'dark' || 
-            (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
-        
-        if (isDarkMode) {
-            document.documentElement.classList.add('dark');
-            document.getElementById('theme-toggle-icon').classList.remove('fa-moon');
-            document.getElementById('theme-toggle-icon').classList.add('fa-sun');
-        } else {
-            document.documentElement.classList.remove('dark');
-            document.getElementById('theme-toggle-icon').classList.remove('fa-sun');
-            document.getElementById('theme-toggle-icon').classList.add('fa-moon');
-        }
-        
-        // Theme toggle handler - using direct DOM API instead of jQuery
-        document.getElementById('theme-toggle').addEventListener('click', function() {
-            const isDark = document.documentElement.classList.contains('dark');
-            
-            if (isDark) {
-                document.documentElement.classList.remove('dark');
-                localStorage.theme = 'light';
-                document.getElementById('theme-toggle-icon').classList.remove('fa-sun');
-                document.getElementById('theme-toggle-icon').classList.add('fa-moon');
-            } else {
-                document.documentElement.classList.add('dark');
-                localStorage.theme = 'dark';
-                document.getElementById('theme-toggle-icon').classList.remove('fa-moon');
-                document.getElementById('theme-toggle-icon').classList.add('fa-sun');
-            }
-            
-            // Update Select2 theme
-            updateSelect2Theme(!isDark);
-            
-            console.log('[DEBUG] Theme toggled to:', !isDark ? 'dark' : 'light');
-        });
-        
-        console.log('[DEBUG] Theme setup completed');
-    } catch (error) {
-        console.error('[DEBUG] Error setting up theme:', error);
-    }
-}
-
-// Document ready handler
-$(document).ready(function() {
-    debug('Document ready');
-    
-    // Initialize theme
-    if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-        document.documentElement.classList.add('dark');
-        $('#theme-icon').removeClass('fa-moon').addClass('fa-sun');
-    } else {
-        document.documentElement.classList.remove('dark');
-        $('#theme-icon').removeClass('fa-sun').addClass('fa-moon');
-    }
-    
-    // Theme toggle button event listener
-    $('#theme-toggle').on('click', function() {
-        debug('Theme toggle clicked');
-        const isDark = document.documentElement.classList.contains('dark');
-        if (isDark) {
-            document.documentElement.classList.remove('dark');
-            localStorage.theme = 'light';
-            $('#theme-icon').removeClass('fa-sun').addClass('fa-moon');
-        } else {
-            document.documentElement.classList.add('dark');
-            localStorage.theme = 'dark';
-            $('#theme-icon').removeClass('fa-moon').addClass('fa-sun');
-        }
-    });
-    
-    // Check authentication and initialize page
-    if (checkAuth()) {
-        debug('Authentication successful, initializing page');
-        initialize();
-    }
+    // Start the application
+    init();
 }); 

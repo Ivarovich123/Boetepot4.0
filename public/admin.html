@@ -23,9 +23,6 @@
     <!-- Select2 JS -->
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     
-    <!-- Auth System - Must be loaded first -->
-    <script src="auth.js"></script>
-
     <style>
         /* Base styles */
         :root {
@@ -39,7 +36,7 @@
         }
         
         /* Dark mode variables */
-        html.dark {
+        .dark {
             --bg-color: #111827;
             --text-color: #f3f4f6;
             --card-bg: #1f2937;
@@ -117,19 +114,41 @@
         
         /* Active tab styling */
         .tab-active {
-            color: #2563eb;
-            border-color: #2563eb;
+            color: #2563eb !important;
+            border-color: #2563eb !important;
         }
         
-        html.dark .tab-active {
-            color: #3b82f6;
-            border-color: #3b82f6;
+        .dark .tab-active {
+            color: #3b82f6 !important;
+            border-color: #3b82f6 !important;
+        }
+
+        /* Hide admin content when not logged in */
+        .admin-content {
+            display: none;
         }
     </style>
 </head>
 <body class="min-h-screen pb-20">
+    <!-- Login modal -->
+    <div id="loginModal" class="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl p-6 w-full max-w-md">
+            <h2 class="text-xl font-bold mb-4 text-center">Admin Login</h2>
+            <form id="loginForm" class="space-y-4">
+                <div>
+                    <label for="password" class="block text-sm font-medium mb-2">Password</label>
+                    <input type="password" id="password" class="w-full py-2 px-3 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700" required>
+                </div>
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors">
+                    Login
+                </button>
+                <p id="loginError" class="text-red-500 text-center hidden">Incorrect password!</p>
+            </form>
+        </div>
+    </div>
+    
     <!-- Navbar -->
-    <header class="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 backdrop-filter backdrop-blur-lg bg-opacity-90 dark:bg-opacity-90">
+    <header class="fixed top-0 left-0 right-0 z-40 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 backdrop-filter backdrop-blur-lg bg-opacity-90 dark:bg-opacity-90">
         <nav class="px-4 h-16">
             <div class="h-full mx-auto flex items-center justify-between">
                 <div class="flex items-center">
@@ -141,8 +160,11 @@
                     </a>
                 </div>
                 <div class="flex items-center space-x-4">
-                    <button id="theme-toggle" class="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
-                        <i id="theme-icon" class="fas fa-moon text-xl"></i>
+                    <button id="logoutBtn" class="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 admin-content">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </button>
+                    <button id="themeToggle" class="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                        <i id="themeIcon" class="fas fa-moon text-xl"></i>
                     </button>
                 </div>
             </div>
@@ -162,7 +184,7 @@
     <!-- Toast Messages -->
     <div id="toastContainer" class="fixed top-4 right-4 z-50 max-w-xs w-full"></div>
   
-    <div id="adminPanel" class="container mx-auto px-4 pt-20 pb-8">
+    <div id="adminPanel" class="container mx-auto px-4 pt-20 pb-8 admin-content">
         <!-- Admin Header -->
         <div class="mb-6">
             <h1 class="text-3xl font-bold mb-2">Admin Panel</h1>
@@ -262,7 +284,7 @@
                     </button>
                 </form>
             </div>
-            <div class="tab-content"></div>
+            <div id="playersList" class="bg-white dark:bg-gray-800 rounded-2xl shadow-md p-6 card space-y-2"></div>
         </div>
     
         <!-- Reasons Tab Content -->
@@ -285,7 +307,7 @@
                     </button>
                 </form>
             </div>
-            <div class="tab-content"></div>
+            <div id="reasonsList" class="bg-white dark:bg-gray-800 rounded-2xl shadow-md p-6 card space-y-2"></div>
         </div>
     
         <!-- Debug and Reset Section -->
@@ -305,9 +327,9 @@
                         <i class="fas fa-sync-alt mr-2"></i>
                         Manually Load Data
                     </button>
-                    <button id="checkApiButton" class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg text-sm flex items-center justify-center">
-                        <i class="fas fa-heartbeat mr-2"></i>
-                        API Health Check
+                    <button id="clearStorageButton" class="bg-yellow-600 hover:bg-yellow-700 text-white py-2 px-4 rounded-lg text-sm flex items-center justify-center">
+                        <i class="fas fa-trash-alt mr-2"></i>
+                        Clear Storage
                     </button>
                 </div>
             </div>
@@ -324,13 +346,6 @@
             </button>
         </div>
     </div>
-    
-    <script>
-        // Initialize theme system
-        document.addEventListener('DOMContentLoaded', () => {
-            Theme.init();
-        });
-    </script>
     
     <script src="admin.js"></script>
 </body>
