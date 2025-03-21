@@ -3,28 +3,36 @@ function checkAuth() {
     const token = localStorage.getItem('authToken');
     const expires = localStorage.getItem('authExpires');
     
+    // Check if we're coming from login page to avoid redirect loops
+    const referrer = document.referrer;
+    const isFromLogin = referrer && (referrer.includes('/login') || referrer.includes('/login.html'));
+    
     if (!token || !expires || parseInt(expires) <= Date.now()) {
-        console.log('[DEBUG] Authentication failed, redirecting to login page');
-        // Use absolute URL to avoid any path issues
-        window.location.href = window.location.origin + '/login.html';
+        console.log('[DEBUG] Authentication failed');
+        
+        // Don't redirect if we just came from login page (prevents redirect loops)
+        if (!isFromLogin) {
+            console.log('[DEBUG] Redirecting to login page');
+            // Use absolute URL to avoid any path issues
+            window.location.href = window.location.origin + '/login.html';
+        } else {
+            console.log('[DEBUG] Coming from login page, not redirecting to prevent loop');
+            // Clear any auth data that might be invalid
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('authExpires');
+            // Show error message rather than redirecting
+            document.body.innerHTML = `
+                <div style="text-align: center; padding: 50px; font-family: Arial, sans-serif;">
+                    <h1>Authentication Failed</h1>
+                    <p>Please <a href="${window.location.origin}/login.html">login</a> again.</p>
+                </div>
+            `;
+        }
         return false;
     }
     
     console.log('[DEBUG] Authentication successful');
     return true;
-}
-
-// Run auth check immediately, but wrapped in a try-catch to prevent errors
-try {
-    if (!checkAuth()) {
-        console.log('[DEBUG] Not authenticated, redirecting...');
-        // Instead of throwing an error which might cause issues, just exit the script
-        // The redirect in checkAuth will handle navigation
-    }
-} catch (error) {
-    console.error('[DEBUG] Error during authentication check:', error);
-    // Fallback to login page if there's an error
-    window.location.href = window.location.origin + '/login.html';
 }
 
 // API Base URL - make sure this matches your backend setup
@@ -40,29 +48,18 @@ function debug(message) {
 
 // Theme handling
 function setTheme(isDark) {
-    debug(`Setting theme to ${isDark ? 'dark' : 'light'}`);
-    try {
-        if (isDark) {
-            document.documentElement.classList.add('dark');
-            localStorage.theme = 'dark';
-            $('#theme-icon').removeClass('fa-moon').addClass('fa-sun');
-        } else {
-            document.documentElement.classList.remove('dark');
-            localStorage.theme = 'light';
-            $('#theme-icon').removeClass('fa-sun').addClass('fa-moon');
-        }
-        
-        // Update Select2 dropdowns if they exist
-        if (typeof updateSelect2Theme === 'function') {
-            updateSelect2Theme(isDark);
-        } else {
-            debug('updateSelect2Theme function not available yet');
-        }
-        
-        debug(`Theme set to ${isDark ? 'dark' : 'light'} mode`);
-    } catch (error) {
-        console.error('[DEBUG] Error setting theme:', error);
+    if (isDark) {
+        document.documentElement.classList.add('dark');
+        localStorage.theme = 'dark';
+        $('#theme-icon').removeClass('fa-moon').addClass('fa-sun');
+    } else {
+        document.documentElement.classList.remove('dark');
+        localStorage.theme = 'light';
+        $('#theme-icon').removeClass('fa-sun').addClass('fa-moon');
     }
+    
+    // Update Select2 dropdowns
+    updateSelect2Theme(isDark);
 }
 
 // Initialize theme
@@ -1608,5 +1605,18 @@ function setupTheme() {
 // Document ready handler
 $(document).ready(function() {
     console.log('[DEBUG] Document ready');
-    initialize();
+    
+    // Check authentication before initializing the page
+    setTimeout(() => {
+        try {
+            if (checkAuth()) {
+                console.log('[DEBUG] Authentication successful, initializing page');
+                initialize();
+            } else {
+                console.log('[DEBUG] Authentication failed, not initializing page');
+            }
+        } catch (error) {
+            console.error('[DEBUG] Error during authentication check:', error);
+        }
+    }, 200); // Slight delay to ensure everything is loaded
 }); 

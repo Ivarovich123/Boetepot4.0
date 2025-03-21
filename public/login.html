@@ -278,8 +278,19 @@
         // Set current year in footer
         document.getElementById('year').textContent = new Date().getFullYear();
         
+        // Debug logging
+        const DEBUG = true;
+        function debug(message) {
+            if (DEBUG) {
+                console.log(`[DEBUG] ${message}`);
+            }
+        }
+        
+        debug('Login page script initialized');
+        
         // Theme handling
         function setTheme(isDark) {
+            debug(`Setting theme to ${isDark ? 'dark' : 'light'}`);
             if (isDark) {
                 document.documentElement.classList.add('dark');
                 localStorage.theme = 'dark';
@@ -289,6 +300,7 @@
                 localStorage.theme = 'light';
                 $('#themeIcon').removeClass('fa-sun').addClass('fa-moon');
             }
+            debug('Theme applied');
         }
         
         // Initialize theme based on localStorage or system preference
@@ -337,23 +349,51 @@
         // Handle form submission
         $('#loginForm').submit(function(e) {
             e.preventDefault();
+            debug('Login form submitted');
             
             const password = $('#password').val();
             
             // Simple authentication - only check password
             if (password === 'Mandje123') {
-                // Set authentication token in localStorage
-                const token = btoa(`admin:${Date.now()}`);
-                localStorage.setItem('authToken', token);
-                localStorage.setItem('authExpires', Date.now() + (7 * 24 * 60 * 60 * 1000)); // 7 days
+                debug('Password correct, creating auth token');
                 
-                showToast('Login succesvol! Doorsturen naar admin panel...');
-                
-                // Redirect to admin panel after a short delay using absolute URL
-                setTimeout(() => {
-                    window.location.href = window.location.origin + '/admin.html';
-                }, 1500);
+                try {
+                    // Clear any existing tokens first
+                    localStorage.removeItem('authToken');
+                    localStorage.removeItem('authExpires');
+                    
+                    // Set new authentication token in localStorage
+                    const token = btoa(`admin:${Date.now()}`);
+                    localStorage.setItem('authToken', token);
+                    localStorage.setItem('authExpires', Date.now() + (7 * 24 * 60 * 60 * 1000)); // 7 days
+                    
+                    // Verify token was set
+                    const verifyToken = localStorage.getItem('authToken');
+                    const verifyExpires = localStorage.getItem('authExpires');
+                    
+                    if (!verifyToken || !verifyExpires) {
+                        debug('ERROR: Failed to set auth tokens in localStorage');
+                        showToast('Er is een fout opgetreden bij het inloggen. Probeer het opnieuw.', 'error');
+                        return;
+                    }
+                    
+                    debug('Auth tokens set successfully, preparing to redirect');
+                    showToast('Login succesvol! Doorsturen naar admin panel...');
+                    
+                    // Redirect to admin panel after a short delay using absolute URL
+                    const adminUrl = window.location.origin + '/admin.html';
+                    debug(`Will redirect to: ${adminUrl}`);
+                    
+                    setTimeout(() => {
+                        window.location.href = adminUrl;
+                    }, 1500);
+                    
+                } catch (error) {
+                    debug(`Error during login: ${error.message}`);
+                    showToast('Er is een fout opgetreden bij het inloggen', 'error');
+                }
             } else {
+                debug('Invalid password');
                 showToast('Ongeldig wachtwoord', 'error');
                 $('#password').val('').focus();
             }
@@ -361,17 +401,51 @@
         
         // Check if already logged in
         function checkAuth() {
-            const token = localStorage.getItem('authToken');
-            const expires = localStorage.getItem('authExpires');
+            debug('Running authentication check');
             
-            if (token && expires && parseInt(expires) > Date.now()) {
-                window.location.href = 'admin.html';
+            try {
+                const token = localStorage.getItem('authToken');
+                const expires = localStorage.getItem('authExpires');
+                
+                debug(`Auth token: ${token ? 'exists' : 'missing'}`);
+                debug(`Expires: ${expires ? new Date(parseInt(expires)).toLocaleString() : 'missing'}`);
+                
+                // Check if we're coming from admin page to avoid redirect loops
+                const referrer = document.referrer;
+                const isFromAdmin = referrer && (referrer.includes('/admin') || referrer.includes('/admin.html'));
+                
+                debug(`Referrer: ${referrer || 'none'}`);
+                debug(`Is from admin: ${isFromAdmin}`);
+                
+                // Only redirect if authenticated AND not coming from admin page
+                if (token && expires && parseInt(expires) > Date.now() && !isFromAdmin) {
+                    debug('Already authenticated, redirecting to admin panel');
+                    window.location.href = window.location.origin + '/admin.html';
+                } else {
+                    if (token && expires) {
+                        if (parseInt(expires) <= Date.now()) {
+                            debug('Auth token expired, clearing');
+                            localStorage.removeItem('authToken');
+                            localStorage.removeItem('authExpires');
+                        } else if (isFromAdmin) {
+                            debug('Coming from admin, not redirecting to prevent loop');
+                        }
+                    } else {
+                        debug('Not authenticated or missing token/expiry');
+                    }
+                }
+            } catch (error) {
+                debug(`Error in checkAuth: ${error.message}`);
+                // Clear any potentially corrupt auth data
+                localStorage.removeItem('authToken');
+                localStorage.removeItem('authExpires');
             }
         }
         
         // On page load
         $(document).ready(function() {
-            checkAuth();
+            // Add a small delay to ensure consistent behavior
+            setTimeout(checkAuth, 100);
         });
     </script>
 </body>
