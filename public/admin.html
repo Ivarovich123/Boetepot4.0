@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Cache-Control" content="no-cache">
     <meta http-equiv="Pragma" content="no-cache">
-    <meta http-equiv="Expires" content="0">
     <title>Admin - Boetepot</title>
     
     <!-- Fonts -->
@@ -25,6 +24,45 @@
     
     <!-- Select2 JS -->
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    
+    <!-- Redirect prevention script -->
+    <script>
+        // This helps prevent redirect loops
+        window.onload = function() {
+            // Check for redirect loop by counting page loads
+            let loadCount = parseInt(sessionStorage.getItem('adminPageLoadCount') || '0');
+            if (loadCount > 10) {
+                // Too many redirects, clear everything and show error
+                console.error('Redirect loop detected! Clearing all storage...');
+                sessionStorage.clear();
+                localStorage.clear();
+                document.cookie.split(';').forEach(cookie => {
+                    const name = cookie.split('=')[0].trim();
+                    document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
+                });
+                // Display error directly
+                document.body.innerHTML = `
+                    <div style="padding: 20px; max-width: 600px; margin: 50px auto; text-align: center; font-family: sans-serif;">
+                        <h1 style="color: #e53e3e; margin-bottom: 20px;">Redirect Loop Detected</h1>
+                        <p style="margin-bottom: 20px;">We've detected too many page reloads. This might be caused by cookies or cache issues.</p>
+                        <p style="margin-bottom: 20px;">We've cleared your local storage and cookies. Please try again.</p>
+                        <button onclick="window.location.href = 'admin.html'" style="background: #3b82f6; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">
+                            Try Again
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Increment load count
+            sessionStorage.setItem('adminPageLoadCount', (loadCount + 1).toString());
+            
+            // Reset count after 10 seconds if page stays loaded
+            setTimeout(() => {
+                sessionStorage.setItem('adminPageLoadCount', '0');
+            }, 10000);
+        };
+    </script>
     
     <style>
         /* Base styles */

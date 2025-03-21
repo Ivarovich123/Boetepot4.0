@@ -3,9 +3,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // Configuration
     const ADMIN_PASSWORD = 'Mandje123'; // Hardcoded password
     const AUTH_TOKEN_KEY = 'boetepot_admin_token';
-    const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
-        ? 'http://localhost:3000/api' 
-        : '/api';
+    
+    // Simplified API URL - avoid any potential redirect issues
+    const API_BASE_URL = '/api';
     
     // Debug flag - set to true for console logs
     const DEBUG = true;
@@ -19,21 +19,18 @@ document.addEventListener('DOMContentLoaded', function() {
     const themeToggle = document.getElementById('themeToggle');
     const themeIcon = document.getElementById('themeIcon');
     
-    // Clear all cookies - helps prevent cookie-related errors
-    function clearAllCookies() {
-        debug('Clearing all cookies');
-        const cookies = document.cookie.split(';');
+    // More targeted cookie clearing - only clear specific cookies that might cause issues
+    // This replaces the previous aggressive cookie clearing
+    function clearProblemCookies() {
+        debug('Clearing specific cookies that might cause issues');
+        const problemCookies = ['connect.sid', 'session', 'token', 'auth', 'JSESSIONID', 'ASP.NET_SessionId'];
         
-        for (let i = 0; i < cookies.length; i++) {
-            const cookie = cookies[i];
-            const eqPos = cookie.indexOf('=');
-            const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim();
-            document.cookie = name + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/';
-            document.cookie = name + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;domain=' + window.location.hostname;
-            document.cookie = name + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;domain=.' + window.location.hostname;
-        }
+        problemCookies.forEach(cookieName => {
+            document.cookie = cookieName + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/';
+            document.cookie = cookieName + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;domain=' + window.location.hostname;
+        });
         
-        debug('All cookies cleared');
+        debug('Problem cookies cleared');
     }
     
     // Theme management
@@ -286,19 +283,17 @@ document.addEventListener('DOMContentLoaded', function() {
         tabReasons.addEventListener('click', () => activateTab('reasons'));
     }
     
-    // API & Data Functions
+    // API & Data Functions - Simplified to prevent redirect issues
     async function apiRequest(endpoint, method = 'GET', data = null) {
         try {
             const url = `${API_BASE_URL}${endpoint}`;
             const options = {
                 method,
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Cache-Control': 'no-cache, no-store',
-                    'Pragma': 'no-cache'
+                    'Content-Type': 'application/json'
                 },
-                // Add this to prevent sending cookies
-                credentials: 'omit'
+                // Keep it simple, don't add any credentials handling
+                credentials: 'same-origin'
             };
             
             if (data && (method === 'POST' || method === 'PUT')) {
@@ -311,8 +306,16 @@ document.addEventListener('DOMContentLoaded', function() {
             const response = await fetch(url, options);
             
             if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.message || `API error: ${response.status}`);
+                let errorMessage = `API error: ${response.status}`;
+                try {
+                    const errorData = await response.json();
+                    if (errorData && errorData.message) {
+                        errorMessage = errorData.message;
+                    }
+                } catch (e) {
+                    // Ignore JSON parsing errors
+                }
+                throw new Error(errorMessage);
             }
             
             return await response.json();
@@ -363,12 +366,17 @@ document.addEventListener('DOMContentLoaded', function() {
     
     async function loadAllData() {
         debug('Loading all data...');
-        await Promise.all([
-            loadPlayers(),
-            loadReasons(),
-            loadFines()
-        ]);
-        debug('All data loaded successfully');
+        try {
+            await Promise.all([
+                loadPlayers(),
+                loadReasons(),
+                loadFines()
+            ]);
+            debug('All data loaded successfully');
+        } catch (error) {
+            debug(`Error loading data: ${error.message}`);
+            showToast('Er is een fout opgetreden bij het laden van gegevens', 'error');
+        }
     }
     
     function clearAllData() {
@@ -465,7 +473,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         container.innerHTML = '';
         
-        if (fines.length === 0) {
+        if (!fines || fines.length === 0) {
             container.innerHTML = `
                 <div class="text-center py-8 text-gray-500 dark:text-gray-400">
                     <i class="fas fa-info-circle text-2xl mb-3"></i>
@@ -520,7 +528,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         container.innerHTML = '';
         
-        if (players.length === 0) {
+        if (!players || players.length === 0) {
             container.innerHTML = `
                 <div class="text-center py-8 text-gray-500 dark:text-gray-400">
                     <i class="fas fa-info-circle text-2xl mb-3"></i>
@@ -562,7 +570,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         container.innerHTML = '';
         
-        if (reasons.length === 0) {
+        if (!reasons || reasons.length === 0) {
             container.innerHTML = `
                 <div class="text-center py-8 text-gray-500 dark:text-gray-400">
                     <i class="fas fa-info-circle text-2xl mb-3"></i>
@@ -831,8 +839,8 @@ document.addEventListener('DOMContentLoaded', function() {
     function init() {
         debug('Initializing admin panel...');
         
-        // Clear all cookies to prevent cookie-related errors
-        clearAllCookies();
+        // Clear specific problematic cookies instead of all cookies
+        clearProblemCookies();
         
         // Init theme
         initTheme();
