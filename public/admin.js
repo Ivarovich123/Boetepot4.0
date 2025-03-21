@@ -1144,6 +1144,28 @@ function checkAndRepairDOM() {
     return true;
 }
 
+// Setup event handlers
+function bindEvents() {
+    $('#addPlayerForm').off('submit').on('submit', handleAddPlayer);
+    $('#addReasonForm').off('submit').on('submit', handleAddReason);
+    $('#addFineForm').off('submit').on('submit', handleAddFine);
+    $('#resetButton').off('click').on('click', handleReset);
+    $('#manualLoadButton').off('click').on('click', loadData);
+    $('#checkApiButton').off('click').on('click', checkApiHealth);
+    
+    // Bind event for delete buttons using delegation
+    $(document).off('click', '.delete-fine-btn').on('click', '.delete-fine-btn', function() {
+        const fineId = $(this).data('id');
+        const playerName = $(this).data('name');
+        
+        if (confirm(`Weet je zeker dat je de boete van ${playerName} wilt verwijderen?`)) {
+            deleteFine(fineId);
+        }
+    });
+    
+    debug('All event handlers bound successfully');
+}
+
 // Initialize the admin page
 function initialize() {
     try {
@@ -1159,12 +1181,7 @@ function initialize() {
         addManagementSections();
         
         // Setup event listeners
-        $('#addPlayerForm').on('submit', handleAddPlayer);
-        $('#addReasonForm').on('submit', handleAddReason);
-        $('#addFineForm').on('submit', handleAddFine);
-        $('#resetButton').on('click', handleReset);
-        $('#manualLoadButton').on('click', loadData);
-        $('#checkApiButton').on('click', checkApiHealth);
+        bindEvents();
         
         // Setup tabs
         setupTabs();
@@ -1481,12 +1498,10 @@ function setupTabs() {
             localStorage.setItem('activeTab', 'reasons');
         });
         
-        // Add nav-tab class to all tab elements
+        // Add nav-tab class to all tab elements and add active-tab to default tab
         $('#tab-boetes, #tab-players, #tab-reasons').addClass('nav-tab');
-        
-        // Set active tab from localStorage or default
-        const activeTab = localStorage.getItem('activeTab') || 'boetes';
-        $(`#tab-${activeTab}`).click();
+        $('#tab-boetes').addClass('active-tab');
+        $('#finesTab').removeClass('hidden');
         
         debug('Tabs setup completed');
     } catch (error) {
