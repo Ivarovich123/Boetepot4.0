@@ -749,12 +749,12 @@ function initializeApp() {
         setupTheme();
         setupPlayerHistory();
         
+        // Set up default data if needed and UI actions
+        setupActions();
+        
         // Try to load data
         console.log('[DEBUG] Attempting to load data automatically...');
         loadData();
-        
-        // Set up UI actions (should be after loadData)
-        setupActions();
         
         console.log('[DEBUG] App initialized successfully');
     } catch (error) {
@@ -837,5 +837,145 @@ function setupPlayerHistory() {
         console.log('[DEBUG] Player history setup completed');
     } catch (error) {
         console.error('[DEBUG] Error setting up player history:', error);
+    }
+}
+
+// Helper function to set up default player data
+function setupDefaultData() {
+    try {
+        console.log('[DEBUG] Setting up default data');
+        
+        // Clear existing data
+        localStorage.removeItem('players');
+        localStorage.removeItem('reasons');
+        localStorage.removeItem('fines');
+        
+        // Add players
+        const players = [
+            { id: 1, name: 'Marnix' },
+            { id: 2, name: 'Ivar' },
+            { id: 3, name: 'Jarno' },
+            { id: 4, name: 'Lars B' },
+            { id: 5, name: 'Lars R' },
+            { id: 6, name: 'Rowan' },
+            { id: 7, name: 'Rinse' },
+            { id: 8, name: 'Jan Willem' },
+            { id: 9, name: 'Leon' },
+            { id: 10, name: 'Job' },
+            { id: 11, name: 'Bryan' },
+            { id: 12, name: 'Steven' },
+            { id: 13, name: 'Robbie' },
+            { id: 14, name: 'Boaz' },
+            { id: 15, name: 'Riewing' },
+            { id: 16, name: 'Jordy' },
+            { id: 17, name: 'Pouwel' },
+            { id: 18, name: 'Ramon' },
+            { id: 19, name: 'Steffen' },
+            { id: 20, name: 'Bram' },
+            { id: 21, name: 'Max' },
+            { id: 22, name: 'Mark' },
+            { id: 23, name: 'Jur' },
+            { id: 24, name: 'Erwin' },
+            { id: 25, name: 'Michiel' },
+            { id: 26, name: 'Ian' }
+        ];
+        
+        // Add reasons
+        const reasons = [
+            { id: 1, description: 'Te laat' },
+            { id: 2, description: 'Corvee vergeten' },
+            { id: 3, description: 'Rijden/wassen vergeten' },
+            { id: 4, description: 'Niet optijd afmelden' },
+            { id: 5, description: 'Gele/rode kaart' },
+            { id: 6, description: 'Geen Polo' },
+            { id: 7, description: 'Correctie' }
+        ];
+        
+        // Add fine history
+        const fines = [
+            { id: 1, player_id: 2, reason_id: null, amount: 46, timestamp: new Date('2025-02-27T21:57:47').toISOString() },
+            { id: 2, player_id: 3, reason_id: null, amount: 20, timestamp: new Date('2025-02-27T21:58:09').toISOString() },
+            { id: 3, player_id: 4, reason_id: null, amount: 1, timestamp: new Date('2025-02-27T21:58:32').toISOString() },
+            { id: 4, player_id: 5, reason_id: null, amount: 6, timestamp: new Date('2025-02-27T21:58:42').toISOString() },
+            { id: 5, player_id: 6, reason_id: null, amount: 1, timestamp: new Date('2025-02-27T21:58:51').toISOString() },
+            { id: 6, player_id: 8, reason_id: null, amount: 20, timestamp: new Date('2025-02-27T21:59:06').toISOString() },
+            { id: 7, player_id: 9, reason_id: null, amount: 27, timestamp: new Date('2025-02-27T21:59:26').toISOString() },
+            { id: 8, player_id: 10, reason_id: null, amount: 10, timestamp: new Date('2025-02-27T21:59:35').toISOString() },
+            { id: 9, player_id: 11, reason_id: null, amount: 38, timestamp: new Date('2025-02-27T21:59:51').toISOString() },
+            { id: 10, player_id: 12, reason_id: null, amount: 10, timestamp: new Date('2025-02-27T22:00:07').toISOString() },
+            { id: 11, player_id: 13, reason_id: null, amount: 52, timestamp: new Date('2025-02-27T22:00:22').toISOString() },
+            { id: 12, player_id: 14, reason_id: null, amount: 50, timestamp: new Date('2025-02-27T22:00:33').toISOString() },
+            { id: 13, player_id: 15, reason_id: null, amount: 50, timestamp: new Date('2025-02-27T22:00:45').toISOString() },
+            { id: 14, player_id: 16, reason_id: null, amount: 10, timestamp: new Date('2025-02-27T22:00:56').toISOString() },
+            { id: 15, player_id: 20, reason_id: null, amount: 30, timestamp: new Date('2025-02-27T22:01:12').toISOString() },
+            { id: 16, player_id: 21, reason_id: null, amount: 20, timestamp: new Date('2025-02-27T22:01:23').toISOString() },
+            { id: 17, player_id: 22, reason_id: null, amount: 44, timestamp: new Date('2025-02-27T22:01:36').toISOString() },
+            { id: 18, player_id: 23, reason_id: null, amount: 9, timestamp: new Date('2025-02-27T22:01:48').toISOString() },
+            { id: 19, player_id: 26, reason_id: null, amount: 30, timestamp: new Date('2025-02-27T22:02:00').toISOString() },
+            { id: 20, player_id: 1, reason_id: null, amount: 35, timestamp: new Date('2025-02-27T23:50:03').toISOString() },
+            { id: 21, player_id: 26, reason_id: 6, amount: 5, timestamp: new Date('2025-03-08T12:00:00').toISOString() }
+        ];
+        
+        // Save to localStorage
+        localStorage.setItem('players', JSON.stringify(players));
+        localStorage.setItem('reasons', JSON.stringify(reasons));
+        localStorage.setItem('fines', JSON.stringify(fines));
+        localStorage.setItem('useLocalData', 'true');
+        
+        console.log('[DEBUG] Default data setup completed');
+        
+        // Show success message
+        showToast('Standaard gegevens zijn geladen', 'success');
+        
+        // Force reload of data
+        loadTotalAmount();
+        loadRecentFines();
+        loadLeaderboard();
+        loadPlayers();
+        setupPlayerHistory();
+        
+        return true;
+    } catch (error) {
+        console.error('[DEBUG] Error setting up default data:', error);
+        showToast('Fout bij het laden van standaard gegevens', 'error');
+        return false;
+    }
+}
+
+// Add function to setup theme
+function setupTheme() {
+    // Check and fix dark mode
+    const prefersDark = localStorage.theme === 'dark' || 
+        (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    setTheme(prefersDark);
+    
+    // Setup theme toggle
+    $('#theme-toggle').click(() => {
+        setTheme(!document.documentElement.classList.contains('dark'));
+    });
+}
+
+// Add function to load all data
+function loadData() {
+    loadTotalAmount();
+    loadRecentFines();
+    loadLeaderboard();
+    loadPlayers();
+}
+
+// Add function to setup UI actions
+function setupActions() {
+    // Add debug key command
+    $(document).keydown(function(e) {
+        // Alt+R to reload default data
+        if (e.altKey && e.key === 'r') {
+            setupDefaultData();
+        }
+    });
+    
+    // When the page loads for the first time, set up the default data
+    if (!localStorage.getItem('setup_complete')) {
+        setupDefaultData();
+        localStorage.setItem('setup_complete', 'true');
     }
 } 
