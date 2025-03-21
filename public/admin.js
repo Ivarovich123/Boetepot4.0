@@ -120,56 +120,51 @@ function switchTab(tabId) {
 
 // Format currency
 function formatCurrency(amount) {
-    if (typeof amount !== 'number' || isNaN(amount)) {
-        console.warn('Invalid amount:', amount);
-        return '€0,00';
-    }
     return new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(amount);
 }
 
 // Format date
 function formatDate(dateString) {
-  if (!dateString) return 'Onbekend';
-  try {
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return 'Ongeldige datum';
-    
+    if (!dateString) return 'Onbekend';
+    try {
+        const date = new Date(dateString);
         return new Intl.DateTimeFormat('nl-NL', {
             year: 'numeric',
             month: 'long',
             day: 'numeric'
         }).format(date);
-  } catch (error) {
-    console.error('Error formatting date:', error);
-    return 'Ongeldige datum';
-  }
+    } catch (error) {
+        console.error('Error formatting date:', error);
+        return 'Ongeldige datum';
+    }
 }
 
 // Show/hide loading spinner
 function toggleLoading(show) {
-    console.log(`[DEBUG] ${show ? 'Showing' : 'Hiding'} loading spinner`);
+    const spinner = document.getElementById('loadingSpinner');
     if (show) {
-        $('#loadingSpinner').removeClass('hidden').addClass('flex');
+        spinner.classList.remove('hidden');
+        spinner.classList.add('flex');
     } else {
-        $('#loadingSpinner').removeClass('flex').addClass('hidden');
+        spinner.classList.remove('flex');
+        spinner.classList.add('hidden');
     }
-    console.log(`[DEBUG] Loading spinner classes:`, $('#loadingSpinner').attr('class'));
 }
 
 // Show toast message
 function showToast(message, type = 'success') {
-    const toast = $(`
-        <div class="flex items-center p-4 mb-4 rounded-lg ${type === 'success' ? 'bg-green-600' : 'bg-red-600'} text-white">
-            <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'} mr-3"></i>
-            <span>${message}</span>
-        </div>
-    `).hide();
+    const toast = document.createElement('div');
+    toast.className = `flex items-center p-4 mb-4 rounded-lg ${type === 'success' ? 'bg-green-600' : 'bg-red-600'} text-white`;
+    toast.innerHTML = `
+        <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'} mr-3"></i>
+        <span>${message}</span>
+    `;
     
-    $('#toastContainer').append(toast);
-    toast.fadeIn();
+    const container = document.getElementById('toastContainer');
+    container.appendChild(toast);
     
     setTimeout(() => {
-        toast.fadeOut(() => toast.remove());
+        toast.remove();
     }, 3000);
 }
 
@@ -365,88 +360,26 @@ $(document).on('select2:open', function() {
 
 // API Functions
 async function fetchAPI(endpoint, options = {}) {
-    debug(`Fetching API: ${endpoint}`);
-    toggleLoading(true);
-    
+    const url = `${API_BASE_URL}/${endpoint}`;
     try {
-        // Ensure endpoint starts with slash
-        const path = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
-        
-        // Try different URL formats
-        const urls = [
-            `/api${path}`,
-            `${window.location.origin}/api${path}`,
-            `https://boetepot.cloud/api${path}`,
-            `https://www.boetepot.cloud/api${path}`
-        ];
-        
-        debug(`Trying URLs: ${urls.join(', ')}`);
-        
-        let lastError = null;
-        
-        // Try each URL until one works
-        for (const url of urls) {
-            try {
-                debug(`Trying URL: ${url}`);
-                
-    const response = await fetch(url, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-        ...options.headers
-      }
-    });
-    
-                if (!response.ok) {
-                    debug(`URL ${url} failed with ${response.status}`);
-                    lastError = new Error(`API Error: ${response.status} ${response.statusText}`);
-                    continue;
-                }
-                
-                // Check content type
-    const contentType = response.headers.get('content-type');
-                if (!contentType || !contentType.includes('application/json')) {
-                    debug(`Response from ${url} is not JSON: ${contentType}`);
-    
-                    // Try to get text content and see if it's actually JSON
-      const text = await response.text();
-                    try {
-                        const jsonData = JSON.parse(text);
-                        debug('Successfully parsed text response as JSON');
-                        
-                        // Add the data to localStorage for the main page to use
-                        saveDataToLocalStorage(endpoint, jsonData);
-                        
-                        return jsonData;
-                    } catch (parseError) {
-                        debug(`Error parsing text as JSON: ${parseError.message}`);
-                        lastError = new Error('Response is not JSON');
-                        continue;
-                    }
-                }
-                
-                // Try to parse as JSON
-                const data = await response.json();
-                debug(`API response successful with ${typeof data} from ${url}`);
-                
-                // Add the data to localStorage for the main page to use
-                saveDataToLocalStorage(endpoint, data);
-                
-    return data;
-  } catch (error) {
-                debug(`Error for ${url}: ${error.message}`);
-                lastError = error;
+        debug(`Fetching ${url}`);
+        const response = await fetch(url, {
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
             }
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
         }
-        
-        throw lastError || new Error('Failed to fetch data from all URLs');
+
+        const data = await response.json();
+        return data;
     } catch (error) {
         debug(`API Error: ${error.message}`);
-        showToast(`Er is een fout opgetreden bij het ophalen van gegevens: ${error.message}`, 'error');
-        return null;
-    } finally {
-        toggleLoading(false);
+        throw error;
     }
 }
 
@@ -508,25 +441,18 @@ function saveDataToLocalStorage(endpoint, data) {
 
 // Load all data from API
 async function loadData() {
+    toggleLoading(true);
     try {
-        debug('Start loading all data...');
-        
-        // Load players and reasons for dropdowns
-        await loadPlayers();
-        await loadReasons();
-        
-        // Set up select2 for both dropdowns
-        initializeSelect2();
-        
-        // Load recent fines
-        await loadRecentFines();
-        
-        debug('All data loaded successfully');
-        $('#debugStatus').text('Data loaded successfully');
-  } catch (error) {
-        debug(`Error loading data: ${error.message}`);
-        $('#debugStatus').text(`Error: ${error.message}`);
-        showToast('Er is een fout opgetreden bij het laden van de gegevens', 'error');
+        await Promise.all([
+            loadPlayers(),
+            loadReasons(),
+            loadRecentFines()
+        ]);
+        showToast('Data succesvol geladen');
+    } catch (error) {
+        showToast('Fout bij het laden van data', 'error');
+    } finally {
+        toggleLoading(false);
     }
 }
 
@@ -636,58 +562,29 @@ async function loadReasons() {
 }
 
 async function loadRecentFines() {
-    debug('Loading recent fines');
     try {
-        const recentFines = await fetchAPI('/recent-fines');
-        if (recentFines && Array.isArray(recentFines)) {
-            debug(`Loaded ${recentFines.length} recent fines`);
-            
-            // Also fetch all fines (not just recent) for the main page to use
-            try {
-                await fetchAPI('/fines');
-            } catch(e) {
-                debug(`Note: Fetching all fines failed: ${e.message}`);
-            }
-            
-            // Update UI with recent fines
-            const $recentFines = $('#recentFines');
-            if ($recentFines.length) {
-                if (recentFines.length === 0) {
-                    $recentFines.html('<div class="text-center py-4 text-gray-500 dark:text-gray-400">Geen recente boetes gevonden</div>');
-                } else {
-                    const finesHtml = recentFines.map(fine => createFineCard(fine)).join('');
-                    $recentFines.html(finesHtml);
-                    
-                    // Add event listeners for delete buttons
-                    $('.delete-fine-btn').off('click').on('click', function() {
-                        const fineId = $(this).data('id');
-                        const playerName = $(this).data('name');
-                        
-                        if (confirm(`Weet je zeker dat je de boete voor ${playerName} wilt verwijderen?`)) {
-                            deleteFine(fineId);
-                        }
-                    });
-                }
-            }
-            
-            return recentFines;
-        } else {
-            debug('No recent fines returned or invalid format');
-            // Update UI
-            const $recentFines = $('#recentFines');
-            if ($recentFines.length) {
-                $recentFines.html('<div class="text-center py-4 text-gray-500 dark:text-gray-400">Geen recente boetes gevonden</div>');
-            }
-            return [];
+        const fines = await fetchAPI('fines');
+        const container = $('#recentFines');
+        container.empty();
+        
+        if (fines.length === 0) {
+            container.html(`
+                <div class="text-center py-8 text-gray-500 dark:text-gray-400">
+                    Geen recente boetes gevonden
+                </div>
+            `);
+            return;
         }
+
+        fines.forEach(fine => {
+            container.append(createFineCard(fine));
+        });
+
+        // Add event listeners to delete buttons
+        $('.delete-fine-btn').off('click').on('click', handleFineDelete);
     } catch (error) {
-        debug(`Error loading recent fines: ${error.message}`);
-        // Update UI
-        const $recentFines = $('#recentFines');
-        if ($recentFines.length) {
-            $recentFines.html('<div class="text-center py-4 text-red-500">Er is een fout opgetreden bij het laden van recente boetes</div>');
-        }
-        return [];
+        debug(`Error loading fines: ${error.message}`);
+        throw error;
     }
 }
 
@@ -726,7 +623,7 @@ const handleAddFine = async (event) => {
     toggleLoading(true);
     
     try {
-        const response = await fetchAPI('/fines', {
+        const response = await fetchAPI('fines', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -767,7 +664,7 @@ const handleAddFine = async (event) => {
             debug('Added fine to localStorage');
             
             resetForm();
-            loadRecentFines();
+            await loadRecentFines();
         } else {
             debug('Failed to add fine - API returned no response');
             showToast('Fout bij toevoegen van boete', 'error');
@@ -799,7 +696,7 @@ const handleAddPlayer = async (event) => {
     toggleLoading(true);
     
     try {
-        const response = await fetchAPI('/players', {
+        const response = await fetchAPI('players', {
       method: 'POST',
       body: JSON.stringify({ name })
     });
@@ -825,7 +722,7 @@ const handleAddPlayer = async (event) => {
             
             showToast('Speler succesvol toegevoegd', 'success');
             $('#playerName').val('');
-            loadPlayers();
+            await loadPlayers();
         } else {
             debug('Failed to add player - API returned no response');
             showToast('Fout bij toevoegen van speler', 'error');
@@ -857,7 +754,7 @@ const handleAddReason = async (event) => {
     toggleLoading(true);
     
     try {
-        const response = await fetchAPI('/reasons', {
+        const response = await fetchAPI('reasons', {
       method: 'POST',
       body: JSON.stringify({ description })
     });
@@ -883,7 +780,7 @@ const handleAddReason = async (event) => {
             
             showToast('Reden succesvol toegevoegd', 'success');
             $('#reasonDescription').val('');
-            loadReasons();
+            await loadReasons();
         } else {
             debug('Failed to add reason - API returned no response');
             showToast('Fout bij toevoegen van reden', 'error');
@@ -1030,14 +927,14 @@ async function handleFineDelete(e) {
   
   try {
         console.log(`[DEBUG] Deleting fine with ID: ${fineId}`);
-        await fetchAPI(`/fines/${fineId}`, {
+        await fetchAPI(`fines/${fineId}`, {
             method: 'DELETE'
         });
         
         showToast('Boete succesvol verwijderd');
         
         // Reload all data
-        loadData();
+        await loadData();
         
     } catch (error) {
         console.error('[DEBUG] Error deleting fine:', error);
