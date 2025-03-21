@@ -1,179 +1,176 @@
 <!DOCTYPE html>
-<html lang="nl" class="h-full bg-gray-100 dark:bg-gray-900">
+<html lang="nl" class="dark">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Boetepot</title>
   
-  <!-- Google Fonts -->
+  <!-- Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
   <!-- Font Awesome -->
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Tailwind CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  
   <!-- Select2 CSS -->
   <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
-  <!-- Tailwind CSS -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          fontFamily: {
-            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
-          },
-        },
-      },
-    }
-  </script>
+  
+  <!-- jQuery -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  
+  <!-- Select2 JS -->
+  <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
   <style>
-    /* Ensure the background covers the entire page */
-    html, body {
+    /* Base styles */
+    html {
       min-height: 100vh;
     }
     
-    html.dark {
-      background-color: #111827;
-    }
-    
-    /* Professional background pattern */
     body {
+      font-family: 'Inter', sans-serif;
+      background-color: #f8fafc;
+      color: #374151;
+      min-height: 100vh;
       background-image: 
         radial-gradient(circle at 15px 15px, rgba(0, 0, 0, 0.02) 2px, transparent 0), 
-        radial-gradient(circle at 45px 45px, rgba(0, 0, 0, 0.02) 2px, transparent 0);
+        radial-gradient(circle at 45px 45px, rgba(0, 0, 0, 0.01) 2px, transparent 0);
       background-size: 60px 60px;
       background-position: 0 0, 30px 30px;
       background-attachment: fixed;
     }
     
-    .dark body {
+    /* Dark mode */
+    html.dark body {
+      background-color: #111827;
+      color: #f3f4f6;
       background-image: 
         radial-gradient(circle at 15px 15px, rgba(255, 255, 255, 0.02) 2px, transparent 0), 
-        radial-gradient(circle at 45px 45px, rgba(255, 255, 255, 0.02) 2px, transparent 0);
-      background-size: 60px 60px;
-      background-position: 0 0, 30px 30px;
-      background-attachment: fixed;
+        radial-gradient(circle at 45px 45px, rgba(255, 255, 255, 0.01) 2px, transparent 0);
     }
     
     /* Card styles */
-    .card-container {
-      backdrop-filter: blur(4px);
-    }
-    
     .card {
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-      border: 1px solid rgba(255, 255, 255, 0.05);
-      backdrop-filter: blur(16px);
-      transition: transform 0.2s, box-shadow 0.2s;
+      background-color: #f8fafc;
+      border: 1px solid rgba(0, 0, 0, 0.05);
+      box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
     }
     
-    .card:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 25px rgba(0, 0, 0, 0.1);
+    html.dark .card {
+      background-color: #1f2937;
+      border-color: rgba(255, 255, 255, 0.05);
+      box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.3), 0 1px 2px 0 rgba(0, 0, 0, 0.2);
     }
     
-    .dark .card {
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-      border: 1px solid rgba(255, 255, 255, 0.05);
-    }
-    
-    .dark .card:hover {
-      box-shadow: 0 6px 25px rgba(0, 0, 0, 0.3);
-    }
-    
-    /* Custom Select2 Styles */
+    /* Ensure Select2 is visible in both themes */
     .select2-container {
-      width: 100% !important;
       display: block !important;
-      position: relative !important;
       z-index: 1050 !important;
     }
-    .select2-container .select2-selection--single {
-      height: 50px !important;
-      border-radius: 0.75rem !important;
-      border-color: rgb(209, 213, 219) !important;
-      background-color: transparent !important;
-      display: flex !important;
-      align-items: center !important;
-    }
-    .dark .select2-container .select2-selection--single {
-      background-color: rgb(17, 24, 39) !important;
-      border-color: rgb(55, 65, 81) !important;
-      color: white !important;
-    }
-    .select2-container .select2-selection--single .select2-selection__rendered {
-      line-height: 50px !important;
-      padding-left: 1.25rem !important;
-      padding-right: 2.5rem !important;
-      color: inherit !important;
-      font-size: 1rem !important;
-    }
-    .dark .select2-container .select2-selection--single .select2-selection__rendered {
-      color: white !important;
-    }
-    .select2-container .select2-selection--single .select2-selection__arrow {
-      height: 50px !important;
-      width: 3rem !important;
-    }
+    
     .select2-dropdown {
-      border-radius: 0.75rem !important;
-      margin-top: 0.25rem !important;
-      border-color: rgb(209, 213, 219) !important;
-      background-color: white !important;
       z-index: 1051 !important;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
-    }
-    .dark .select2-dropdown {
-      background-color: rgb(17, 24, 39) !important;
-      border-color: rgb(55, 65, 81) !important;
-    }
-    .select2-results__option {
-      padding: 0.75rem 1.25rem !important;
-      font-size: 1rem !important;
-    }
-    .dark .select2-results__option {
-      color: white !important;
-    }
-    .select2-results__option--highlighted[aria-selected] {
-      background-color: rgb(59, 130, 246) !important;
-    }
-    .dark .select2-search__field {
-      background-color: rgb(17, 24, 39) !important;
-      color: white !important;
+      border-radius: 0.5rem;
     }
     
-    /* Animations */
-    @keyframes pulse-soft {
-      0%, 100% { transform: scale(1); }
-      50% { transform: scale(1.03); }
+    .select2-container--default .select2-selection--single {
+      height: 3rem;
+      padding: 0.5rem 1rem;
+      border-radius: 0.75rem;
+      border: 1px solid #e5e7eb;
+      background-color: #f8fafc;
     }
+    
+    .dark .select2-container--default .select2-selection--single {
+      background-color: #1f2937;
+      border-color: #374151;
+      color: white;
+    }
+    
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+      line-height: 1.25rem;
+      padding-left: 0;
+      color: inherit;
+    }
+    
+    .dark .select2-container--default .select2-selection--single .select2-selection__rendered {
+      color: white;
+    }
+    
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+      height: 3rem;
+      right: 0.75rem;
+    }
+    
+    .dark .select2-container--default .select2-results__option[aria-selected=true] {
+      background-color: #2563eb;
+      color: white;
+    }
+    
+    .dark .select2-container--default .select2-results__option--highlighted[aria-selected] {
+      background-color: #3b82f6;
+      color: white;
+    }
+    
+    .dark .select2-dropdown {
+      background-color: #1f2937;
+      border-color: #374151;
+    }
+    
+    .dark .select2-search--dropdown .select2-search__field {
+      background-color: #111827;
+      border-color: #374151;
+      color: white;
+    }
+    
+    .dark .select2-results__option {
+      color: white;
+    }
+    
+    /* Loading spinner */
+    #loadingSpinner {
+      display: flex !important;
+    }
+    
+    #loadingSpinner.hidden {
+      display: none !important;
+    }
+    
+    /* Fix for fine cards */
+    .fine-card {
+      background-color: #f8fafc;
+    }
+    
+    html.dark .fine-card {
+      background-color: #1f2937;
+    }
+    
+    /* Soft pulsing animation */
+    @keyframes pulse-soft {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.8; }
+    }
+    
     .animate-pulse-soft {
       animation: pulse-soft 2s infinite;
     }
-    
-    .fine-card {
-      transition: all 0.2s ease;
-    }
-    .fine-card:active {
-      transform: scale(0.98);
-    }
-    
-    /* Force visibility of select2 dropdown */
-    .select2-container--open {
-      z-index: 9999 !important;
-      display: block !important;
-    }
   </style>
 </head>
-<body class="h-full bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-white">
+<body class="pb-20">
   <!-- Navbar -->
-  <header class="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 backdrop-filter backdrop-blur-lg bg-opacity-90 dark:bg-opacity-90">
+  <header class="fixed top-0 left-0 right-0 z-50 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 backdrop-filter backdrop-blur-lg bg-opacity-90 dark:bg-opacity-90">
     <nav class="px-4 h-16">
       <div class="h-full mx-auto flex items-center justify-between">
-        <h1 class="text-xl font-bold text-blue-600 dark:text-blue-500">Boetepot</h1>
+        <div class="flex items-center">
+          <h1 class="text-xl font-bold text-blue-600 dark:text-blue-500">
+            Boetepot
+          </h1>
+        </div>
         <div class="flex items-center space-x-4">
-          <a href="/admin.html" class="p-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center shadow-md">
-            <i class="fas fa-cog mr-2"></i>
-            <span>Admin</span>
+          <a href="admin.html" class="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+            <i class="fas fa-cog text-xl"></i>
           </a>
           <button id="theme-toggle" class="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
             <i id="theme-icon" class="fas fa-moon text-xl"></i>
@@ -182,92 +179,78 @@
       </div>
     </nav>
   </header>
-
+  
   <!-- Loading Spinner -->
-  <div id="loadingSpinner" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
-    <div class="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+  <div id="loadingSpinner" class="fixed inset-0 bg-black bg-opacity-50 items-center justify-center z-50 hidden">
+    <div class="bg-gray-50 dark:bg-gray-800 rounded-lg p-6 shadow-xl">
+      <div class="flex flex-col items-center">
+        <div class="w-12 h-12 border-4 border-blue-600 dark:border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+        <p class="mt-3 text-gray-700 dark:text-gray-300">Laden...</p>
+      </div>
+    </div>
   </div>
-
+  
   <!-- Toast Messages -->
   <div id="toastContainer" class="fixed top-4 right-4 z-50 max-w-xs w-full"></div>
-
+  
   <main class="container mx-auto px-4 pt-20 pb-8">
     <!-- Total Amount -->
-    <section class="mb-6">
-      <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-md p-6 overflow-hidden card">
-        <h2 class="text-xl font-semibold mb-4 flex items-center">
-          <i class="fas fa-piggy-bank text-blue-600 mr-3"></i>
-          Totaal Bedrag
-        </h2>
-        <div id="totalAmount" class="flex flex-col items-center justify-center p-4">
-          <div class="text-5xl font-bold text-blue-600 dark:text-blue-500 bg-blue-50 dark:bg-blue-900/20 rounded-2xl px-8 py-4 mb-2 animate-pulse-soft shadow-md">€0,00</div>
-          <div class="text-sm text-gray-500 dark:text-gray-400 mt-2">Laatst bijgewerkt: <span id="lastUpdated">Vandaag</span></div>
+    <div class="mb-8 text-center">
+      <h2 class="text-base font-medium text-gray-600 dark:text-gray-400 mb-2">Huidige Stand</h2>
+      <div id="totalAmount" class="text-center">
+        <div class="text-5xl font-bold text-blue-600 dark:text-blue-500 bg-gray-100 dark:bg-blue-900/20 rounded-2xl px-8 py-4 mb-2 shadow-sm animate-pulse-soft">€0,00</div>
+        <div class="text-sm text-gray-500 dark:text-gray-400 mt-2">Laden...</div>
+      </div>
+    </div>
+    
+    <!-- Recent Fines -->
+    <div class="mb-8">
+      <h2 class="text-xl font-semibold mb-4">Recente Boetes</h2>
+      <div id="recentFines" class="grid gap-4">
+        <div class="text-center py-8 text-gray-500 dark:text-gray-400">
+          <i class="fas fa-spinner fa-spin text-2xl mb-3"></i>
+          <p>Boetes laden...</p>
         </div>
       </div>
-    </section>
+    </div>
+    
+    <!-- Leaderboard -->
+    <div class="mb-8">
+      <h2 class="text-xl font-semibold mb-4">Ranglijst</h2>
+      <div id="leaderboard" class="grid gap-3">
+        <div class="text-center py-8 text-gray-500 dark:text-gray-400">
+          <i class="fas fa-spinner fa-spin text-2xl mb-3"></i>
+          <p>Ranglijst laden...</p>
+        </div>
+      </div>
+    </div>
     
     <!-- Player History -->
-    <section class="mb-6">
-      <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-md p-6 card">
-        <h2 class="text-xl font-semibold mb-4 flex items-center">
-          <i class="fas fa-user-clock text-blue-600 mr-3"></i>
-          Boete Historie
-        </h2>
-        <div class="mb-4">
-          <label for="playerSelect" class="block text-sm font-medium mb-2">Selecteer speler</label>
-          <select id="playerSelect" class="w-full rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 shadow-sm">
-            <option value="">Selecteer een speler</option>
-          </select>
+    <div class="mb-8 bg-gray-50 dark:bg-gray-800 rounded-2xl shadow-md p-6 card">
+      <h2 class="text-xl font-semibold mb-4">Boete Historie</h2>
+      
+      <div class="mb-4">
+        <label for="playerSelect" class="block text-sm font-medium mb-2">Selecteer een speler</label>
+        <select id="playerSelect" class="w-full py-3 px-4 rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 shadow-sm"></select>
+      </div>
+      
+      <div id="playerHistoryEmpty" class="text-center py-4 text-gray-500 dark:text-gray-400">
+        Selecteer een speler om de boete historie te bekijken
+      </div>
+      
+      <div id="playerHistoryContent" class="hidden">
+        <div class="mb-4 flex justify-between items-center">
+          <h3 id="playerHistoryName" class="text-lg font-semibold"></h3>
+          <div id="playerHistoryTotal" class="text-xl font-bold text-blue-600 dark:text-blue-500"></div>
         </div>
-        <div id="playerHistory" class="mt-4 space-y-4">
-          <div id="playerHistoryEmpty" class="text-center py-4 text-gray-500">
-            Selecteer een speler om de boete historie te bekijken
-          </div>
-          <div id="playerHistoryContent" class="hidden">
-            <div class="flex items-center justify-between p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl mb-4">
-              <span class="font-medium">Totaal voor <span id="playerHistoryName">-</span></span>
-              <span id="playerHistoryTotal" class="text-xl font-bold text-blue-600 dark:text-blue-500">€0,00</span>
-            </div>
-            <div id="playerHistoryFines" class="space-y-3">
-              <!-- Player fines will be loaded here -->
-            </div>
-          </div>
+        
+        <div id="playerHistoryFines" class="grid gap-3">
+          <!-- History items will be inserted here -->
         </div>
       </div>
-    </section>
-
-    <!-- Recent Fines -->
-    <section class="mb-6">
-      <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-md p-6 card">
-        <h2 class="text-xl font-semibold mb-4 flex items-center">
-          <i class="fas fa-history text-blue-600 mr-3"></i>
-          Recente Boetes
-        </h2>
-        <div id="recentFines" class="space-y-3">
-          <!-- Mobile cards will be inserted here by JavaScript -->
-          <div class="text-center py-4 text-gray-500">Laden...</div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Leaderboard -->
-    <section class="mb-6">
-      <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-md p-6 card">
-        <h2 class="text-xl font-semibold mb-4 flex items-center">
-          <i class="fas fa-trophy text-blue-600 mr-3"></i>
-          Leaderboard
-        </h2>
-        <div id="leaderboard" class="space-y-3">
-          <!-- Mobile cards will be inserted here by JavaScript -->
-          <div class="text-center py-4 text-gray-500">Laden...</div>
-        </div>
-      </div>
-    </section>
+    </div>
   </main>
-
-  <!-- Scripts -->
-  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+  
   <script src="app.js"></script>
 </body>
 </html> 
