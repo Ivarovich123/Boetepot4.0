@@ -1163,6 +1163,11 @@ function initialize() {
         $('#addReasonForm').on('submit', handleAddReason);
         $('#addFineForm').on('submit', handleAddFine);
         $('#resetButton').on('click', handleReset);
+        $('#manualLoadButton').on('click', loadData);
+        $('#checkApiButton').on('click', checkApiHealth);
+        
+        // Setup tabs
+        setupTabs();
         
         // Load data
         loadPlayers();
@@ -1170,14 +1175,8 @@ function initialize() {
         loadRecentFines();
         updateStats();
         
-        // Check API health
-        checkApiHealth();
-        
         // Setup theme
         setupTheme();
-        
-        // Setup tabs
-        setupTabs();
         
         console.log('[DEBUG] Admin page initialized successfully');
     } catch (error) {
@@ -1446,10 +1445,11 @@ function addManagementSections() {
 // Setup tabs functionality
 function setupTabs() {
     try {
-        console.log('[DEBUG] Setting up tabs');
+        debug('Setting up tabs');
         
         // Tab switching functionality
-        $('#tab-boetes').click(function() {
+        $('#tab-boetes').off('click').on('click', function() {
+            debug('Boetes tab clicked');
             $('.nav-tab').removeClass('active-tab');
             $('.tab-content').addClass('hidden');
             
@@ -1459,7 +1459,8 @@ function setupTabs() {
             localStorage.setItem('activeTab', 'boetes');
         });
         
-        $('#tab-players').click(function() {
+        $('#tab-players').off('click').on('click', function() {
+            debug('Players tab clicked');
             $('.nav-tab').removeClass('active-tab');
             $('.tab-content').addClass('hidden');
             
@@ -1469,7 +1470,8 @@ function setupTabs() {
             localStorage.setItem('activeTab', 'players');
         });
         
-        $('#tab-reasons').click(function() {
+        $('#tab-reasons').off('click').on('click', function() {
+            debug('Reasons tab clicked');
             $('.nav-tab').removeClass('active-tab');
             $('.tab-content').addClass('hidden');
             
@@ -1479,11 +1481,14 @@ function setupTabs() {
             localStorage.setItem('activeTab', 'reasons');
         });
         
+        // Add nav-tab class to all tab elements
+        $('#tab-boetes, #tab-players, #tab-reasons').addClass('nav-tab');
+        
         // Set active tab from localStorage or default
         const activeTab = localStorage.getItem('activeTab') || 'boetes';
         $(`#tab-${activeTab}`).click();
         
-        console.log('[DEBUG] Tabs setup completed');
+        debug('Tabs setup completed');
     } catch (error) {
         console.error('[DEBUG] Error setting up tabs:', error);
     }
@@ -1534,4 +1539,37 @@ function setupTheme() {
 $(document).ready(function() {
     console.log('[DEBUG] Document ready');
     initialize();
-}); 
+});
+
+// Function to delete a fine
+async function deleteFine(fineId) {
+    if (!fineId) {
+        showToast('Kan deze boete niet verwijderen: ongeldige ID', 'error');
+        return;
+    }
+    
+    debug(`Deleting fine with ID: ${fineId}`);
+    toggleLoading(true);
+    
+    try {
+        // Try to delete via API
+        const apiSuccess = await fetchAPI(`/fines/${fineId}`, {
+            method: 'DELETE'
+        });
+        
+        // Always delete from localStorage even if API fails
+        const finesData = JSON.parse(localStorage.getItem('fines') || '[]');
+        const updatedFines = finesData.filter(fine => fine.id != fineId);
+        localStorage.setItem('fines', JSON.stringify(updatedFines));
+        
+        showToast('Boete succesvol verwijderd');
+        
+        // Reload recent fines
+        loadRecentFines();
+    } catch (error) {
+        debug(`Error deleting fine: ${error.message}`);
+        showToast(`Fout bij verwijderen van boete: ${error.message}`, 'error');
+    } finally {
+        toggleLoading(false);
+    }
+} 
