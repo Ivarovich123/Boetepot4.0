@@ -1,3 +1,23 @@
+// Check authentication
+function checkAuth() {
+    const token = localStorage.getItem('authToken');
+    const expires = localStorage.getItem('authExpires');
+    
+    if (!token || !expires || parseInt(expires) <= Date.now()) {
+        console.log('[DEBUG] Authentication failed, redirecting to login page');
+        window.location.href = 'login.html';
+        return false;
+    }
+    
+    console.log('[DEBUG] Authentication successful');
+    return true;
+}
+
+// Run auth check immediately
+if (!checkAuth()) {
+    throw new Error('Authentication required');
+}
+
 // API Base URL - make sure this matches your backend setup
 const API_BASE_URL = window.location.hostname === 'localhost' ? 'http://localhost:3000/api' : '/api';
 

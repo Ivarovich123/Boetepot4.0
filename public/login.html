@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="nl" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - ASC Dalfsen Boetepot</title>
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Tailwind CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+            min-height: 100vh;
+        }
+        html.dark body {
+            background-color: #111827;
+            color: #f3f4f6;
+        }
+        .login-container {
+            max-width: 450px;
+            width: 100%;
+        }
+        .logo-container {
+            width: 180px;
+            height: 180px;
+            margin: 0 auto 2rem auto;
+            perspective: 1000px;
+        }
+        .logo {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background-color: #fff;
+            padding: 1rem;
+            transform-style: preserve-3d;
+            transition: transform 0.8s;
+        }
+        .logo:hover {
+            transform: rotateY(180deg);
+        }
+        .logo img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            backface-visibility: hidden;
+        }
+        .login-card {
+            background-color: white;
+            border-radius: 1rem;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            overflow: hidden;
+            position: relative;
+        }
+        .login-card::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 8px;
+            background: linear-gradient(to right, #4f0e9e, #8e24aa);
+        }
+        .dark .login-card {
+            background-color: #1f2937;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
+        }
+        .form-input {
+            transition: all 0.3s;
+            border: 2px solid transparent;
+        }
+        .form-input:focus {
+            border-color: #4f0e9e;
+            box-shadow: 0 0 0 3px rgba(79, 14, 158, 0.2);
+        }
+        .dark .form-input {
+            background-color: #111827;
+            border-color: #374151;
+            color: white;
+        }
+        .dark .form-input:focus {
+            border-color: #8e24aa;
+            box-shadow: 0 0 0 3px rgba(142, 36, 170, 0.3);
+        }
+        .login-btn {
+            background: linear-gradient(to right, #4f0e9e, #8e24aa);
+            transition: all 0.3s;
+        }
+        .login-btn:hover {
+            background: linear-gradient(to right, #3b0a76, #6a1b81);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(79, 14, 158, 0.4);
+        }
+        .dark .login-btn:hover {
+            box-shadow: 0 4px 12px rgba(142, 36, 170, 0.4);
+        }
+        /* Toast messages */
+        #toastContainer {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            z-index: 50;
+            max-width: 300px;
+        }
+        .toast {
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-radius: 0.5rem;
+            color: white;
+            display: flex;
+            align-items: center;
+            animation: slideIn 0.3s ease forwards;
+        }
+        .toast.error {
+            background-color: #ef4444;
+        }
+        .toast.success {
+            background-color: #10b981;
+        }
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+        .fadeOut {
+            animation: fadeOut 0.5s ease forwards;
+        }
+        /* Theme toggle */
+        .theme-toggle {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            cursor: pointer;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+            color: #4f0e9e;
+            background-color: rgba(79, 14, 158, 0.1);
+        }
+        .theme-toggle:hover {
+            background-color: rgba(79, 14, 158, 0.2);
+        }
+        .dark .theme-toggle {
+            color: #8e24aa;
+            background-color: rgba(142, 36, 170, 0.2);
+        }
+        .dark .theme-toggle:hover {
+            background-color: rgba(142, 36, 170, 0.3);
+        }
+        /* Wave animation */
+        .wave-container {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 150px;
+            overflow: hidden;
+            z-index: -1;
+        }
+        .wave {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 200%;
+            height: 100%;
+            background: url('data:image/svg+xml;utf8,<svg viewBox="0 0 1440 320" xmlns="http://www.w3.org/2000/svg"><path fill="%234f0e9e" fill-opacity="0.3" d="M0,128L48,133.3C96,139,192,149,288,144C384,139,480,117,576,122.7C672,128,768,160,864,176C960,192,1056,192,1152,170.7C1248,149,1344,107,1392,85.3L1440,64L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path></svg>');
+            background-repeat: repeat-x;
+            animation: wave 25s linear infinite;
+        }
+        .wave:nth-child(2) {
+            bottom: -25px;
+            animation: wave 20s linear reverse infinite;
+            opacity: 0.5;
+        }
+        .wave:nth-child(3) {
+            bottom: -50px;
+            animation: wave 15s linear infinite;
+            opacity: 0.2;
+        }
+        @keyframes wave {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+        .dark .wave {
+            filter: brightness(0.7);
+        }
+    </style>
+</head>
+<body class="flex flex-col justify-center items-center px-4 py-10">
+    <!-- Theme Toggle -->
+    <div id="themeToggle" class="theme-toggle">
+        <i id="themeIcon" class="fas fa-moon text-xl"></i>
+    </div>
+    
+    <!-- Toast Container -->
+    <div id="toastContainer"></div>
+    
+    <div class="login-container">
+        <!-- Logo Section -->
+        <div class="logo-container">
+            <div class="logo">
+                <img src="asc-logo.svg" 
+                     alt="ASC Dalfsen Logo" 
+                     onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 200 200\'><rect width=\'200\' height=\'200\' fill=\'%234f0e9e\'/><text x=\'50%\' y=\'50%\' font-size=\'32\' text-anchor=\'middle\' fill=\'white\' font-family=\'Arial,sans-serif\' dominant-baseline=\'middle\'>ASC</text></svg>'">
+            </div>
+        </div>
+        
+        <!-- Title -->
+        <h1 class="text-3xl font-bold text-center mb-2 text-purple-900 dark:text-purple-300">ASC Dalfsen</h1>
+        <h2 class="text-xl text-center mb-8 text-gray-600 dark:text-gray-400">Boetepot Administratie</h2>
+        
+        <!-- Login Card -->
+        <div class="login-card p-8">
+            <h3 class="text-2xl font-bold mb-6 text-center">Inloggen</h3>
+            
+            <form id="loginForm" class="space-y-6">
+                <!-- Username Field -->
+                <div>
+                    <label for="username" class="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">Gebruikersnaam</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500 dark:text-gray-400">
+                            <i class="fas fa-user"></i>
+                        </span>
+                        <input type="text" id="username" class="form-input w-full py-3 pl-10 pr-4 rounded-xl shadow-sm" 
+                               placeholder="Admin" value="Admin" required>
+                    </div>
+                </div>
+                
+                <!-- Password Field -->
+                <div>
+                    <label for="password" class="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">Wachtwoord</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500 dark:text-gray-400">
+                            <i class="fas fa-lock"></i>
+                        </span>
+                        <input type="password" id="password" class="form-input w-full py-3 pl-10 pr-10 rounded-xl shadow-sm" 
+                               placeholder="Wachtwoord" required>
+                        <button type="button" id="togglePassword" class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 dark:text-gray-400">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Login Button -->
+                <button type="submit" class="login-btn w-full text-white font-medium py-3 px-4 rounded-xl transition-colors shadow-md flex justify-center items-center">
+                    <i class="fas fa-sign-in-alt mr-2"></i>
+                    Inloggen
+                </button>
+                
+                <!-- Back to Home -->
+                <div class="text-center mt-4">
+                    <a href="index.html" class="text-sm text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300 transition-colors">
+                        <i class="fas fa-arrow-left mr-1"></i> Terug naar Boetepot
+                    </a>
+                </div>
+            </form>
+        </div>
+        
+        <!-- Footer -->
+        <p class="text-center mt-8 text-sm text-gray-500 dark:text-gray-400">
+            © <span id="year"></span> ASC Dalfsen Boetepot
+        </p>
+    </div>
+    
+    <!-- Animated Wave Background -->
+    <div class="wave-container">
+        <div class="wave"></div>
+        <div class="wave"></div>
+        <div class="wave"></div>
+    </div>
+    
+    <script>
+        // Set current year in footer
+        document.getElementById('year').textContent = new Date().getFullYear();
+        
+        // Theme handling
+        function setTheme(isDark) {
+            if (isDark) {
+                document.documentElement.classList.add('dark');
+                localStorage.theme = 'dark';
+                $('#themeIcon').removeClass('fa-moon').addClass('fa-sun');
+            } else {
+                document.documentElement.classList.remove('dark');
+                localStorage.theme = 'light';
+                $('#themeIcon').removeClass('fa-sun').addClass('fa-moon');
+            }
+        }
+        
+        // Initialize theme based on localStorage or system preference
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            setTheme(true);
+        } else {
+            setTheme(false);
+        }
+        
+        // Theme toggle button
+        $('#themeToggle').click(function() {
+            setTheme(!document.documentElement.classList.contains('dark'));
+        });
+        
+        // Show/hide password
+        $('#togglePassword').click(function() {
+            const passwordInput = document.getElementById('password');
+            const icon = $(this).find('i');
+            
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                icon.removeClass('fa-eye').addClass('fa-eye-slash');
+            } else {
+                passwordInput.type = 'password';
+                icon.removeClass('fa-eye-slash').addClass('fa-eye');
+            }
+        });
+        
+        // Show toast message
+        function showToast(message, type = 'success') {
+            const toast = $(`
+                <div class="toast ${type}">
+                    <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'} mr-3"></i>
+                    <span>${message}</span>
+                </div>
+            `);
+            
+            $('#toastContainer').append(toast);
+            
+            setTimeout(() => {
+                toast.addClass('fadeOut');
+                setTimeout(() => toast.remove(), 500);
+            }, 3000);
+        }
+        
+        // Handle form submission
+        $('#loginForm').submit(function(e) {
+            e.preventDefault();
+            
+            const username = $('#username').val().trim();
+            const password = $('#password').val();
+            
+            // Simple authentication
+            if (username.toLowerCase() === 'admin' && password === 'Mandje123') {
+                // Set authentication token in localStorage
+                const token = btoa(`${username}:${Date.now()}`);
+                localStorage.setItem('authToken', token);
+                localStorage.setItem('authExpires', Date.now() + (7 * 24 * 60 * 60 * 1000)); // 7 days
+                
+                showToast('Login succesvol! Doorsturen naar admin panel...');
+                
+                // Redirect to admin panel after a short delay
+                setTimeout(() => {
+                    window.location.href = 'admin.html';
+                }, 1500);
+            } else {
+                showToast('Ongeldige gebruikersnaam of wachtwoord', 'error');
+                $('#password').val('').focus();
+            }
+        });
+        
+        // Check if already logged in
+        function checkAuth() {
+            const token = localStorage.getItem('authToken');
+            const expires = localStorage.getItem('authExpires');
+            
+            if (token && expires && parseInt(expires) > Date.now()) {
+                window.location.href = 'admin.html';
+            }
+        }
+        
+        // On page load
+        $(document).ready(function() {
+            checkAuth();
+        });
+    </script>
+</body>
+</html> 
