@@ -294,11 +294,13 @@
             if (isDark) {
                 document.documentElement.classList.add('dark');
                 localStorage.theme = 'dark';
-                $('#themeIcon').removeClass('fa-moon').addClass('fa-sun');
+                document.getElementById('themeIcon').classList.remove('fa-moon');
+                document.getElementById('themeIcon').classList.add('fa-sun');
             } else {
                 document.documentElement.classList.remove('dark');
                 localStorage.theme = 'light';
-                $('#themeIcon').removeClass('fa-sun').addClass('fa-moon');
+                document.getElementById('themeIcon').classList.remove('fa-sun');
+                document.getElementById('themeIcon').classList.add('fa-moon');
             }
             debug('Theme applied');
         }
@@ -311,8 +313,10 @@
         }
         
         // Theme toggle button
-        $('#themeToggle').click(function() {
-            setTheme(!document.documentElement.classList.contains('dark'));
+        document.getElementById('themeToggle').addEventListener('click', function() {
+            const isDark = document.documentElement.classList.contains('dark');
+            setTheme(!isDark);
+            debug(`Theme toggled to: ${!isDark ? 'dark' : 'light'}`);
         });
         
         // Show/hide password
@@ -380,12 +384,11 @@
                     debug('Auth tokens set successfully, preparing to redirect');
                     showToast('Login succesvol! Doorsturen naar admin panel...');
                     
-                    // Redirect to admin panel after a short delay using absolute URL
-                    const adminUrl = window.location.origin + '/admin.html';
-                    debug(`Will redirect to: ${adminUrl}`);
+                    // Redirect to admin panel after a short delay using relative URL
+                    debug('Will redirect to admin.html');
                     
                     setTimeout(() => {
-                        window.location.href = adminUrl;
+                        window.location.href = 'admin.html';
                     }, 1500);
                     
                 } catch (error) {
@@ -410,28 +413,17 @@
                 debug(`Auth token: ${token ? 'exists' : 'missing'}`);
                 debug(`Expires: ${expires ? new Date(parseInt(expires)).toLocaleString() : 'missing'}`);
                 
-                // Check if we're coming from admin page to avoid redirect loops
-                const referrer = document.referrer;
-                const isFromAdmin = referrer && (referrer.includes('/admin') || referrer.includes('/admin.html'));
-                
-                debug(`Referrer: ${referrer || 'none'}`);
-                debug(`Is from admin: ${isFromAdmin}`);
-                
-                // Only redirect if authenticated AND not coming from admin page
-                if (token && expires && parseInt(expires) > Date.now() && !isFromAdmin) {
+                // Simple check for valid authentication
+                if (token && expires && parseInt(expires) > Date.now()) {
                     debug('Already authenticated, redirecting to admin panel');
-                    window.location.href = window.location.origin + '/admin.html';
+                    window.location.href = 'admin.html'; // Use relative URL
                 } else {
-                    if (token && expires) {
-                        if (parseInt(expires) <= Date.now()) {
-                            debug('Auth token expired, clearing');
-                            localStorage.removeItem('authToken');
-                            localStorage.removeItem('authExpires');
-                        } else if (isFromAdmin) {
-                            debug('Coming from admin, not redirecting to prevent loop');
-                        }
-                    } else {
-                        debug('Not authenticated or missing token/expiry');
+                    debug('Not authenticated or token expired');
+                    // Clear any expired tokens
+                    if (token && expires && parseInt(expires) <= Date.now()) {
+                        debug('Clearing expired token');
+                        localStorage.removeItem('authToken');
+                        localStorage.removeItem('authExpires');
                     }
                 }
             } catch (error) {
