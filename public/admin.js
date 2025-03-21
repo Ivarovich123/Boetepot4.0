@@ -238,6 +238,53 @@ async function loadAllFines() {
   }
 }
 
+async function loadPlayerHistory(playerId) {
+  try {
+    console.log('[History] Loading player history...');
+    const response = await fetchAPI(`/api/player-history/${playerId}`);
+    
+    const historyElement = document.getElementById('playerHistory');
+    const historyTitle = document.getElementById('playerHistoryTitle');
+    
+    if (!historyElement) {
+      console.error('[History] Element not found');
+      return;
+    }
+    
+    if (!response || !response.fines || response.fines.length === 0) {
+      historyElement.innerHTML = '<tr><td colspan="3">Geen boetes gevonden</td></tr>';
+      if (historyTitle) {
+        historyTitle.textContent = 'Speler Historie';
+      }
+      return;
+    }
+    
+    const total = response.fines.reduce((sum, fine) => sum + (fine.amount || 0), 0);
+    
+    if (historyTitle) {
+      historyTitle.textContent = `Historie van ${response.player_name}`;
+    }
+    
+    const rows = response.fines.map(fine => `
+      <tr>
+        <td>${formatDate(fine.date)}</td>
+        <td>${fine.reason_description || 'Onbekend'}</td>
+        <td>${formatCurrency(fine.amount || 0)}</td>
+      </tr>
+    `).join('');
+    
+    historyElement.innerHTML = rows + `
+      <tr class="table-info">
+        <td colspan="2"><strong>Totaal</strong></td>
+        <td><strong>${formatCurrency(total)}</strong></td>
+      </tr>
+    `;
+  } catch (error) {
+    console.error('[History] Error:', error);
+    showToast('Fout bij laden speler historie', true);
+  }
+}
+
 // Form Handlers
 async function handleAddPlayer(event) {
   event.preventDefault();
