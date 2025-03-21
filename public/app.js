@@ -1,6 +1,22 @@
 // API Base URL
 const API_BASE_URL = '/api';
 
+// Check if we need to adjust the API base URL
+const checkApiUrl = () => {
+    // If we're not running from the root path, adjust the API URL
+    const path = window.location.pathname;
+    if (path !== '/' && !path.includes('/index.html')) {
+        debug(`Not running from root path. Current path: ${path}`);
+        // We're likely running from a subdirectory or different domain
+        debug(`Setting API fallback URL to absolute path`);
+        return true; // Use absolute URL
+    }
+    return false; // Use relative URL
+};
+
+// Flag to decide if we should use absolute URLs
+const useAbsoluteUrl = checkApiUrl();
+
 // Debug setting
 const DEBUG = true;
 function debug(message) {
@@ -151,33 +167,93 @@ function initializeSelect2() {
 }
 
 // API Functions
-async function fetchAPI(endpoint, options = {}) {
+const fetchAPI = async (endpoint, options = {}) => {
+    const path = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+    const url = useAbsoluteUrl 
+        ? `${window.location.origin}${API_BASE_URL}${path}`
+        : `${API_BASE_URL}${path}`;
+    
+    debug(`Fetching API: ${url} with options:`, options);
     toggleLoading(true);
+    
     try {
-        debug(`Fetching API: ${endpoint}`);
-        // Ensure endpoint starts with a slash
-        const path = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
-        const response = await fetch(`${API_BASE_URL}${path}`, options);
+        const headers = options.headers || {};
+        const fetchOptions = {
+            ...options,
+            headers: {
+                'Accept': 'application/json',
+                ...headers
+            }
+        };
+        
+        const timeout = setTimeout(() => {
+            debug('API request timeout');
+            toggleLoading(false);
+        }, 10000);
+        
+        const response = await fetch(url, fetchOptions);
+        clearTimeout(timeout);
+        
         if (!response.ok) {
-            throw new Error(`API Error: ${response.status} ${response.statusText}`);
+            debug(`API error: ${response.status} ${response.statusText}`);
+            toggleLoading(false);
+            return null;
         }
         
-        // Check if the response is valid JSON
+        // Check if response is JSON
         const contentType = response.headers.get('content-type');
         if (!contentType || !contentType.includes('application/json')) {
-            throw new Error(`Invalid response format: expected JSON but got ${contentType}`);
+            debug(`Received non-JSON response: ${contentType}`);
+            
+            // Try again with an absolute URL if we're not already using one
+            if (!useAbsoluteUrl) {
+                debug('Retrying with absolute URL');
+                const absoluteUrl = `${window.location.origin}${API_BASE_URL}${path}`;
+                debug(`Retrying fetch with absolute URL: ${absoluteUrl}`);
+                
+                const retryResponse = await fetch(absoluteUrl, fetchOptions);
+                if (!retryResponse.ok) {
+                    debug(`Retry failed: ${retryResponse.status} ${retryResponse.statusText}`);
+                    toggleLoading(false);
+                    return null;
+                }
+                
+                try {
+                    const retryData = await retryResponse.json();
+                    toggleLoading(false);
+                    return retryData;
+                } catch (error) {
+                    debug('Error parsing JSON from retry response:', error);
+                    toggleLoading(false);
+                    return null;
+                }
+            }
+            
+            toggleLoading(false);
+            
+            // Return empty values based on endpoint to prevent failures
+            if (path.includes('/players')) return [];
+            if (path.includes('/reasons')) return [];
+            if (path.includes('/recent-fines')) return [];
+            if (path.includes('/leaderboard')) return [];
+            if (path.includes('/total-amount')) return 0;
+            if (path.match(/\/players\/[^/]+$/)) {
+                return { id: 0, name: 'Error Loading Player' };
+            }
+            
+            return null;
         }
         
         const data = await response.json();
+        debug(`API response:`, data);
+        toggleLoading(false);
         return data;
     } catch (error) {
-        debug(`API Error: ${error.message}`);
-        showToast(`Er is een fout opgetreden: ${error.message}`, 'error');
-        throw error;
-    } finally {
+        debug('API fetch error:', error);
         toggleLoading(false);
+        return null;
     }
-}
+};
 
 // Create fine card
 function createFineCard(fine) {

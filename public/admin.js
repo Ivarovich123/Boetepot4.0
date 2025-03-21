@@ -1,6 +1,22 @@
 // API Base URL
 const API_BASE_URL = '/api';
 
+// Check if we need to adjust the API base URL
+const checkApiUrl = () => {
+    // If we're not running from the root path, adjust the API URL
+    const path = window.location.pathname;
+    if (path !== '/' && !path.includes('/admin.html')) {
+        debug(`Not running from root path. Current path: ${path}`);
+        // We're likely running from a subdirectory or different domain
+        debug(`Setting API fallback URL to absolute path`);
+        return true; // Use absolute URL
+    }
+    return false; // Use relative URL
+};
+
+// Flag to decide if we should use absolute URLs
+const useAbsoluteUrl = checkApiUrl();
+
 // Debug setting
 const DEBUG = true;
 function debug(message) {
@@ -318,99 +334,94 @@ function updateSelect2Theme(isDark) {
     });
 }
 
-// API Functions
-async function fetchAPI(endpoint, options = {}) {
-    // Set a timeout to ensure loading spinner doesn't stay on forever
-    const timeoutId = setTimeout(() => {
-        console.warn(`[API] Request timeout for ${endpoint}`);
-        toggleLoading(false);
-    }, 10000); // 10 second timeout
+// Fetch API with improved error handling
+const fetchAPI = async (endpoint, options = {}) => {
+    const path = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+    const url = useAbsoluteUrl 
+        ? `${window.location.origin}${API_BASE_URL}${path}`
+        : `${API_BASE_URL}${path}`;
+    
+    debug(`Fetching API: ${url} with options:`, options);
+    toggleLoading(true);
     
     try {
-        // Show loading indicator
-        toggleLoading(true);
+        const headers = options.headers || {};
+        const fetchOptions = {
+            ...options,
+            headers: {
+                'Accept': 'application/json',
+                ...headers
+            }
+        };
         
-        // Make sure endpoint starts with a slash for consistency
-        const path = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+        const timeout = setTimeout(() => {
+            debug('API request timeout');
+            toggleLoading(false);
+        }, 10000);
         
-        // Log the API request
-        console.log(`[API] Fetching ${API_BASE_URL}${path}...`);
+        const response = await fetch(url, fetchOptions);
+        clearTimeout(timeout);
         
-        // Make the API request
-        const url = `${API_BASE_URL}${path}`;
-        console.log(`[DEBUG] Full request URL: ${url}`);
-        
-        // Use AbortController for timeout
-        const controller = new AbortController();
-        const timeoutPromise = new Promise((_, reject) => 
-            setTimeout(() => {
-                controller.abort();
-                reject(new Error('Request timeout'));
-            }, 8000)
-        );
-        
-        // Race between fetch and timeout
-        const response = await Promise.race([
-            fetch(url, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
-                },
-                signal: controller.signal
-            }),
-            timeoutPromise
-        ]);
-        
-        console.log(`[DEBUG] Response status:`, response.status);
-        
-        // Process the response data
-        let data;
-    const contentType = response.headers.get('content-type');
-    
-    if (contentType && contentType.includes('application/json')) {
-      data = await response.json();
-    } else {
-            data = await response.text();
-            console.warn(`[API] Non-JSON response: ${data.substring(0, 100)}...`);
-    }
-    
-        // Handle error responses
-    if (!response.ok) {
-      console.error(`[API] Error response:`, data);
-            throw new Error(typeof data === 'object' && data.error ? data.error : `HTTP error! status: ${response.status}`);
-    }
-    
-        // Log success
-        console.log(`[API] Response from ${path}:`, data);
-    return data;
-  } catch (error) {
-        console.error(`[API] Error fetching ${endpoint}:`, error);
-        console.error(`[DEBUG] Error details:`, { message: error.message, stack: error.stack });
-        
-        // Show helpful error message
-        let errorMessage = 'Er is een fout opgetreden bij het verwerken van het verzoek';
-        if (error.message === 'Request timeout') {
-            errorMessage = 'De server reageert niet, controleer de verbinding';
-        } else if (error.message === 'Failed to fetch' || error.message.includes('NetworkError')) {
-            errorMessage = 'Kan geen verbinding maken met de server';
+        if (!response.ok) {
+            debug(`API error: ${response.status} ${response.statusText}`);
+            toggleLoading(false);
+            return null;
         }
         
-        showToast(errorMessage, 'error');
-        
-        // Return empty data with appropriate type based on endpoint
-        if (endpoint.includes('players') || endpoint.includes('reasons') || endpoint.includes('fines')) {
-            return [];
+        // Check if response is JSON
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            debug(`Received non-JSON response: ${contentType}`);
+            
+            // Try again with an absolute URL if we're not already using one
+            if (!useAbsoluteUrl) {
+                debug('Retrying with absolute URL');
+                const absoluteUrl = `${window.location.origin}${API_BASE_URL}${path}`;
+                debug(`Retrying fetch with absolute URL: ${absoluteUrl}`);
+                
+                const retryResponse = await fetch(absoluteUrl, fetchOptions);
+                if (!retryResponse.ok) {
+                    debug(`Retry failed: ${retryResponse.status} ${retryResponse.statusText}`);
+                    toggleLoading(false);
+                    return null;
+                }
+                
+                try {
+                    const retryData = await retryResponse.json();
+                    toggleLoading(false);
+                    return retryData;
+                } catch (error) {
+                    debug('Error parsing JSON from retry response:', error);
+                    toggleLoading(false);
+                    return null;
+                }
+            }
+            
+            toggleLoading(false);
+            
+            // Return empty values based on endpoint to prevent failures
+            if (path.includes('/players')) return [];
+            if (path.includes('/reasons')) return [];
+            if (path.includes('/recent-fines')) return [];
+            if (path.includes('/leaderboard')) return [];
+            if (path.includes('/total-amount')) return 0;
+            if (path.match(/\/players\/[^/]+$/)) {
+                return { id: 0, name: 'Error Loading Player' };
+            }
+            
+            return null;
         }
-    throw error;
-    } finally {
-        // Clear the timeout
-        clearTimeout(timeoutId);
         
-        // Hide loading indicator
+        const data = await response.json();
+        debug(`API response:`, data);
         toggleLoading(false);
+        return data;
+    } catch (error) {
+        debug('API fetch error:', error);
+        toggleLoading(false);
+        return null;
     }
-}
+};
 
 // Load data
 async function loadData() {
@@ -521,39 +532,58 @@ async function loadRecentFines() {
 
 // Form Handlers
 
-// Add fine
-$('#addFineForm').on('submit', async function(e) {
-    e.preventDefault();
+// Handle Add Fine form submission
+const handleAddFine = async (event) => {
+    event.preventDefault();
+    debug('Add fine form submitted');
     
-    const playerId = $('#playerSelect').val();
-    const reasonId = $('#reasonSelect').val();
-    const amount = parseFloat($('#amount').val());
-    
-    if (!playerId || !reasonId || isNaN(amount)) {
-        showToast('Vul alle velden correct in', 'error');
-      return;
+    // Validate form
+    if (!validateSelect2()) {
+        showToast('Please select a player, a reason, and an amount', 'error');
+        return;
     }
     
+    const playerSelect = $('#playerSelect');
+    const reasonSelect = $('#reasonSelect');
+    const amount = $('#amountSelect').val();
+    
+    const playerId = playerSelect.val();
+    const reasonId = reasonSelect.val();
+
+    if (!playerId || !reasonId || !amount) {
+        showToast('Please select a player, a reason, and an amount', 'error');
+        return;
+    }
+    
+    toggleLoading(true);
+    
     try {
-        await fetchAPI('/fines', {
+        const response = await fetchAPI('/fines', {
             method: 'POST',
-            body: JSON.stringify({ 
-                player_id: playerId, 
-                reason_id: reasonId,
-                amount 
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                playerId: parseInt(playerId),
+                reasonId: parseInt(reasonId),
+                amount: parseInt(amount)
             })
         });
         
-        showToast('Boete succesvol toegevoegd');
-        this.reset();
-        $('#playerSelect').val('').trigger('change');
-        $('#reasonSelect').val('').trigger('change');
-        await loadData();
-        
-  } catch (error) {
-        console.error('Error adding fine:', error);
+        if (response) {
+            showToast('Fine added successfully!', 'success');
+            resetForm();
+            loadData();
+        } else {
+            showToast('Failed to add fine', 'error');
+        }
+    } catch (error) {
+        debug('Error adding fine:', error);
+        showToast('Error adding fine: ' + error.message, 'error');
     }
-});
+    
+    toggleLoading(false);
+};
 
 // Add player
 $('#addPlayerForm').on('submit', async function(e) {
@@ -828,111 +858,44 @@ async function handleFineDelete(e) {
 }
 
 // Initialize
-$(document).ready(function() {
-    // Debug logging
-    debug('Document ready fired');
+$(document).ready(async function() {
+    enableDebugMode();
     
-    // Required DOM elements check
-    const requiredElements = [
-        '#tab-boetes', 
-        '#tab-beheer', 
-        '#content-boetes', 
-        '#content-beheer',
-        '#playerSelect',
-        '#reasonSelect',
-        '#recentFines'
-    ];
-    
-    const missingElements = requiredElements.filter(selector => $(selector).length === 0);
-    
-    if (missingElements.length > 0) {
-        console.error('[DEBUG] Missing DOM elements:', missingElements);
-        showToast('Er is een fout opgetreden bij het laden van de pagina', 'error');
-        $('#debugStatus').text(`Missing elements: ${missingElements.join(', ')}`);
-        return;
-    }
-    
-    debug('All required DOM elements found');
-    
-    // Set up debug button
-    $('#debugLoadBtn').on('click', function() {
-        $('#debugStatus').text('Manually loading data...');
-        loadData();
-    });
-    
-    // Tab functionality
-    $('#tab-boetes').click(function() {
-        debug('Switching to Boetes tab');
-        $('#tab-boetes').addClass('text-blue-600 dark:text-blue-500 border-blue-600 dark:border-blue-500')
-            .removeClass('border-transparent hover:text-blue-600 dark:hover:text-blue-500 hover:border-blue-600 dark:hover:border-blue-500 text-gray-500 dark:text-gray-400');
-        $('#tab-beheer').removeClass('text-blue-600 dark:text-blue-500 border-blue-600 dark:border-blue-500')
-            .addClass('border-transparent hover:text-blue-600 dark:hover:text-blue-500 hover:border-blue-600 dark:hover:border-blue-500 text-gray-500 dark:text-gray-400');
-        $('#content-boetes').removeClass('hidden');
-        $('#content-beheer').addClass('hidden');
-        localStorage.setItem('activeTab', 'boetes');
-    });
-    
-    $('#tab-beheer').click(function() {
-        debug('Switching to Beheer tab');
-        $('#tab-beheer').addClass('text-blue-600 dark:text-blue-500 border-blue-600 dark:border-blue-500')
-            .removeClass('border-transparent hover:text-blue-600 dark:hover:text-blue-500 hover:border-blue-600 dark:hover:border-blue-500 text-gray-500 dark:text-gray-400');
-        $('#tab-boetes').removeClass('text-blue-600 dark:text-blue-500 border-blue-600 dark:border-blue-500')
-            .addClass('border-transparent hover:text-blue-600 dark:hover:text-blue-500 hover:border-blue-600 dark:hover:border-blue-500 text-gray-500 dark:text-gray-400');
-        $('#content-beheer').removeClass('hidden');
-        $('#content-boetes').addClass('hidden');
-        localStorage.setItem('activeTab', 'beheer');
-    });
-    
-    // Load active tab from localStorage
-    const activeTab = localStorage.getItem('activeTab') || 'boetes';
-    debug(`Active tab from localStorage: ${activeTab}`);
-    
-    if (activeTab === 'beheer') {
-        $('#tab-beheer').click();
-    } else {
-        $('#tab-boetes').click();
-    }
-    
-    // Initialize theme with debug logging
-    debug(`Current theme: ${localStorage.theme || 'not set'}`);
-    debug(`Dark mode media query: ${window.matchMedia('(prefers-color-scheme: dark)').matches}`);
-    
-    const isDarkMode = localStorage.theme === 'dark' || 
-        (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
-    
-    debug(`Dark mode enabled: ${isDarkMode}`);
-    
-    if (isDarkMode) {
-        debug('Setting dark theme');
-        setTheme(true);
-    } else {
-        debug('Setting light theme');
-        setTheme(false);
-    }
-    
-    // Form submissions
-    $('#addFineForm').on('submit', handleAddFine);
-    
-    // Debug to check all event listeners are set up
-    debug('All event listeners set up');
-    
-    // Start loading data with a slight delay to ensure DOM is ready
-    setTimeout(() => {
-        debug('Starting data load after timeout');
-        loadData();
-        
-        // Initial check to make sure the correct content is visible
-        if (activeTab === 'beheer') {
-            debug('Making beheer content visible');
-            $('#content-beheer').removeClass('hidden');
-            $('#content-boetes').addClass('hidden');
-        } else {
-            debug('Making boetes content visible');
-            $('#content-boetes').removeClass('hidden');
-            $('#content-beheer').addClass('hidden');
+    try {
+        // Check if all required DOM elements exist 
+        if (!checkAndRepairDOM()) {
+            $('#adminContent').html('<div class="alert alert-danger">Error: Some required elements are missing from the DOM.</div>');
+            return;
         }
-    }, 500);
-    
-    // Update debug status
-    $('#debugStatus').text('Page initialized, loading data...');
+        
+        await initializeSelect2();
+        
+        // Add event handler for Add Fine form
+        $('#addFineForm').on('submit', handleAddFine);
+        
+        // Add event handler for debug button
+        $('#debugButton').on('click', function() {
+            toggleDebugPanel();
+        });
+        
+        await loadData();
+        
+        // Initialize manual load button
+        $('#manualLoadButton').on('click', async function() {
+            debug('Manual data load triggered');
+            await loadData();
+        });
+        
+        // Attach theme toggle handler
+        $('#themeToggle').on('click', toggleTheme);
+        
+        // Apply current theme
+        applyTheme();
+        
+        debug('Admin page initialization complete');
+        $('#debugStatus').text('Page initialized, loading data...');
+    } catch (error) {
+        debug(`Error during initialization: ${error.message}`);
+        $('#adminContent').html(`<div class="alert alert-danger">Error during initialization: ${error.message}</div>`);
+    }
 }); 
