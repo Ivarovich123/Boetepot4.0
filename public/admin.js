@@ -1,4 +1,4 @@
-// Check authentication on page load
+// Check authentication
 if (!Auth.check()) {
     window.location.href = 'login.html';
 }
@@ -142,12 +142,14 @@ function formatDate(dateString) {
 // Show/hide loading spinner
 function toggleLoading(show) {
     const spinner = document.getElementById('loadingSpinner');
-    if (show) {
-        spinner.classList.remove('hidden');
-        spinner.classList.add('flex');
-    } else {
-        spinner.classList.remove('flex');
-        spinner.classList.add('hidden');
+    if (spinner) {
+        if (show) {
+            spinner.classList.remove('hidden');
+            spinner.classList.add('flex');
+        } else {
+            spinner.classList.remove('flex');
+            spinner.classList.add('hidden');
+        }
     }
 }
 
@@ -161,34 +163,22 @@ function showToast(message, type = 'success') {
     `;
     
     const container = document.getElementById('toastContainer');
-    container.appendChild(toast);
-    
-    setTimeout(() => {
-        toast.remove();
-    }, 3000);
+    if (container) {
+        container.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.remove();
+        }, 3000);
+    }
 }
 
 // Create a card for a fine
 function createFineCard(fine, canDelete = true) {
-    if (!fine) {
-        console.error('[DEBUG] createFineCard called with null or undefined fine');
-        return '';
-    }
-    
-    console.log('[DEBUG] Creating fine card for:', fine);
-    
     try {
         const formattedAmount = formatCurrency(fine.amount);
         const playerName = fine.player_name || 'Onbekend';
         const reasonDesc = fine.reason_description || 'Onbekend';
         const formattedDate = formatDate(fine.date);
-        
-        console.log('[DEBUG] Fine card values:', {
-            player: playerName,
-            reason: reasonDesc,
-            amount: formattedAmount,
-            date: formattedDate
-        });
         
         let deleteButton = '';
         if (canDelete) {
@@ -212,7 +202,7 @@ function createFineCard(fine, canDelete = true) {
             </div>
         `;
     } catch (error) {
-        console.error('[DEBUG] Error in createFineCard:', error, 'for fine:', fine);
+        console.error('Error in createFineCard:', error);
         return `
             <div class="bg-red-50 dark:bg-red-900/20 rounded-xl p-4 text-red-600 dark:text-red-400">
                 Er is een fout opgetreden bij het weergeven van deze boete

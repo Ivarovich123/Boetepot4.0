@@ -16,71 +16,72 @@
     
     <!-- jQuery -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <style>
+        /* Base styles */
+        :root {
+            --bg-color: #f3f4f6;
+            --text-color: #1f2937;
+            --card-bg: #ffffff;
+            --card-border: #e5e7eb;
+            --input-bg: #ffffff;
+            --input-border: #e5e7eb;
+            --input-text: #1f2937;
+        }
+        
+        /* Dark mode variables */
+        html.dark {
+            --bg-color: #111827;
+            --text-color: #f3f4f6;
+            --card-bg: #1f2937;
+            --card-border: #374151;
+            --input-bg: #374151;
+            --input-border: #4b5563;
+            --input-text: #f3f4f6;
+        }
+        
+        /* Apply variables */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            transition: background-color 0.3s, color 0.3s;
+            min-height: 100vh;
+        }
+        
+        .card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--card-border);
+            transition: background-color 0.3s, border-color 0.3s;
+        }
+        
+        input {
+            background-color: var(--input-bg);
+            border-color: var(--input-border);
+            color: var(--input-text);
+            transition: background-color 0.3s, border-color 0.3s, color 0.3s;
+        }
+    </style>
     
     <!-- Theme System -->
     <script src="theme.js"></script>
     
     <!-- Auth System -->
     <script src="auth.js"></script>
-
-    <style>
-        /* Base styles */
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f3f4f6;
-            color: #1f2937;
-            min-height: 100vh;
-            transition: background-color 0.3s, color 0.3s;
-        }
-        
-        /* Dark mode styles */
-        html.dark body {
-            background-color: #111827;
-            color: #f3f4f6;
-        }
-        
-        /* Card styles */
-        .card {
-            background-color: #ffffff;
-            border: 1px solid #e5e7eb;
-            transition: background-color 0.3s, border-color 0.3s;
-        }
-        
-        html.dark .card {
-            background-color: #1f2937;
-            border-color: #374151;
-        }
-        
-        /* Input styles */
-        input {
-            background-color: #ffffff;
-            border-color: #e5e7eb;
-            color: #1f2937;
-            transition: background-color 0.3s, border-color 0.3s, color 0.3s;
-        }
-        
-        html.dark input {
-            background-color: #374151;
-            border-color: #4b5563;
-            color: #f3f4f6;
-        }
-    </style>
 </head>
 <body class="flex items-center justify-center p-4">
-    <div class="max-w-md w-full bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8">
+    <div class="max-w-md w-full card rounded-2xl shadow-xl p-8">
         <div class="text-center mb-8">
-            <h1 class="text-2xl font-bold text-gray-900 dark:text-white mb-2">Admin Login</h1>
+            <h1 class="text-2xl font-bold mb-2">Admin Login</h1>
             <p class="text-gray-600 dark:text-gray-400">Log in om de boetepot te beheren</p>
         </div>
         
         <form id="loginForm" class="space-y-6">
             <div>
-                <label for="password" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Wachtwoord</label>
+                <label for="password" class="block text-sm font-medium mb-2">Wachtwoord</label>
                 <div class="relative">
                     <input type="password" id="password" 
-                           class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 
-                                  bg-white dark:bg-gray-900 text-gray-900 dark:text-white 
-                                  focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                           class="w-full px-4 py-3 rounded-xl border"
                            placeholder="Voer het wachtwoord in" required>
                 </div>
             </div>
@@ -134,17 +135,20 @@
             setTimeout(() => toast.slideUp(() => toast.remove()), 5000);
         }
         
-        // Handle login
-        $('#loginForm').on('submit', function(e) {
+        // Handle login form submission
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
             e.preventDefault();
             
-            const password = $('#password').val();
-            if (Auth.login(password)) {
+            const password = document.getElementById('password').value;
+            const success = Auth.login(password);
+            
+            if (success) {
                 showToast('Login succesvol! Doorsturen naar admin panel...');
-                setTimeout(() => window.location.href = 'admin.html', 1500);
+                setTimeout(() => window.location.href = 'admin.html', 1000);
             } else {
                 showToast('Ongeldig wachtwoord', 'error');
-                $('#password').val('').focus();
+                document.getElementById('password').value = '';
+                document.getElementById('password').focus();
             }
         });
     </script>

@@ -89,6 +89,7 @@ const AUTH = {
 const Auth = {
     TOKEN_KEY: 'authToken',
     EXPIRES_KEY: 'authExpires',
+    THEME_KEY: 'theme',
     PASSWORD: 'Mandje123',
     
     login(password) {
@@ -131,5 +132,37 @@ const Auth = {
         localStorage.removeItem(this.TOKEN_KEY);
         localStorage.removeItem(this.EXPIRES_KEY);
         window.location.href = 'login.html';
+    },
+    
+    // Theme handling
+    isDarkMode() {
+        return localStorage.getItem(this.THEME_KEY) === 'dark' || 
+               (!localStorage.getItem(this.THEME_KEY) && 
+                window.matchMedia('(prefers-color-scheme: dark)').matches);
+    },
+    
+    setTheme(isDark) {
+        localStorage.setItem(this.THEME_KEY, isDark ? 'dark' : 'light');
+        this.applyTheme();
+    },
+    
+    toggleTheme() {
+        const isDark = document.documentElement.classList.contains('dark');
+        this.setTheme(!isDark);
+    },
+    
+    applyTheme() {
+        const isDark = this.isDarkMode();
+        
+        if (isDark) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+        
+        const themeIcon = document.getElementById('theme-icon');
+        if (themeIcon) {
+            themeIcon.className = `fas fa-${isDark ? 'sun' : 'moon'} text-xl`;
+        }
     }
 }; 

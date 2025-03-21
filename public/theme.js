@@ -1,4 +1,4 @@
-// Theme handling
+// Theme management system
 const Theme = {
     init() {
         // Check for saved theme or system preference
@@ -39,6 +39,35 @@ const Theme = {
         const icon = document.getElementById('theme-icon');
         if (icon) {
             icon.className = isDark ? 'fas fa-sun text-xl' : 'fas fa-moon text-xl';
+        }
+    },
+    
+    // Update select2 elements for dark mode if present
+    updateSelect2(isDark) {
+        if (typeof $ !== 'undefined' && $('.select2-container').length) {
+            try {
+                $('.select2-container--default .select2-selection--single').css({
+                    'background-color': isDark ? 'var(--input-bg)' : 'var(--input-bg)',
+                    'border-color': isDark ? 'var(--input-border)' : 'var(--input-border)'
+                });
+                
+                $('.select2-container--default .select2-selection--single .select2-selection__rendered').css({
+                    'color': isDark ? 'var(--input-text)' : 'var(--input-text)'
+                });
+                
+                $('.select2-dropdown').css({
+                    'background-color': isDark ? 'var(--input-bg)' : 'var(--input-bg)',
+                    'border-color': isDark ? 'var(--input-border)' : 'var(--input-border)'
+                });
+                
+                $('.select2-search--dropdown .select2-search__field').css({
+                    'background-color': isDark ? 'var(--input-bg)' : 'var(--input-bg)',
+                    'border-color': isDark ? 'var(--input-border)' : 'var(--input-border)',
+                    'color': isDark ? 'var(--input-text)' : 'var(--input-text)'
+                });
+            } catch (error) {
+                console.error('Error updating Select2 theme:', error);
+            }
         }
     }
 }; 
