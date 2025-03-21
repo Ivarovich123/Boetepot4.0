@@ -890,58 +890,175 @@ function checkAndRepairDOM() {
 }
 
 // Initialize
-$(document).ready(async function() {
-    enableDebugMode();
-    
+$(document).ready(function() {
     try {
-        // Check if all required DOM elements exist 
-        if (!checkAndRepairDOM()) {
-            debug('DOM check failed - some elements are missing');
-            $('#adminContent').html('<div class="alert alert-danger">Error: Some required elements are missing from the DOM.</div>');
+        debug('Document ready fired');
+        
+        // Required DOM elements check
+        const requiredElements = [
+            '#tab-boetes', 
+            '#tab-beheer', 
+            '#content-boetes', 
+            '#content-beheer',
+            '#playerSelect',
+            '#reasonSelect',
+            '#recentFines'
+        ];
+        
+        const missingElements = requiredElements.filter(selector => $(selector).length === 0);
+        
+        if (missingElements.length > 0) {
+            console.error('Missing DOM elements:', missingElements);
+            $('#debugStatus').text(`Missing elements: ${missingElements.join(', ')}`);
             return;
         }
         
-        debug('DOM check passed - initializing page');
-        
         // Initialize Select2
-        await initializeSelect2();
+        initializeSelect2();
         
-        // Add event handler for Add Fine form
+        // Make sure forms have handlers
         $('#addFineForm').off('submit').on('submit', handleAddFine);
+        $('#addPlayerForm').off('submit').on('submit', handleAddPlayer);
+        $('#addReasonForm').off('submit').on('submit', handleAddReason);
         
-        // Initialize manual load button
-        $('#manualLoadButton').off('click').on('click', async function() {
-            debug('Manual data load triggered');
-            await loadData();
+        // Setup tab handlers
+        $('#tab-boetes').off('click').on('click', function() {
+            $('#tab-boetes').addClass('text-blue-600 dark:text-blue-500 border-blue-600 dark:border-blue-500')
+                .removeClass('border-transparent hover:text-blue-600 dark:hover:text-blue-500 hover:border-blue-600 dark:hover:border-blue-500 text-gray-500 dark:text-gray-400');
+            $('#tab-beheer').removeClass('text-blue-600 dark:text-blue-500 border-blue-600 dark:border-blue-500')
+                .addClass('border-transparent hover:text-blue-600 dark:hover:text-blue-500 hover:border-blue-600 dark:hover:border-blue-500 text-gray-500 dark:text-gray-400');
+            $('#content-boetes').removeClass('hidden');
+            $('#content-beheer').addClass('hidden');
+            localStorage.setItem('activeTab', 'boetes');
         });
         
-        // Attach theme toggle handler
-        $('#themeToggle').off('click').on('click', toggleTheme);
+        $('#tab-beheer').off('click').on('click', function() {
+            $('#tab-beheer').addClass('text-blue-600 dark:text-blue-500 border-blue-600 dark:border-blue-500')
+                .removeClass('border-transparent hover:text-blue-600 dark:hover:text-blue-500 hover:border-blue-600 dark:hover:border-blue-500 text-gray-500 dark:text-gray-400');
+            $('#tab-boetes').removeClass('text-blue-600 dark:text-blue-500 border-blue-600 dark:border-blue-500')
+                .addClass('border-transparent hover:text-blue-600 dark:hover:text-blue-500 hover:border-blue-600 dark:hover:border-blue-500 text-gray-500 dark:text-gray-400');
+            $('#content-beheer').removeClass('hidden');
+            $('#content-boetes').addClass('hidden');
+            localStorage.setItem('activeTab', 'beheer');
+        });
         
-        // Load active tab from localStorage
+        // Theme toggle
+        $('#theme-toggle').off('click').on('click', toggleTheme);
+        
+        // Manual load button
+        $('#manualLoadButton').off('click').on('click', loadData);
+        
+        // Check API button
+        $('#checkApiButton').off('click').on('click', checkApiHealth);
+        
+        // Reset button
+        $('#resetButton').off('click').on('click', handleReset);
+        
+        // Check active tab
         const activeTab = localStorage.getItem('activeTab') || 'boetes';
-        debug(`Loading active tab from localStorage: ${activeTab}`);
-        
         if (activeTab === 'beheer') {
             $('#tab-beheer').trigger('click');
         } else {
             $('#tab-boetes').trigger('click');
         }
         
-        // Load data
-        await loadData();
+        // Apply theme
+        applyTheme();
         
-        debug('Admin page initialization complete');
-        $('#debugStatus').text('Page initialized, data loaded successfully');
+        // Load data
+        loadData();
+        
     } catch (error) {
-        debug(`Error during initialization: ${error.message}`);
-        $('#debugStatus').text(`Error during initialization: ${error.message}`);
-        $('#adminContent').html(`<div class="bg-red-100 dark:bg-red-900/20 p-4 rounded-lg text-red-700 dark:text-red-400">
+        console.error('Error during initialization:', error);
+        $('#adminContent').html(`<div class="bg-red-100 p-4 rounded-lg text-red-700">
             <p><strong>Error during initialization:</strong> ${error.message}</p>
             <p>Please check the console for more details.</p>
         </div>`);
     }
 });
+
+// Handle Add Player form submission
+function handleAddPlayer(e) {
+    e.preventDefault();
+    
+    const name = $('#playerName').val().trim();
+    
+    if (!name) {
+        showToast('Vul een naam in', 'error');
+        return;
+    }
+    
+    try {
+        fetchAPI('/players', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ name })
+        }).then(() => {
+            showToast('Speler succesvol toegevoegd');
+            $('#playerName').val('');
+            loadData();
+        });
+    } catch (error) {
+        console.error('Error adding player:', error);
+        showToast('Error adding player: ' + error.message, 'error');
+    }
+}
+
+// Handle Add Reason form submission
+function handleAddReason(e) {
+    e.preventDefault();
+    
+    const description = $('#reasonDescription').val().trim();
+    
+    if (!description) {
+        showToast('Vul een beschrijving in', 'error');
+        return;
+    }
+    
+    try {
+        fetchAPI('/reasons', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ description })
+        }).then(() => {
+            showToast('Reden succesvol toegevoegd');
+            $('#reasonDescription').val('');
+            loadData();
+        });
+    } catch (error) {
+        console.error('Error adding reason:', error);
+        showToast('Error adding reason: ' + error.message, 'error');
+    }
+}
+
+// Handle Reset
+function handleReset() {
+    if (!confirm('WAARSCHUWING: Dit zal ALLE boetes verwijderen. Deze actie kan niet ongedaan worden gemaakt! Weet je zeker dat je wilt doorgaan?')) {
+        return;
+    }
+    
+    const confirmation = prompt('Typ "RESET" om te bevestigen:');
+    if (confirmation !== 'RESET') {
+        showToast('Reset geannuleerd', 'error');
+        return;
+    }
+  
+    try {
+        fetchAPI('/reset', {
+            method: 'POST'
+        }).then(() => {
+            showToast('Alle gegevens zijn gereset');
+            loadData();
+        });
+    } catch (error) {
+        console.error('Error resetting data:', error);
+        showToast('Error resetting data: ' + error.message, 'error');
+    }
+}
 
 // Apply theme function
 function applyTheme() {
