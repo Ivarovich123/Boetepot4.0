@@ -29,6 +29,16 @@ function getFallbackData() {
     const reasons = getLocalData('reasons') || [];
     const fines = getLocalData('fines') || [];
     
+    console.log('[DEBUG] Loaded from localStorage:', { 
+        playersCount: players.length, 
+        reasonsCount: reasons.length, 
+        finesCount: fines.length 
+    });
+    
+    if (fines.length > 0) {
+        console.log('[DEBUG] Sample fine structure:', fines[0]);
+    }
+    
     // Calculate the total amount from fines
     const totalAmount = fines.reduce((sum, fine) => sum + (parseFloat(fine.amount) || 0), 0);
     
@@ -37,18 +47,27 @@ function getFallbackData() {
         .sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0))
         .slice(0, 5) // Show only the 5 most recent fines
         .map(fine => {
-            const player = players.find(p => p.id === fine.playerId) || { name: 'Unknown' };
-            const reason = reasons.find(r => r.id === fine.reasonId) || { description: 'Unknown' };
+            // Check for both playerId and player_id (handle both formats)
+            const playerId = fine.playerId || fine.player_id;
+            const reasonId = fine.reasonId || fine.reason_id;
+            
+            const player = players.find(p => p.id === playerId) || { name: 'Onbekend' };
+            const reason = reasons.find(r => r.id === reasonId) || { description: 'Onbekend' };
             return {
                 ...fine,
-                playerName: player.name,
-                reasonDescription: reason.description
+                playerName: fine.player_name || player.name,
+                reasonDescription: fine.reason_description || reason.description
             };
         });
     
     // Create a leaderboard based on fines
     const playerFinesMap = players.map(player => {
-        const playerFines = fines.filter(fine => fine.playerId === player.id);
+        // Filter fines by either playerId or player_id
+        const playerFines = fines.filter(fine => 
+            (fine.playerId && fine.playerId === player.id) || 
+            (fine.player_id && fine.player_id === player.id)
+        );
+        
         const totalFined = playerFines.reduce((sum, fine) => sum + (parseFloat(fine.amount) || 0), 0);
         return {
             id: player.id,
@@ -65,14 +84,20 @@ function getFallbackData() {
     // Get player fines history
     const playerFinesHistory = {};
     players.forEach(player => {
+        // Filter fines by either playerId or player_id
         const playerFines = fines
-            .filter(fine => fine.playerId === player.id)
+            .filter(fine => 
+                (fine.playerId && fine.playerId === player.id) || 
+                (fine.player_id && fine.player_id === player.id)
+            )
             .sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0))
             .map(fine => {
-                const reason = reasons.find(r => r.id === fine.reasonId) || { description: 'Unknown' };
+                // Use either reasonId or reason_id
+                const reasonId = fine.reasonId || fine.reason_id;
+                const reason = reasons.find(r => r.id === reasonId) || { description: 'Onbekend' };
                 return {
                     ...fine,
-                    reasonDescription: reason.description
+                    reasonDescription: fine.reason_description || reason.description
                 };
             });
         
@@ -196,10 +221,18 @@ function setTheme(isDark) {
         document.documentElement.classList.add('dark');
         localStorage.theme = 'dark';
         $('#theme-icon').removeClass('fa-moon').addClass('fa-sun');
+        
+        // Additional dark mode fixes for containers and backgrounds
+        $('.bg-white').addClass('bg-gray-900').removeClass('bg-white');
+        $('.border-gray-200').addClass('border-gray-700').removeClass('border-gray-200');
     } else {
         document.documentElement.classList.remove('dark');
         localStorage.theme = 'light';
         $('#theme-icon').removeClass('fa-sun').addClass('fa-moon');
+        
+        // Revert dark mode changes
+        $('.bg-gray-900').addClass('bg-white').removeClass('bg-gray-900');
+        $('.border-gray-700').addClass('border-gray-200').removeClass('border-gray-700');
     }
     
     // Update Select2 dropdowns theme
@@ -209,27 +242,38 @@ function setTheme(isDark) {
 function updateSelect2Theme(isDark) {
     // Update the select2 theme to match the current theme
     $('.select2-container--default .select2-selection--single').css({
-        'background-color': isDark ? 'rgb(17, 24, 39)' : 'white',
+        'background-color': isDark ? 'rgb(31, 41, 55)' : 'white',
         'border-color': isDark ? 'rgb(55, 65, 81)' : 'rgb(209, 213, 219)',
-        'color': isDark ? 'white' : 'inherit'
+        'color': isDark ? 'rgb(229, 231, 235)' : 'rgb(17, 24, 39)'
     });
     
     $('.select2-container--default .select2-selection--single .select2-selection__rendered').css({
-        'color': isDark ? 'white' : 'inherit'
+        'color': isDark ? 'rgb(229, 231, 235)' : 'rgb(17, 24, 39)'
     });
     
     $('.select2-container--default .select2-dropdown').css({
-        'background-color': isDark ? 'rgb(17, 24, 39)' : 'white',
-        'border-color': isDark ? 'rgb(55, 65, 81)' : 'rgb(209, 213, 219)'
+        'background-color': isDark ? 'rgb(31, 41, 55)' : 'white',
+        'border-color': isDark ? 'rgb(55, 65, 81)' : 'rgb(209, 213, 219)',
+        'color': isDark ? 'rgb(229, 231, 235)' : 'rgb(17, 24, 39)'
     });
     
     $('.select2-container--default .select2-results__option').css({
-        'color': isDark ? 'white' : 'inherit'
+        'color': isDark ? 'rgb(229, 231, 235)' : 'rgb(17, 24, 39)'
     });
     
     $('.select2-container--default .select2-search__field').css({
         'background-color': isDark ? 'rgb(17, 24, 39)' : 'white',
-        'color': isDark ? 'white' : 'inherit'
+        'color': isDark ? 'rgb(229, 231, 235)' : 'rgb(17, 24, 39)'
+    });
+    
+    // Fix for Select2 dropdown options when highlighted/selected
+    $('.select2-container--default .select2-results__option--highlighted').css({
+        'background-color': isDark ? 'rgb(55, 65, 81)' : 'rgb(243, 244, 246)',
+        'color': isDark ? 'rgb(255, 255, 255)' : 'rgb(17, 24, 39)'
+    });
+    
+    $('.select2-container--default .select2-results__option[aria-selected=true]').css({
+        'background-color': isDark ? 'rgb(75, 85, 99)' : 'rgb(229, 231, 235)'
     });
     
     // Ensure dropdowns appear above other elements
@@ -311,27 +355,38 @@ async function fetchAPI(endpoint, options = {}) {
             debug('Using local data from admin panel');
             const localData = getFallbackData();
             
-            // Handle specific endpoints
+            // Normalize property names for endpoints
             if (endpoint.includes('total-amount')) {
-                return localData.totalAmount;
+                return { total: localData.totalAmount };
             } else if (endpoint.includes('recent-fines')) {
+                debug(`Returning ${localData.recentFines.length} recent fines from local data`);
                 return localData.recentFines;
             } else if (endpoint.includes('leaderboard')) {
+                debug(`Returning ${localData.leaderboard.length} leaderboard entries from local data`);
                 return localData.leaderboard;
             } else if (endpoint.includes('players') && !endpoint.includes('player-fines')) {
+                debug(`Returning ${localData.players.length} players from local data`);
                 return localData.players;
             } else if (endpoint.includes('reasons')) {
+                debug(`Returning ${localData.reasons.length} reasons from local data`);
                 return localData.reasons;
             } else if (endpoint.includes('player-fines')) {
                 const playerId = parseInt(endpoint.split('/').pop(), 10);
-                return localData.playerFinesHistory[playerId] || [];
+                const playerFines = localData.playerFinesHistory[playerId] || [];
+                debug(`Returning ${playerFines.length} fines for player ${playerId} from local data`);
+                return playerFines;
             } else if (endpoint.includes('player/')) {
                 const playerId = parseInt(endpoint.split('/').pop(), 10);
-                return localData.players.find(player => player.id === playerId) || { id: 0, name: 'Onbekend' };
+                const player = localData.players.find(player => player.id === playerId) || { id: 0, name: 'Onbekend' };
+                debug(`Returning player ${player.name} (${player.id}) from local data`);
+                return player;
             } else if (endpoint.includes('fines')) {
-                return localData.playerFinesHistory[playerId] || [];
+                const allFines = Object.values(localData.playerFinesHistory).flat();
+                debug(`Returning ${allFines.length} total fines from local data`);
+                return allFines;
             }
             
+            debug(`No specific handler for endpoint ${endpoint}, returning empty array`);
             return [];
         }
         
@@ -412,41 +467,47 @@ async function fetchAPI(endpoint, options = {}) {
 
 // Get default response based on endpoint type
 function getDefaultResponse(endpoint) {
-    if (useLocalData) {
-        console.log(`[DEBUG] Using local data for endpoint: ${endpoint}`);
-        
-        const localData = getFallbackData();
-        
-        // Handle specific endpoints
-        if (endpoint.includes('total-amount')) {
-            return { total: localData.totalAmount };
-        } else if (endpoint.includes('recent-fines')) {
-            return localData.recentFines;
-        } else if (endpoint.includes('leaderboard')) {
-            return localData.leaderboard;
-        } else if (endpoint.includes('players')) {
-            return localData.players;
-        } else if (endpoint.includes('reasons')) {
-            return localData.reasons;
-        } else if (endpoint.includes('player-fines')) {
-            const playerId = parseInt(endpoint.split('/').pop(), 10);
-            return localData.playerFinesHistory[playerId] || [];
-        } else if (endpoint.includes('player/')) {
-            const playerId = parseInt(endpoint.split('/').pop(), 10);
-            return localData.players.find(player => player.id === playerId) || { id: 0, name: 'Onbekend' };
-        } else if (endpoint.includes('fines')) {
-            return Object.values(localData.playerFinesHistory).flat();
+    try {
+        const useLocalData = localStorage.getItem('useLocalData') === 'true';
+        if (useLocalData) {
+            debug(`Getting default response for ${endpoint} from local data`);
+            const localData = getFallbackData();
+            
+            // Normalize property names for endpoints
+            if (endpoint.includes('total-amount')) {
+                return { total: localData.totalAmount };
+            } else if (endpoint.includes('recent-fines')) {
+                return localData.recentFines;
+            } else if (endpoint.includes('leaderboard')) {
+                return localData.leaderboard;
+            } else if (endpoint.includes('players')) {
+                return localData.players;
+            } else if (endpoint.includes('reasons')) {
+                return localData.reasons;
+            } else if (endpoint.includes('player-fines')) {
+                const playerId = parseInt(endpoint.split('/').pop(), 10);
+                return localData.playerFinesHistory[playerId] || [];
+            } else if (endpoint.includes('player/')) {
+                const playerId = parseInt(endpoint.split('/').pop(), 10);
+                return localData.players.find(player => player.id === playerId) || { id: 0, name: 'Onbekend' };
+            } else if (endpoint.includes('fines')) {
+                return Object.values(localData.playerFinesHistory).flat();
+            }
         }
+        
+        // Default empty response
+        return [];
+    } catch (error) {
+        debug(`Error in getDefaultResponse: ${error.message}`);
+        return [];
     }
-    
-    return [];
 }
 
-// Create fine card - fixed dark mode
+// Format fine card - fixed dark mode
 function createFineCard(fine) {
     try {
-        const playerName = fine.playerName || 'Onbekend';
-        const reasonDesc = fine.reasonDescription || 'Onbekend';
+        const playerName = fine.playerName || fine.player_name || 'Onbekend';
+        const reasonDesc = fine.reasonDescription || fine.reason_description || 'Onbekend';
         const formattedDate = formatDate(fine.timestamp || fine.date);
         const amount = formatCurrency(parseFloat(fine.amount) || 0);
         
@@ -454,24 +515,24 @@ function createFineCard(fine) {
         <div class="fine-card bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
             <div class="flex justify-between items-start">
                 <div>
-                    <h3 class="font-semibold text-blue-600 dark:text-blue-500">${playerName}</h3>
+                    <h3 class="font-semibold text-blue-600 dark:text-blue-400">${playerName}</h3>
                     <p class="text-sm text-gray-600 dark:text-gray-300 mt-1">${reasonDesc}</p>
                     <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">${formattedDate}</p>
                 </div>
-                <div class="text-lg font-bold">${amount}</div>
+                <div class="text-lg font-bold text-gray-800 dark:text-gray-100">${amount}</div>
             </div>
         </div>
         `;
     } catch (error) {
         debug(`Error creating fine card: ${error.message}`);
-        return `<div class="bg-red-100 dark:bg-red-900/20 p-4 rounded-xl text-red-600 dark:text-red-400">Error displaying fine</div>`;
+        return `<div class="bg-red-100 dark:bg-red-900/30 p-4 rounded-xl text-red-600 dark:text-red-400">Error displaying fine</div>`;
     }
 }
 
 // Create player history card - fixed dark mode
 function createPlayerHistoryCard(fine) {
     try {
-        const reasonDesc = fine.reasonDescription || 'Onbekend';
+        const reasonDesc = fine.reasonDescription || fine.reason_description || 'Onbekend';
         const formattedDate = formatDate(fine.timestamp || fine.date);
         const amount = formatCurrency(parseFloat(fine.amount) || 0);
         
@@ -482,13 +543,13 @@ function createPlayerHistoryCard(fine) {
                     <p class="text-gray-600 dark:text-gray-300">${reasonDesc}</p>
                     <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">${formattedDate}</p>
                 </div>
-                <div class="text-lg font-bold">${amount}</div>
+                <div class="text-lg font-bold text-gray-800 dark:text-gray-100">${amount}</div>
             </div>
         </div>
         `;
     } catch (error) {
         debug(`Error creating player history card: ${error.message}`);
-        return `<div class="bg-red-100 dark:bg-red-900/20 p-4 rounded-xl text-red-600 dark:text-red-400">Error displaying fine</div>`;
+        return `<div class="bg-red-100 dark:bg-red-900/30 p-4 rounded-xl text-red-600 dark:text-red-400">Error displaying fine</div>`;
     }
 }
 
@@ -505,12 +566,12 @@ async function loadTotalAmount() {
         const total = data && typeof data.total === 'number' ? data.total : 0;
         
         $('#totalAmount').html(`
-            <div class="text-5xl font-bold text-blue-600 dark:text-blue-500 bg-blue-50 dark:bg-blue-900/20 rounded-2xl px-8 py-4 mb-2 shadow-md">${formatCurrency(total)}</div>
+            <div class="text-5xl font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 rounded-2xl px-8 py-4 mb-2 shadow-md">${formatCurrency(total)}</div>
         `);
     } catch (error) {
         debug(`Error loading total amount: ${error.message}`);
         $('#totalAmount').html(`
-            <div class="text-5xl font-bold text-blue-600 dark:text-blue-500 bg-blue-50 dark:bg-blue-900/20 rounded-2xl px-8 py-4 mb-2 shadow-md">€0,00</div>
+            <div class="text-5xl font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 rounded-2xl px-8 py-4 mb-2 shadow-md">€0,00</div>
         `);
     }
 }
@@ -557,15 +618,15 @@ async function loadLeaderboard() {
             <div class="bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
                 <div class="flex justify-between items-center">
                     <div class="flex items-center">
-                        <div class="flex-shrink-0 w-8 h-8 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-500 rounded-full flex items-center justify-center font-bold mr-3">
+                        <div class="flex-shrink-0 w-8 h-8 bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 rounded-full flex items-center justify-center font-bold mr-3">
                             ${index + 1}
                         </div>
                         <div>
-                            <h3 class="font-semibold">${player.name || 'Onbekend'}</h3>
+                            <h3 class="font-semibold text-gray-800 dark:text-gray-200">${player.name || 'Onbekend'}</h3>
                             <p class="text-xs text-gray-500 dark:text-gray-400">${player.fineCount || 0} boetes</p>
                         </div>
                     </div>
-                    <div class="text-lg font-bold">${formatCurrency(player.totalFined || 0)}</div>
+                    <div class="text-lg font-bold text-gray-800 dark:text-gray-100">${formatCurrency(player.totalFined || 0)}</div>
                 </div>
             </div>
         `).join('');
@@ -573,7 +634,7 @@ async function loadLeaderboard() {
         $('#leaderboard').html(leaderboardHtml);
     } catch (error) {
         debug(`Error loading leaderboard: ${error.message}`);
-        $('#leaderboard').html('<div class="text-center py-4 text-red-500">Er is een fout opgetreden bij het laden van het leaderboard</div>');
+        $('#leaderboard').html('<div class="text-center py-4 text-red-500 dark:text-red-400">Er is een fout opgetreden bij het laden van het leaderboard</div>');
     }
 }
 
