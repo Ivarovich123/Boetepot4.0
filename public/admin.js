@@ -28,6 +28,23 @@ $('#theme-toggle').click(() => {
     setTheme(!document.documentElement.classList.contains('dark'));
 });
 
+// Tab functionality
+function switchTab(tabId) {
+    // Store active tab in localStorage
+    localStorage.setItem('activeAdminTab', tabId);
+    
+    // Remove active class from all tabs and hide all content
+    $('#tab-boetes, #tab-beheer').removeClass('tab-active');
+    $('#content-boetes, #content-beheer').addClass('hidden');
+    
+    // Add active class to selected tab and show content
+    $(`#tab-${tabId}`).addClass('tab-active');
+    $(`#content-${tabId}`).removeClass('hidden');
+    
+    // Re-initialize Select2 after tab switch to fix any display issues
+    setTimeout(initializeSelect2, 50);
+}
+
 // Format currency
 function formatCurrency(amount) {
     if (typeof amount !== 'number' || isNaN(amount)) {
@@ -166,9 +183,13 @@ function updateSelect2Theme(isDark) {
 async function fetchAPI(endpoint, options = {}) {
     try {
         toggleLoading(true);
-        console.log(`[API] Fetching ${API_BASE_URL}${endpoint}...`);
         
-        const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        // Make sure endpoint starts with a slash for consistency
+        const path = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+        
+        console.log(`[API] Fetching ${API_BASE_URL}${path}...`);
+        
+        const response = await fetch(`${API_BASE_URL}${path}`, {
             ...options,
             headers: {
                 'Content-Type': 'application/json',
@@ -205,8 +226,13 @@ async function fetchAPI(endpoint, options = {}) {
 // Load data
 async function loadData() {
     try {
+        console.log('[DEBUG] Starting loadData() function');
+        console.log('[DEBUG] API_BASE_URL =', API_BASE_URL);
+        
         // Load players
+        console.log('[DEBUG] Fetching players...');
         const players = await fetchAPI('/players');
+        console.log('[DEBUG] Players loaded:', players);
         
         $('#playerSelect').empty().append('<option value="">Selecteer een speler</option>');
         if (Array.isArray(players)) {
@@ -216,7 +242,9 @@ async function loadData() {
         }
         
         // Load reasons
+        console.log('[DEBUG] Fetching reasons...');
         const reasons = await fetchAPI('/reasons');
+        console.log('[DEBUG] Reasons loaded:', reasons);
         
         $('#reasonSelect').empty().append('<option value="">Selecteer een reden</option>');
         if (Array.isArray(reasons)) {
@@ -226,7 +254,9 @@ async function loadData() {
         }
         
         // Load recent fines
+        console.log('[DEBUG] Fetching recent fines...');
         const fines = await fetchAPI('/recent-fines');
+        console.log('[DEBUG] Recent fines loaded:', fines);
         
         // Update recent fines display
         $('#recentFines').html(
@@ -245,10 +275,12 @@ async function loadData() {
         }
         
         // Initialize Select2
+        console.log('[DEBUG] Initializing Select2...');
         initializeSelect2();
+        console.log('[DEBUG] loadData() completed successfully');
         
     } catch (error) {
-        console.error('Error loading data:', error);
+        console.error('[DEBUG] Error in loadData():', error);
         showToast('Er is een fout opgetreden bij het laden van de gegevens', 'error');
     }
 }
@@ -398,5 +430,19 @@ $('#resetButton').on('click', async function() {
 
 // Initialize
 $(document).ready(function() {
+    // Set up tab switching
+    $('#tab-boetes').on('click', function() {
+        switchTab('boetes');
+    });
+    
+    $('#tab-beheer').on('click', function() {
+        switchTab('beheer');
+    });
+    
+    // Load active tab from localStorage or default to 'boetes'
+    const activeTab = localStorage.getItem('activeAdminTab') || 'boetes';
+    switchTab(activeTab);
+    
+    // Load data
     loadData();
 }); 
