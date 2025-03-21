@@ -95,20 +95,20 @@ function formatCurrency(amount) {
 
 // Format date
 function formatDate(dateString) {
-    if (!dateString) return 'Onbekend';
-    try {
-        const date = new Date(dateString);
-        if (isNaN(date.getTime())) return 'Ongeldige datum';
-        
+  if (!dateString) return 'Onbekend';
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return 'Ongeldige datum';
+    
         return new Intl.DateTimeFormat('nl-NL', {
             year: 'numeric',
             month: 'long',
             day: 'numeric'
         }).format(date);
-    } catch (error) {
-        console.error('Error formatting date:', error);
-        return 'Ongeldige datum';
-    }
+  } catch (error) {
+    console.error('Error formatting date:', error);
+    return 'Ongeldige datum';
+  }
 }
 
 // Show/hide loading spinner
@@ -140,7 +140,7 @@ function showToast(message, type = 'success') {
 }
 
 // Create a card for a fine
-function createFineCard(fine) {
+function createFineCard(fine, canDelete = true) {
     if (!fine) {
         console.error('[DEBUG] createFineCard called with null or undefined fine');
         return '';
@@ -161,8 +161,19 @@ function createFineCard(fine) {
             date: formattedDate
         });
         
+        let deleteButton = '';
+        if (canDelete) {
+            deleteButton = `
+                <button class="delete-fine-btn absolute top-2 right-2 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 p-1.5 rounded-full hover:bg-red-200 dark:hover:bg-red-800/50 transition-colors" 
+                        data-id="${fine.id}" data-name="${playerName}" aria-label="Verwijder boete">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
+        }
+        
         return `
-            <div class="bg-gray-50 dark:bg-gray-900 rounded-xl p-4 space-y-3">
+            <div class="fine-card bg-gray-50 dark:bg-gray-900 rounded-xl p-4 space-y-3 relative ${canDelete ? 'pr-12' : ''}">
+                ${deleteButton}
                 <div class="flex items-center justify-between">
                     <div class="font-semibold">${playerName}</div>
                     <div class="text-lg font-bold text-blue-600 dark:text-blue-500">${formattedAmount}</div>
@@ -257,17 +268,6 @@ function initializeSelect2() {
         });
         console.log('[DEBUG] reasonSelect initialized');
         
-        // Initialize fine select
-        console.log('[DEBUG] Initializing fineSelect...');
-        $('#fineSelect').select2({
-            theme: 'default',
-            placeholder: 'Selecteer een boete',
-            allowClear: true,
-            width: '100%',
-            dropdownParent: $('#fineSelect').parent()
-        });
-        console.log('[DEBUG] fineSelect initialized');
-        
         // Force display update
         setTimeout(() => {
             console.log('[DEBUG] Forcing display refresh...');
@@ -344,10 +344,10 @@ async function fetchAPI(endpoint, options = {}) {
         // Race between fetch and timeout
         const response = await Promise.race([
             fetch(url, {
-                ...options,
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...options.headers
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
                 },
                 signal: controller.signal
             }),
@@ -358,25 +358,25 @@ async function fetchAPI(endpoint, options = {}) {
         
         // Process the response data
         let data;
-        const contentType = response.headers.get('content-type');
-        
-        if (contentType && contentType.includes('application/json')) {
-            data = await response.json();
-        } else {
+    const contentType = response.headers.get('content-type');
+    
+    if (contentType && contentType.includes('application/json')) {
+      data = await response.json();
+    } else {
             data = await response.text();
             console.warn(`[API] Non-JSON response: ${data.substring(0, 100)}...`);
-        }
-        
+    }
+    
         // Handle error responses
-        if (!response.ok) {
-            console.error(`[API] Error response:`, data);
+    if (!response.ok) {
+      console.error(`[API] Error response:`, data);
             throw new Error(typeof data === 'object' && data.error ? data.error : `HTTP error! status: ${response.status}`);
-        }
-        
+    }
+    
         // Log success
         console.log(`[API] Response from ${path}:`, data);
-        return data;
-    } catch (error) {
+    return data;
+  } catch (error) {
         console.error(`[API] Error fetching ${endpoint}:`, error);
         console.error(`[DEBUG] Error details:`, { message: error.message, stack: error.stack });
         
@@ -394,7 +394,7 @@ async function fetchAPI(endpoint, options = {}) {
         if (endpoint.includes('players') || endpoint.includes('reasons') || endpoint.includes('fines')) {
             return [];
         }
-        throw error;
+    throw error;
     } finally {
         // Clear the timeout
         clearTimeout(timeoutId);
@@ -457,7 +457,7 @@ async function loadData() {
         // Update recent fines display
         console.log('[DEBUG] Updating recent fines display...');
         const finesContent = fines.length ? 
-            fines.map(fine => createFineCard(fine)).join('') :
+            fines.map(fine => createFineCard(fine, true)).join('') :
             '<div class="text-center py-4 text-gray-500">Geen recente boetes</div>';
         
         console.log('[DEBUG] Fines content generated:', fines.length ? `${fines.length} fine cards` : 'Empty state message');
@@ -465,26 +465,16 @@ async function loadData() {
         console.log('[DEBUG] Recent fines display updated');
         console.log('[DEBUG] recentFines HTML:', $('#recentFines').html());
         
-        // Update fine select for deletion
-        console.log('[DEBUG] Updating fine select dropdown...');
-        $('#fineSelect').empty().append('<option value="">Selecteer een boete</option>');
-        if (Array.isArray(fines)) {
-            fines.forEach(fine => {
-                const label = `${fine.player_name || 'Onbekend'} - ${fine.reason_description || 'Onbekend'} - ${formatCurrency(fine.amount)}`;
-                $('#fineSelect').append(`<option value="${fine.id}">${label}</option>`);
-            });
-            console.log('[DEBUG] Added', fines.length, 'fines to deletion dropdown');
-            console.log('[DEBUG] fineSelect HTML:', $('#fineSelect').html());
-        } else {
-            console.error('[DEBUG] Expected fines to be an array but got:', typeof fines);
-        }
+        // Set up delete buttons
+        console.log('[DEBUG] Setting up delete buttons for recent fines');
+        $('.delete-fine-btn').off('click').on('click', handleFineDelete);
+        console.log('[DEBUG] Found', $('.delete-fine-btn').length, 'delete buttons');
         
         // Check DOM visibility
         console.log('[DEBUG] DOM visibility checks:');
         console.log('- Player form visible:', $('#playerSelect').is(':visible'));
         console.log('- Reason form visible:', $('#reasonSelect').is(':visible'));
         console.log('- Recent fines visible:', $('#recentFines').is(':visible'));
-        console.log('- Fine select visible:', $('#fineSelect').is(':visible'));
         console.log('- Content boetes visible:', $('#content-boetes').is(':visible'));
         console.log('- Content beheer visible:', $('#content-beheer').is(':visible'));
         
@@ -527,7 +517,7 @@ $('#addFineForm').on('submit', async function(e) {
     
     if (!playerId || !reasonId || isNaN(amount)) {
         showToast('Vul alle velden correct in', 'error');
-        return;
+      return;
     }
     
     try {
@@ -546,7 +536,7 @@ $('#addFineForm').on('submit', async function(e) {
         $('#reasonSelect').val('').trigger('change');
         await loadData();
         
-    } catch (error) {
+  } catch (error) {
         console.error('Error adding fine:', error);
     }
 });
@@ -559,7 +549,7 @@ $('#addPlayerForm').on('submit', async function(e) {
     
     if (!name) {
         showToast('Vul een naam in', 'error');
-        return;
+      return;
     }
     
     try {
@@ -572,7 +562,7 @@ $('#addPlayerForm').on('submit', async function(e) {
         this.reset();
         await loadData();
         
-    } catch (error) {
+  } catch (error) {
         console.error('Error adding player:', error);
     }
 });
@@ -585,7 +575,7 @@ $('#addReasonForm').on('submit', async function(e) {
     
     if (!description) {
         showToast('Vul een beschrijving in', 'error');
-        return;
+      return;
     }
     
     try {
@@ -603,36 +593,6 @@ $('#addReasonForm').on('submit', async function(e) {
     }
 });
 
-// Delete fine
-$('#deleteFineForm').on('submit', async function(e) {
-    e.preventDefault();
-    
-    const fineId = $('#fineSelect').val();
-    
-    if (!fineId) {
-        showToast('Selecteer een boete om te verwijderen', 'error');
-        return;
-    }
-    
-    if (!confirm('Weet je zeker dat je deze boete wilt verwijderen?')) {
-        return;
-    }
-    
-    try {
-        await fetchAPI(`/fines/${fineId}`, {
-            method: 'DELETE'
-        });
-        
-        showToast('Boete succesvol verwijderd');
-        this.reset();
-        $('#fineSelect').val('').trigger('change');
-        await loadData();
-        
-    } catch (error) {
-        console.error('Error deleting fine:', error);
-    }
-});
-
 // Reset data
 $('#resetButton').on('click', async function() {
     if (!confirm('WAARSCHUWING: Dit zal ALLE boetes verwijderen. Deze actie kan niet ongedaan worden gemaakt! Weet je zeker dat je wilt doorgaan?')) {
@@ -642,10 +602,10 @@ $('#resetButton').on('click', async function() {
     const confirmation = prompt('Typ "RESET" om te bevestigen:');
     if (confirmation !== 'RESET') {
         showToast('Reset geannuleerd', 'error');
-        return;
-    }
-    
-    try {
+    return;
+  }
+  
+  try {
         await fetchAPI('/reset', {
             method: 'POST'
         });
@@ -653,7 +613,7 @@ $('#resetButton').on('click', async function() {
         showToast('Alle gegevens zijn gereset');
         await loadData();
         
-    } catch (error) {
+  } catch (error) {
         console.error('Error resetting data:', error);
     }
 });
@@ -667,7 +627,7 @@ function validateSelect2() {
     console.log(`[DEBUG] Found ${select2Count} Select2 containers`);
     
     // Check each Select2 element
-    ['#playerSelect', '#reasonSelect', '#fineSelect'].forEach(selector => {
+    ['#playerSelect', '#reasonSelect'].forEach(selector => {
         const $el = $(selector);
         const hasSelect2 = $el.hasClass('select2-hidden-accessible');
         
@@ -723,7 +683,7 @@ async function checkApiHealth() {
         
         document.getElementById('debug-status').innerHTML = `API Health Check Results:<br><pre>${resultStr}</pre>`;
         console.log('[DEBUG] Health check complete:', results);
-    } catch (error) {
+  } catch (error) {
         console.error('[DEBUG] Health check failed:', error);
         document.getElementById('debug-status').textContent = `Health check failed: ${error.message}`;
     }
@@ -734,7 +694,7 @@ function checkAndRepairDOM() {
     console.log('[DEBUG] Running DOM check and repair');
     
     // Check if all forms are properly initialized
-    const forms = ['addFineForm', 'addPlayerForm', 'addReasonForm', 'deleteFineForm'];
+    const forms = ['addFineForm', 'addPlayerForm', 'addReasonForm'];
     forms.forEach(formId => {
         const form = document.getElementById(formId);
         if (form) {
@@ -788,6 +748,9 @@ function checkAndRepairDOM() {
         }
     });
     
+    // Set up delete buttons
+    $('.delete-fine-btn').off('click').on('click', handleFineDelete);
+    
     // Check Select2 elements
     validateSelect2();
     
@@ -816,6 +779,40 @@ function checkAndRepairDOM() {
     document.getElementById('debug-status').textContent = 'DOM check completed: ' + new Date().toLocaleTimeString();
 }
 
+// Handle fine deletion directly from the card
+async function handleFineDelete(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const fineId = $(this).data('id');
+    const playerName = $(this).data('name');
+    
+    if (!fineId) {
+        showToast('Kan deze boete niet verwijderen: ongeldige ID', 'error');
+        return;
+    }
+    
+    if (!confirm(`Weet je zeker dat je de boete voor ${playerName} wilt verwijderen?`)) {
+        return;
+    }
+    
+    try {
+        console.log(`[DEBUG] Deleting fine with ID: ${fineId}`);
+        await fetchAPI(`/fines/${fineId}`, {
+            method: 'DELETE'
+        });
+        
+        showToast('Boete succesvol verwijderd');
+        
+        // Reload all data
+        loadData();
+        
+    } catch (error) {
+        console.error('[DEBUG] Error deleting fine:', error);
+        showToast('Fout bij verwijderen van boete', 'error');
+    }
+}
+
 // Initialize
 $(document).ready(function() {
     console.log('[DEBUG] Document ready event fired');
@@ -837,9 +834,9 @@ $(document).ready(function() {
     if (missingElements.length > 0) {
         console.error('[DEBUG] Missing DOM elements:', missingElements);
         showToast('Er is een fout opgetreden bij het laden van de pagina', 'error');
-        return;
-    }
-    
+    return;
+  }
+  
     console.log('[DEBUG] All required DOM elements found');
     
     // Make sure content is visible initially
@@ -907,5 +904,5 @@ $(document).ready(function() {
         const debugPanel = document.getElementById('fallback-debug');
         const existingBtn = debugPanel.querySelector('button');
         existingBtn.parentNode.insertBefore(repairBtn, existingBtn.nextSibling);
-    }
+  }
 }); 

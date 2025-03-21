@@ -17,9 +17,10 @@ function showToast(message, isError = false) {
   }
 
   const toast = document.createElement('div');
-  toast.className = `flex items-center p-4 mb-4 rounded-lg ${isError ? 'bg-red-600' : 'bg-green-600'} text-white`;
+  toast.className = `flex items-center p-4 mb-4 rounded-lg ${isError ? 'bg-red-600' : 'bg-green-600'} text-white shadow-md opacity-0 transition-opacity duration-300`;
+  toast.style.opacity = '0';
   toast.innerHTML = `
-    <i class="fas ${isError ? 'fa-exclamation-circle' : 'fa-check-circle'} mr-3"></i>
+    <i class="fas ${isError ? 'fa-exclamation-circle' : 'fa-check-circle'} mr-3 text-lg"></i>
     <span>${message}</span>
   `;
   
@@ -43,12 +44,11 @@ function formatDate(dateString) {
     const date = new Date(dateString);
     if (isNaN(date.getTime())) return 'Ongeldige datum';
     
-    const months = ['januari', 'februari', 'maart', 'april', 'mei', 'juni', 'juli', 'augustus', 'september', 'oktober', 'november', 'december'];
-    const day = date.getDate();
-    const month = months[date.getMonth()];
-    const year = date.getFullYear();
-    
-    return `${day} ${month} ${year}`;
+    return new Intl.DateTimeFormat('nl-NL', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    }).format(date);
   } catch (error) {
     console.error('Error formatting date:', error);
     return 'Ongeldige datum';
@@ -126,13 +126,47 @@ function updateSelect2Theme(isDark) {
   });
 }
 
+// Initialize Select2
+function initializeSelect2() {
+  if (!$.fn.select2) {
+    console.error('Select2 library not loaded');
+    return;
+  }
+  
+  try {
+    $('#playerSelect').select2({
+      theme: 'default',
+      placeholder: 'Selecteer een speler',
+      allowClear: true,
+      width: '100%'
+    });
+    
+    // Force Select2 display
+    setTimeout(() => {
+      $('.select2-container').css({
+        'display': 'block',
+        'position': 'relative',
+        'z-index': '1050'
+      });
+      
+      // Update theme
+      updateSelect2Theme(document.documentElement.classList.contains('dark'));
+    }, 100);
+  } catch (error) {
+    console.error('Error initializing Select2:', error);
+  }
+}
+
 // API Functions
 async function fetchAPI(endpoint, options = {}) {
   try {
     console.log(`[API] Fetching ${endpoint}...`);
     toggleLoading(true);
     
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    // Make sure endpoint starts with a slash for consistency
+    const path = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+    
+    const response = await fetch(`${API_BASE_URL}${path}`, {
       ...options,
       headers: {
         'Content-Type': 'application/json',
@@ -167,13 +201,57 @@ async function fetchAPI(endpoint, options = {}) {
   }
 }
 
+// Create a fine card for display
+function createFineCard(fine, canDelete = false) {
+  if (!fine) {
+    console.error('[DEBUG] createFineCard called with null or undefined fine');
+    return '';
+  }
+  
+  try {
+    const formattedAmount = formatCurrency(fine.amount);
+    const playerName = fine.player_name || 'Onbekend';
+    const reasonDesc = fine.reason_description || 'Onbekend';
+    const formattedDate = formatDate(fine.date);
+    
+    let deleteButton = '';
+    if (canDelete) {
+      deleteButton = `
+        <button class="delete-fine-btn absolute top-2 right-2 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 p-1.5 rounded-full hover:bg-red-200 dark:hover:bg-red-800/50 transition-colors" 
+                data-id="${fine.id}" aria-label="Verwijder boete">
+          <i class="fas fa-times"></i>
+        </button>
+      `;
+    }
+    
+    return `
+      <div class="fine-card bg-gray-50 dark:bg-gray-900 rounded-xl p-4 space-y-3 relative ${canDelete ? 'pr-12' : ''}">
+        ${deleteButton}
+        <div class="flex items-center justify-between">
+          <div class="font-semibold">${playerName}</div>
+          <div class="text-lg font-bold text-blue-600 dark:text-blue-500">${formattedAmount}</div>
+        </div>
+        <div class="text-gray-600 dark:text-gray-400">${reasonDesc}</div>
+        <div class="text-sm text-gray-500 dark:text-gray-500">${formattedDate}</div>
+      </div>
+    `;
+  } catch (error) {
+    console.error('[DEBUG] Error in createFineCard:', error, 'for fine:', fine);
+    return `
+      <div class="bg-red-50 dark:bg-red-900/20 rounded-xl p-4 text-red-600 dark:text-red-400">
+        Er is een fout opgetreden bij het weergeven van deze boete
+      </div>
+    `;
+  }
+}
+
 async function loadTotalFines() {
   try {
     console.log('[Total] Loading total fines...');
     const data = await fetchAPI('/totaal-boetes');
     console.log('[Total] Received total:', data);
     
-    const totalElement = document.getElementById('totalAmount');
+    const totalElement = document.getElementById('totalAmount').querySelector('div');
     if (!totalElement) {
       console.error('[Total] Total amount element not found');
       return;
@@ -181,10 +259,16 @@ async function loadTotalFines() {
     
     const total = parseFloat(data.total || 0);
     totalElement.textContent = formatCurrency(total);
+    
+    // Update last updated
+    const lastUpdatedElement = document.getElementById('lastUpdated');
+    if (lastUpdatedElement) {
+      lastUpdatedElement.textContent = new Date().toLocaleDateString('nl-NL');
+    }
   } catch (error) {
     console.error('[Total] Error loading total:', error);
     
-    const totalElement = document.getElementById('totalAmount');
+    const totalElement = document.getElementById('totalAmount').querySelector('div');
     if (totalElement) {
       totalElement.textContent = '€0,00';
     }
@@ -207,16 +291,8 @@ async function loadRecentFines() {
       return;
     }
     
-    const cards = fines.map(fine => `
-      <div class="bg-gray-50 dark:bg-gray-900 rounded-xl p-4 space-y-3">
-        <div class="flex items-center justify-between">
-          <div class="font-semibold">${fine.player_name || 'Onbekend'}</div>
-          <div class="text-lg font-bold text-blue-600 dark:text-blue-500">${formatCurrency(fine.amount)}</div>
-        </div>
-        <div class="text-gray-600 dark:text-gray-400">${fine.reason_description || 'Onbekend'}</div>
-        <div class="text-sm text-gray-500 dark:text-gray-500">${formatDate(fine.date)}</div>
-      </div>
-    `).join('');
+    // Regular user doesn't see delete buttons
+    const cards = fines.map(fine => createFineCard(fine, false)).join('');
     
     recentFinesElement.innerHTML = cards;
   } catch (error) {
@@ -249,17 +325,16 @@ async function loadLeaderboard() {
       .sort((a, b) => (b.total || 0) - (a.total || 0))
       .slice(0, 5);
     
+    // Create cards for each player
     const cards = topPlayers.map((player, index) => `
-      <div class="bg-gray-50 dark:bg-gray-900 rounded-xl p-4">
-        <div class="flex items-center justify-between">
-          <div class="flex items-center space-x-4">
-            <div class="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-white font-semibold">
-              ${index + 1}
-            </div>
-            <div class="font-semibold">${player.name || 'Onbekend'}</div>
+      <div class="bg-gray-50 dark:bg-gray-900 rounded-xl p-4 flex items-center justify-between">
+        <div class="flex items-center">
+          <div class="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400 mr-3 font-bold">
+            ${index + 1}
           </div>
-          <div class="text-lg font-bold text-blue-600 dark:text-blue-500">${formatCurrency(player.total || 0)}</div>
+          <div class="font-semibold">${player.name || 'Onbekend'}</div>
         </div>
+        <div class="text-lg font-bold text-blue-600 dark:text-blue-500">${formatCurrency(player.total)}</div>
       </div>
     `).join('');
     
@@ -274,128 +349,116 @@ async function loadLeaderboard() {
 }
 
 async function loadPlayerHistory(playerId) {
+  if (!playerId) {
+    document.getElementById('playerHistoryEmpty').style.display = 'block';
+    document.getElementById('playerHistoryContent').style.display = 'none';
+    return;
+  }
+  
   try {
-    if (!playerId) {
-      const playerHistoryElement = document.getElementById('playerHistory');
-      if (playerHistoryElement) {
-        playerHistoryElement.innerHTML = '<div class="text-center py-4 text-gray-500">Selecteer een speler...</div>';
-      }
+    console.log(`[History] Loading player history for ID ${playerId}...`);
+    
+    // Get player info
+    const players = await fetchAPI('/players');
+    const player = players.find(p => p.id == playerId);
+    
+    if (!player) {
+      throw new Error('Speler niet gevonden');
+    }
+    
+    // Get player fines
+    const fines = await fetchAPI(`/player-fines/${playerId}`);
+    
+    document.getElementById('playerHistoryEmpty').style.display = 'none';
+    document.getElementById('playerHistoryContent').style.display = 'block';
+    
+    // Update player name
+    document.getElementById('playerHistoryName').textContent = player.name;
+    
+    // Calculate and display total
+    const total = fines.reduce((sum, fine) => sum + (fine.amount || 0), 0);
+    document.getElementById('playerHistoryTotal').textContent = formatCurrency(total);
+    
+    // Display fines
+    const finesElement = document.getElementById('playerHistoryFines');
+    
+    if (!Array.isArray(fines) || fines.length === 0) {
+      finesElement.innerHTML = '<div class="text-center py-4 text-gray-500">Geen boetes gevonden voor deze speler</div>';
       return;
     }
     
-    console.log(`[History] Loading player ${playerId} history...`);
-    const history = await fetchAPI(`/player-history/${playerId}`);
+    const cards = fines.map(fine => createFineCard(fine, false)).join('');
+    finesElement.innerHTML = cards;
     
-    const playerHistoryElement = document.getElementById('playerHistory');
-    if (!playerHistoryElement) {
-      console.error('[History] Element not found');
-      return;
-    }
-    
-    if (!Array.isArray(history) || history.length === 0) {
-      playerHistoryElement.innerHTML = '<div class="text-center py-4 text-gray-500">Geen boetes gevonden voor deze speler</div>';
-      return;
-    }
-    
-    const cards = history.map(fine => `
-      <div class="bg-gray-50 dark:bg-gray-900 rounded-xl p-4 space-y-3">
-        <div class="flex items-center justify-between">
-          <div class="text-gray-600 dark:text-gray-400">${fine.reason_description || 'Onbekend'}</div>
-          <div class="text-lg font-bold text-blue-600 dark:text-blue-500">${formatCurrency(fine.amount)}</div>
-        </div>
-        <div class="text-sm text-gray-500 dark:text-gray-500">${formatDate(fine.date)}</div>
-      </div>
-    `).join('');
-    
-    playerHistoryElement.innerHTML = cards;
   } catch (error) {
     console.error('[History] Error:', error);
-    const playerHistoryElement = document.getElementById('playerHistory');
-    if (playerHistoryElement) {
-      playerHistoryElement.innerHTML = '<div class="text-center py-4 text-gray-500">Fout bij laden spelergeschiedenis</div>';
-    }
+    document.getElementById('playerHistoryEmpty').style.display = 'block';
+    document.getElementById('playerHistoryContent').style.display = 'none';
+    showToast('Fout bij laden van speler historie', true);
   }
 }
 
-async function initializePlayerSelect() {
+async function loadPlayers() {
   try {
     console.log('[Players] Loading players for select...');
     const players = await fetchAPI('/players');
     
-    const playerSelectElement = document.getElementById('playerSelect');
-    if (!playerSelectElement) {
-      console.error('[Players] Element not found');
+    const playerSelect = document.getElementById('playerSelect');
+    if (!playerSelect) {
+      console.error('[Players] Select element not found');
       return;
     }
+    
+    // Clear existing options except the placeholder
+    playerSelect.innerHTML = '<option value="">Selecteer een speler</option>';
     
     if (!Array.isArray(players) || players.length === 0) {
-      playerSelectElement.innerHTML = '<option value="">Geen spelers gevonden</option>';
       return;
     }
     
-    // Add the empty option
-    let options = '<option value="">Selecteer een speler...</option>';
+    // Sort players by name
+    const sortedPlayers = [...players].sort((a, b) => a.name.localeCompare(b.name));
     
     // Add player options
-    options += players.map(player => 
-      `<option value="${player.id}">${player.name}</option>`
-    ).join('');
-    
-    // Update the select element
-    playerSelectElement.innerHTML = options;
-    
-    // Initialize Select2
-    $(playerSelectElement).select2({
-      placeholder: 'Selecteer een speler',
-      allowClear: true,
-      theme: 'default'
+    sortedPlayers.forEach(player => {
+      const option = document.createElement('option');
+      option.value = player.id;
+      option.textContent = player.name;
+      playerSelect.appendChild(option);
     });
-
-    // Update Select2 theme
-    updateSelect2Theme(document.documentElement.classList.contains('dark'));
     
-    // Setup event handler for player selection
-    $(playerSelectElement).on('change', function() {
-      const playerId = this.value;
-      loadPlayerHistory(playerId);
-      
-      // Update history title
-      const historyTitle = document.getElementById('playerHistoryTitle');
-      if (historyTitle) {
-        const playerName = playerId ? 
-          playerSelectElement.options[playerSelectElement.selectedIndex].text : 
-          'Speler';
-        historyTitle.innerHTML = `
-          <i class="fas fa-user-clock text-blue-600 mr-3"></i>
-          ${playerId ? playerName : 'Speler Historie'}
-        `;
-      }
-    });
-  } catch (error) {
-    console.error('[Players] Error initializing select:', error);
-    const playerSelectElement = document.getElementById('playerSelect');
-    if (playerSelectElement) {
-      playerSelectElement.innerHTML = '<option value="">Fout bij laden spelers</option>';
+    // Reinitialize Select2
+    if ($.fn.select2) {
+      $(playerSelect).trigger('change');
     }
+    
+  } catch (error) {
+    console.error('[Players] Error loading players:', error);
   }
 }
 
-// Initialize everything
-document.addEventListener('DOMContentLoaded', async () => {
-  // Set up theme toggle
-  initTheme();
-  document.getElementById('theme-toggle').addEventListener('click', toggleTheme);
+// Document ready
+$(document).ready(function() {
+  console.log('[App] Document ready, initializing...');
   
-  try {
-    // Load data in parallel
-    await Promise.all([
-      loadTotalFines(),
-      loadRecentFines(),
-      loadLeaderboard(),
-      initializePlayerSelect()
-    ]);
-  } catch (error) {
-    console.error('Error initializing app:', error);
-    showToast('Er zijn fouten opgetreden bij het laden van gegevens. Probeer de pagina te verversen.', true);
-  }
+  // Initialize theme
+  initTheme();
+  
+  // Set up theme toggle
+  $('#theme-toggle').on('click', toggleTheme);
+  
+  // Initialize Select2
+  initializeSelect2();
+  
+  // Load data
+  loadTotalFines();
+  loadRecentFines();
+  loadLeaderboard();
+  loadPlayers();
+  
+  // Set up player select change event
+  $('#playerSelect').on('change', function() {
+    const playerId = $(this).val();
+    loadPlayerHistory(playerId);
+  });
 }); 
