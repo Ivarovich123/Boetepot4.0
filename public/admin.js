@@ -43,55 +43,47 @@ function debug(message) {
 }
 
 // Theme handling
-function setTheme(isDark) {
-    debug(`Setting theme to ${isDark ? 'dark' : 'light'}`);
+function updateSelect2Theme(isDark) {
+    debug(`Updating Select2 theme to ${isDark ? 'dark' : 'light'}`);
     try {
-        if (isDark) {
-            document.documentElement.classList.add('dark');
-            localStorage.theme = 'dark';
-            
-            // Use direct DOM API instead of jQuery
-            const themeIcon = document.getElementById('theme-icon');
-            if (themeIcon) {
-                themeIcon.classList.remove('fa-moon');
-                themeIcon.classList.add('fa-sun');
-            }
-        } else {
-            document.documentElement.classList.remove('dark');
-            localStorage.theme = 'light';
-            
-            // Use direct DOM API instead of jQuery
-            const themeIcon = document.getElementById('theme-icon');
-            if (themeIcon) {
-                themeIcon.classList.remove('fa-sun');
-                themeIcon.classList.add('fa-moon');
-            }
-        }
+        $('.select2-container--default .select2-selection--single').css({
+            'background-color': isDark ? '#1f2937' : '#ffffff',
+            'border-color': isDark ? '#374151' : '#e5e7eb',
+            'color': isDark ? '#ffffff' : '#000000'
+        });
         
-        // Update Select2 dropdowns if they exist
-        if (typeof updateSelect2Theme === 'function') {
-            updateSelect2Theme(isDark);
-        } else {
-            debug('updateSelect2Theme function not available yet');
-        }
+        $('.select2-container--default .select2-selection--single .select2-selection__rendered').css({
+            'color': isDark ? '#ffffff' : '#000000'
+        });
         
-        debug(`Theme set to ${isDark ? 'dark' : 'light'} mode`);
+        $('.select2-dropdown').css({
+            'background-color': isDark ? '#1f2937' : '#ffffff',
+            'border-color': isDark ? '#374151' : '#e5e7eb'
+        });
+        
+        $('.select2-search--dropdown .select2-search__field').css({
+            'background-color': isDark ? '#111827' : '#ffffff',
+            'border-color': isDark ? '#374151' : '#e5e7eb',
+            'color': isDark ? '#ffffff' : '#000000'
+        });
+        
+        $('.select2-results__option').css('color', isDark ? '#ffffff' : '#000000');
     } catch (error) {
-        console.error('[DEBUG] Error setting theme:', error);
+        debug(`Error updating Select2 theme: ${error.message}`);
     }
 }
 
 // Initialize theme
 if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-    setTheme(true);
+    updateSelect2Theme(true);
 } else {
-    setTheme(false);
+    updateSelect2Theme(false);
 }
 
 // Direct click handler without jQuery method chaining
 document.getElementById('theme-toggle').addEventListener('click', function() {
     const isDark = document.documentElement.classList.contains('dark');
-    setTheme(!isDark);
+    updateSelect2Theme(!isDark);
     console.log('[DEBUG] Theme toggled to:', !isDark ? 'dark' : 'light');
 });
 
@@ -395,37 +387,6 @@ $(document).on('select2:open', function() {
         $('.select2-search__field:visible').focus();
     }, 100);
 });
-
-// Update Select2 theme
-function updateSelect2Theme(isDark) {
-    $('.select2-container--default .select2-selection--single').css({
-        'background-color': isDark ? 'rgb(17, 24, 39)' : 'white',
-        'border-color': isDark ? 'rgb(55, 65, 81)' : 'rgb(209, 213, 219)',
-        'color': isDark ? 'white' : 'inherit'
-    });
-    
-    $('.select2-container--default .select2-selection--single .select2-selection__rendered').css({
-        'color': isDark ? 'white' : 'inherit'
-    });
-    
-    $('.select2-container--default .select2-dropdown').css({
-        'background-color': isDark ? 'rgb(17, 24, 39)' : 'white',
-        'border-color': isDark ? 'rgb(55, 65, 81)' : 'rgb(209, 213, 219)'
-    });
-    
-    $('.select2-container--default .select2-results__option').css({
-        'color': isDark ? 'white' : 'inherit'
-    });
-    
-    $('.select2-container--default .select2-search__field').css({
-        'background-color': isDark ? 'rgb(17, 24, 39)' : 'white',
-        'color': isDark ? 'white' : 'inherit'
-    });
-    
-    // Ensure dropdowns appear above other elements
-    $('.select2-dropdown').css('z-index', '9999');
-    $('.select2-container').css('z-index', '1051');
-}
 
 // API Functions
 async function fetchAPI(endpoint, options = {}) {

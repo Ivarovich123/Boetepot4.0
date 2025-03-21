@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="nl" class="dark">
+<html lang="nl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -16,6 +16,9 @@
     
     <!-- jQuery -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    
+    <!-- Auth System -->
+    <script src="auth.js"></script>
 
     <style>
         body {
@@ -203,242 +206,90 @@
         }
     </style>
 </head>
-<body class="flex flex-col justify-center items-center px-4 py-10">
-    <!-- Theme Toggle -->
-    <div id="themeToggle" class="theme-toggle">
-        <i id="themeIcon" class="fas fa-moon text-xl"></i>
-    </div>
-    
-    <!-- Toast Container -->
-    <div id="toastContainer"></div>
-    
-    <div class="login-container">
-        <!-- Logo Section -->
-        <div class="logo-container">
-            <div class="logo">
-                <img src="asc-logo.svg" 
-                     alt="ASC Dalfsen Logo" 
-                     onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 200 200\'><rect width=\'200\' height=\'200\' fill=\'%234f0e9e\'/><text x=\'50%\' y=\'50%\' font-size=\'32\' text-anchor=\'middle\' fill=\'white\' font-family=\'Arial,sans-serif\' dominant-baseline=\'middle\'>ASC</text></svg>'">
+<body class="flex items-center justify-center p-4">
+    <div class="login-container bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8">
+        <div class="text-center mb-8">
+            <h1 class="text-2xl font-bold text-gray-900 dark:text-white mb-2">Admin Login</h1>
+            <p class="text-gray-600 dark:text-gray-400">Log in om de boetepot te beheren</p>
+        </div>
+        
+        <form id="loginForm" class="space-y-6">
+            <div>
+                <label for="password" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Wachtwoord</label>
+                <div class="relative">
+                    <input type="password" id="password" 
+                           class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 
+                                  bg-white dark:bg-gray-900 text-gray-900 dark:text-white 
+                                  focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                           placeholder="Voer het wachtwoord in" required>
+                </div>
             </div>
-        </div>
-        
-        <!-- Title -->
-        <h1 class="text-3xl font-bold text-center mb-2 text-purple-900 dark:text-purple-300">ASC Dalfsen</h1>
-        <h2 class="text-xl text-center mb-8 text-gray-600 dark:text-gray-400">Boetepot Administratie</h2>
-        
-        <!-- Login Card -->
-        <div class="login-card p-8">
-            <h3 class="text-2xl font-bold mb-6 text-center">Inloggen</h3>
             
-            <form id="loginForm" class="space-y-6">
-                <!-- Password Field -->
-                <div>
-                    <label for="password" class="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">Wachtwoord</label>
-                    <div class="relative">
-                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500 dark:text-gray-400">
-                            <i class="fas fa-lock"></i>
-                        </span>
-                        <input type="password" id="password" class="form-input w-full py-3 pl-10 pr-10 rounded-xl shadow-sm" 
-                               placeholder="Wachtwoord" required autofocus>
-                        <button type="button" id="togglePassword" class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 dark:text-gray-400">
-                            <i class="fas fa-eye"></i>
-                        </button>
-                    </div>
-                </div>
-                
-                <!-- Login Button -->
-                <button type="submit" class="login-btn w-full text-white font-medium py-3 px-4 rounded-xl transition-colors shadow-md flex justify-center items-center">
-                    <i class="fas fa-sign-in-alt mr-2"></i>
-                    Inloggen
-                </button>
-                
-                <!-- Back to Home -->
-                <div class="text-center mt-4">
-                    <a href="index.html" class="text-sm text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300 transition-colors">
-                        <i class="fas fa-arrow-left mr-1"></i> Terug naar Boetepot
-                    </a>
-                </div>
-            </form>
-        </div>
+            <button type="submit" 
+                    class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 
+                           rounded-xl transition-colors flex items-center justify-center">
+                <i class="fas fa-sign-in-alt mr-2"></i>
+                Inloggen
+            </button>
+        </form>
         
-        <!-- Footer -->
-        <p class="text-center mt-8 text-sm text-gray-500 dark:text-gray-400">
-            © <span id="year"></span> ASC Dalfsen Boetepot
-        </p>
+        <div class="mt-6 flex items-center justify-between">
+            <a href="index.html" class="text-blue-600 dark:text-blue-500 hover:underline flex items-center">
+                <i class="fas fa-arrow-left mr-2"></i>
+                Terug naar home
+            </a>
+            <button id="theme-toggle" class="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                <i id="theme-icon" class="fas fa-moon text-xl"></i>
+            </button>
+        </div>
     </div>
     
-    <!-- Animated Wave Background -->
-    <div class="wave-container">
-        <div class="wave"></div>
-        <div class="wave"></div>
-        <div class="wave"></div>
-    </div>
+    <!-- Toast Messages -->
+    <div id="toastContainer" class="fixed top-4 right-4 z-50 max-w-xs w-full"></div>
     
     <script>
-        // Set current year in footer
-        document.getElementById('year').textContent = new Date().getFullYear();
+        // Initialize theme
+        AUTH.applyTheme();
         
-        // Debug logging
-        const DEBUG = true;
-        function debug(message) {
-            if (DEBUG) {
-                console.log(`[DEBUG] ${message}`);
-            }
-        }
-        
-        debug('Login page script initialized');
-        
-        // Theme handling
-        function setTheme(isDark) {
-            debug(`Setting theme to ${isDark ? 'dark' : 'light'}`);
-            if (isDark) {
-                document.documentElement.classList.add('dark');
-                localStorage.theme = 'dark';
-                document.getElementById('themeIcon').classList.remove('fa-moon');
-                document.getElementById('themeIcon').classList.add('fa-sun');
-            } else {
-                document.documentElement.classList.remove('dark');
-                localStorage.theme = 'light';
-                document.getElementById('themeIcon').classList.remove('fa-sun');
-                document.getElementById('themeIcon').classList.add('fa-moon');
-            }
-            debug('Theme applied');
-        }
-        
-        // Initialize theme based on localStorage or system preference
-        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-            setTheme(true);
-        } else {
-            setTheme(false);
-        }
-        
-        // Theme toggle button
-        document.getElementById('themeToggle').addEventListener('click', function() {
-            const isDark = document.documentElement.classList.contains('dark');
-            setTheme(!isDark);
-            debug(`Theme toggled to: ${!isDark ? 'dark' : 'light'}`);
-        });
-        
-        // Show/hide password
-        $('#togglePassword').click(function() {
-            const passwordInput = document.getElementById('password');
-            const icon = $(this).find('i');
-            
-            if (passwordInput.type === 'password') {
-                passwordInput.type = 'text';
-                icon.removeClass('fa-eye').addClass('fa-eye-slash');
-            } else {
-                passwordInput.type = 'password';
-                icon.removeClass('fa-eye-slash').addClass('fa-eye');
-            }
-        });
+        // Theme toggle
+        $('#theme-toggle').on('click', () => AUTH.toggleTheme());
         
         // Show toast message
         function showToast(message, type = 'success') {
             const toast = $(`
-                <div class="toast ${type}">
-                    <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'} mr-3"></i>
+                <div class="bg-${type === 'success' ? 'green' : 'red'}-500 text-white px-4 py-3 rounded-lg shadow-lg mb-4 flex items-center justify-between">
                     <span>${message}</span>
+                    <button class="ml-4 focus:outline-none">
+                        <i class="fas fa-times"></i>
+                    </button>
                 </div>
-            `);
+            `).hide();
             
-            $('#toastContainer').append(toast);
+            $('#toastContainer').prepend(toast);
+            toast.slideDown();
             
-            setTimeout(() => {
-                toast.addClass('fadeOut');
-                setTimeout(() => toast.remove(), 500);
-            }, 3000);
+            toast.find('button').on('click', () => toast.slideUp(() => toast.remove()));
+            setTimeout(() => toast.slideUp(() => toast.remove()), 5000);
         }
         
-        // Handle form submission
-        $('#loginForm').submit(function(e) {
+        // Handle login
+        $('#loginForm').on('submit', function(e) {
             e.preventDefault();
-            debug('Login form submitted');
             
             const password = $('#password').val();
-            
-            // Simple authentication - only check password
-            if (password === 'Mandje123') {
-                debug('Password correct, creating auth token');
-                
-                try {
-                    // Clear any existing tokens first
-                    localStorage.removeItem('authToken');
-                    localStorage.removeItem('authExpires');
-                    
-                    // Set new authentication token in localStorage
-                    const token = btoa(`admin:${Date.now()}`);
-                    localStorage.setItem('authToken', token);
-                    localStorage.setItem('authExpires', Date.now() + (7 * 24 * 60 * 60 * 1000)); // 7 days
-                    
-                    // Verify token was set
-                    const verifyToken = localStorage.getItem('authToken');
-                    const verifyExpires = localStorage.getItem('authExpires');
-                    
-                    if (!verifyToken || !verifyExpires) {
-                        debug('ERROR: Failed to set auth tokens in localStorage');
-                        showToast('Er is een fout opgetreden bij het inloggen. Probeer het opnieuw.', 'error');
-                        return;
-                    }
-                    
-                    debug('Auth tokens set successfully, preparing to redirect');
-                    showToast('Login succesvol! Doorsturen naar admin panel...');
-                    
-                    // Redirect to admin panel after a short delay using relative URL
-                    debug('Will redirect to admin.html');
-                    
-                    setTimeout(() => {
-                        window.location.href = 'admin.html';
-                    }, 1500);
-                    
-                } catch (error) {
-                    debug(`Error during login: ${error.message}`);
-                    showToast('Er is een fout opgetreden bij het inloggen', 'error');
-                }
+            if (AUTH.setAuth(password)) {
+                showToast('Login succesvol! Doorsturen naar admin panel...');
+                setTimeout(() => window.location.href = 'admin.html', 1500);
             } else {
-                debug('Invalid password');
                 showToast('Ongeldig wachtwoord', 'error');
                 $('#password').val('').focus();
             }
         });
         
         // Check if already logged in
-        function checkAuth() {
-            debug('Running authentication check');
-            
-            try {
-                const token = localStorage.getItem('authToken');
-                const expires = localStorage.getItem('authExpires');
-                
-                debug(`Auth token: ${token ? 'exists' : 'missing'}`);
-                debug(`Expires: ${expires ? new Date(parseInt(expires)).toLocaleString() : 'missing'}`);
-                
-                // Simple check for valid authentication
-                if (token && expires && parseInt(expires) > Date.now()) {
-                    debug('Already authenticated, redirecting to admin panel');
-                    window.location.href = 'admin.html'; // Use relative URL
-                } else {
-                    debug('Not authenticated or token expired');
-                    // Clear any expired tokens
-                    if (token && expires && parseInt(expires) <= Date.now()) {
-                        debug('Clearing expired token');
-                        localStorage.removeItem('authToken');
-                        localStorage.removeItem('authExpires');
-                    }
-                }
-            } catch (error) {
-                debug(`Error in checkAuth: ${error.message}`);
-                // Clear any potentially corrupt auth data
-                localStorage.removeItem('authToken');
-                localStorage.removeItem('authExpires');
-            }
+        if (AUTH.isAuthenticated()) {
+            window.location.href = 'admin.html';
         }
-        
-        // On page load
-        $(document).ready(function() {
-            // Add a small delay to ensure consistent behavior
-            setTimeout(checkAuth, 100);
-        });
     </script>
 </body>
 </html> 

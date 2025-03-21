@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="nl" class="dark">
+<html lang="nl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -22,6 +22,9 @@
     
     <!-- Select2 JS -->
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    
+    <!-- Auth System -->
+    <script src="auth.js"></script>
 
     <style>
         body {
@@ -111,6 +114,15 @@
     </style>
 </head>
 <body class="text-gray-800 dark:text-white min-h-screen pb-20">
+    <!-- Check Authentication -->
+    <script>
+        if (!AUTH.isAuthenticated()) {
+            window.location.href = 'login.html';
+        }
+        // Initialize theme
+        AUTH.applyTheme();
+    </script>
+    
     <!-- Navbar -->
     <header class="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 backdrop-filter backdrop-blur-lg bg-opacity-90 dark:bg-opacity-90">
         <nav class="px-4 h-16">
@@ -307,6 +319,11 @@
             </button>
         </div>
     </div>
+    
+    <script>
+        // Theme toggle
+        $('#theme-toggle').on('click', () => AUTH.toggleTheme());
+    </script>
     
     <script src="admin.js"></script>
 </body>
