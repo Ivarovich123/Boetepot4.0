@@ -987,4 +987,58 @@ function setupActions() {
         setupDefaultData();
         localStorage.setItem('setup_complete', 'true');
     }
+}
+
+function renderRecentFines(fines) {
+    const container = document.getElementById('recentFines');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    if (!fines || fines.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-8 text-gray-500 dark:text-gray-400">
+                <i class="fas fa-info-circle text-2xl mb-3"></i>
+                <p>Geen recente boetes gevonden.</p>
+            </div>
+        `;
+        return;
+    }
+    
+    // Sort fines by date (newest first)
+    fines.sort((a, b) => new Date(b.created_at || b.date) - new Date(a.created_at || a.date));
+    
+    // Take only the most recent 5 fines
+    const recentFines = fines.slice(0, 5);
+    
+    recentFines.forEach(fine => {
+        const card = document.createElement('div');
+        card.className = 'fine-card bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-200 dark:border-gray-700';
+        
+        card.innerHTML = `
+            <div class="flex justify-between items-center">
+                <div>
+                    <h3 class="font-semibold text-base">${fine.player_name}</h3>
+                    <p class="text-gray-600 dark:text-gray-300 text-sm">${fine.reason_description}</p>
+                    <p class="text-gray-500 dark:text-gray-400 text-xs mt-1">${formatDate(fine.created_at || fine.date)}</p>
+                </div>
+                <div class="text-blue-600 dark:text-blue-400 font-bold">${formatCurrency(fine.amount)}</div>
+            </div>
+        `;
+        
+        container.appendChild(card);
+    });
+}
+
+function updateTotalAmount(fines) {
+    const totalContainer = document.getElementById('totalAmount');
+    if (!totalContainer) return;
+    
+    let total = 0;
+    if (fines && fines.length > 0) {
+        total = fines.reduce((sum, fine) => sum + (parseFloat(fine.amount) || 0), 0);
+    }
+    
+    const formattedTotal = formatCurrency(total);
+    totalContainer.querySelector('span').textContent = formattedTotal;
 } 

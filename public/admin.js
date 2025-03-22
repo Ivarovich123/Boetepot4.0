@@ -40,12 +40,12 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     function enableDarkMode() {
-        document.documentElement.classList.add('dark');
+            document.documentElement.classList.add('dark');
         document.body.classList.add('dark');
-        if (themeIcon) {
-            themeIcon.classList.remove('fa-moon');
-            themeIcon.classList.add('fa-sun');
-        }
+            if (themeIcon) {
+                themeIcon.classList.remove('fa-moon');
+                themeIcon.classList.add('fa-sun');
+            }
         updateSelect2Theme(true);
         debug('Dark mode enabled');
     }
@@ -53,10 +53,10 @@ document.addEventListener('DOMContentLoaded', function() {
     function disableDarkMode() {
         document.documentElement.classList.remove('dark');
         document.body.classList.remove('dark');
-        if (themeIcon) {
-            themeIcon.classList.remove('fa-sun');
-            themeIcon.classList.add('fa-moon');
-        }
+            if (themeIcon) {
+                themeIcon.classList.remove('fa-sun');
+                themeIcon.classList.add('fa-moon');
+            }
         updateSelect2Theme(false);
         debug('Dark mode disabled');
     }
@@ -72,7 +72,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         selection.style.backgroundColor = 'var(--input-bg)';
                         selection.style.borderColor = 'var(--input-border)';
                         selection.style.color = 'var(--input-text)';
-                    } else {
+        } else {
                         selection.style.backgroundColor = '';
                         selection.style.borderColor = '';
                         selection.style.color = '';
@@ -93,32 +93,32 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    function formatCurrency(amount) {
-        return new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(amount);
-    }
-    
-    function formatDate(dateString) {
-        if (!dateString) return 'Onbekend';
-        try {
-            const date = new Date(dateString);
-            return new Intl.DateTimeFormat('nl-NL', { 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric'
-            }).format(date);
-        } catch (error) {
-            console.error('Error formatting date:', error);
-            return 'Ongeldige datum';
-        }
-    }
-    
+function formatCurrency(amount) {
+    return new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(amount);
+}
+
+function formatDate(dateString) {
+  if (!dateString) return 'Onbekend';
+  try {
+    const date = new Date(dateString);
+        return new Intl.DateTimeFormat('nl-NL', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        }).format(date);
+  } catch (error) {
+    console.error('Error formatting date:', error);
+    return 'Ongeldige datum';
+  }
+}
+
     function showLoading(show = true) {
         const spinner = document.getElementById('loadingSpinner');
         if (spinner) {
-            if (show) {
+    if (show) {
                 spinner.classList.remove('hidden');
                 spinner.classList.add('flex');
-            } else {
+    } else {
                 spinner.classList.remove('flex');
                 spinner.classList.add('hidden');
             }
@@ -147,14 +147,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 <span>${message}</span>
             </div>
             <button class="ml-4 text-white focus:outline-none">
-                <i class="fas fa-times"></i>
-            </button>
-        `;
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
         
         toastContainer.appendChild(toast);
         
         // Animation
-        setTimeout(() => {
+  setTimeout(() => {
             toast.classList.remove('translate-x-full', 'opacity-0');
         }, 10);
         
@@ -179,38 +179,32 @@ document.addEventListener('DOMContentLoaded', function() {
     // Tab functionality
     function setupTabs() {
         const tabBoetes = document.getElementById('tab-boetes');
-        const tabPlayers = document.getElementById('tab-players');
-        const tabReasons = document.getElementById('tab-reasons');
+        const tabBeheer = document.getElementById('tab-beheer');
         const finesTab = document.getElementById('finesTab');
-        const playersTab = document.getElementById('playersTab');
-        const reasonsTab = document.getElementById('reasonsTab');
+        const beheerTab = document.getElementById('beheerTab');
         
         // Check if elements exist
-        if (!tabBoetes || !tabPlayers || !tabReasons || !finesTab || !playersTab || !reasonsTab) {
+        if (!tabBoetes || !tabBeheer || !finesTab || !beheerTab) {
             debug('Tab elements missing!');
             return;
         }
         
         function activateTab(tabId) {
             // Reset all tabs
-            [tabBoetes, tabPlayers, tabReasons].forEach(tab => {
+            [tabBoetes, tabBeheer].forEach(tab => {
                 tab.classList.remove('tab-active');
             });
             
             // Hide all content
-            [finesTab, playersTab, reasonsTab].forEach(content => {
+            [finesTab, beheerTab].forEach(content => {
                 content.classList.add('hidden');
             });
             
             // Activate selected tab
-            if (tabId === 'players') {
-                tabPlayers.classList.add('tab-active');
-                playersTab.classList.remove('hidden');
-                localStorage.setItem('activeTab', 'players');
-            } else if (tabId === 'reasons') {
-                tabReasons.classList.add('tab-active');
-                reasonsTab.classList.remove('hidden');
-                localStorage.setItem('activeTab', 'reasons');
+            if (tabId === 'beheer') {
+                tabBeheer.classList.add('tab-active');
+                beheerTab.classList.remove('hidden');
+                localStorage.setItem('activeTab', 'beheer');
             } else {
                 // Default to fines tab
                 tabBoetes.classList.add('tab-active');
@@ -225,11 +219,10 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Add click event listeners
         tabBoetes.addEventListener('click', () => activateTab('boetes'));
-        tabPlayers.addEventListener('click', () => activateTab('players'));
-        tabReasons.addEventListener('click', () => activateTab('reasons'));
+        tabBeheer.addEventListener('click', () => activateTab('beheer'));
     }
     
-    // API & Data Functions - Simplified approach
+    // API & Data Functions - Improved approach with better error handling
     async function apiRequest(endpoint, method = 'GET', data = null) {
         try {
             const url = `${API_BASE_URL}${endpoint}`;
@@ -237,12 +230,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 method,
                 headers: {
                     'Content-Type': 'application/json'
-                }
+                },
+                body: data ? JSON.stringify(data) : null,
+                credentials: 'same-origin'
             };
-            
-            if (data && (method === 'POST' || method === 'PUT')) {
-                options.body = JSON.stringify(data);
-            }
             
             debug(`Making ${method} request to ${url}`);
             showLoading(true);
@@ -262,7 +253,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 throw new Error(errorMessage);
             }
             
-            return await response.json();
+            const data = await response.json();
+            return data;
         } catch (error) {
             debug(`API Error: ${error.message}`);
             showToast(`API Error: ${error.message}`, 'error');
@@ -302,7 +294,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const fines = await apiRequest('/fines');
             renderFinesList(fines);
             return fines;
-        } catch (error) {
+  } catch (error) {
             debug(`Failed to load fines: ${error.message}`);
             return [];
         }
@@ -316,9 +308,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 loadReasons(),
                 loadFines()
             ]);
-            debug('All data loaded successfully');
-        } catch (error) {
-            debug(`Error loading data: ${error.message}`);
+        debug('All data loaded successfully');
+  } catch (error) {
+        debug(`Error loading data: ${error.message}`);
             showToast('Er is een fout opgetreden bij het laden van gegevens', 'error');
         }
     }
@@ -371,7 +363,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Update Select2 to match theme
             updateSelect2Theme(document.documentElement.classList.contains('dark'));
-        } catch (error) {
+  } catch (error) {
             debug(`Error initializing Select2: ${error.message}`);
         }
     }
@@ -389,7 +381,7 @@ document.addEventListener('DOMContentLoaded', function() {
         select.appendChild(emptyOption);
         
         // Add reason options
-        reasons.forEach(reason => {
+            reasons.forEach(reason => {
             const option = document.createElement('option');
             option.value = reason.id;
             option.textContent = reason.description;
@@ -406,7 +398,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Update Select2 to match theme
             updateSelect2Theme(document.documentElement.classList.contains('dark'));
-        } catch (error) {
+    } catch (error) {
             debug(`Error initializing Select2: ${error.message}`);
         }
     }
@@ -424,9 +416,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     <p>Geen boetes gevonden.</p>
                 </div>
             `;
-            return;
-        }
-        
+      return;
+    }
+    
         // Sort fines by date (newest first)
         fines.sort((a, b) => new Date(b.created_at || b.date) - new Date(a.created_at || a.date));
         
@@ -443,11 +435,11 @@ document.addEventListener('DOMContentLoaded', function() {
             <div class="flex justify-between items-start">
                 <div>
                     <h3 class="font-semibold text-lg">${fine.player_name}</h3>
-                    <p class="text-gray-600 dark:text-gray-400">${fine.reason_description}</p>
-                    <p class="text-gray-500 dark:text-gray-500 text-sm mt-1">${formatDate(fine.created_at || fine.date)}</p>
+                    <p class="text-gray-600 dark:text-gray-300">${fine.reason_description}</p>
+                    <p class="text-gray-500 dark:text-gray-400 text-sm mt-1">${formatDate(fine.created_at || fine.date)}</p>
                 </div>
                 <div class="flex items-center">
-                    <span class="font-bold text-lg mr-4">${formatCurrency(fine.amount)}</span>
+                    <span class="font-bold text-lg mr-4 text-blue-600 dark:text-blue-400">${formatCurrency(fine.amount)}</span>
                     <button data-fine-id="${fine.id}" class="delete-fine-btn text-red-500 hover:text-red-700">
                         <i class="fas fa-trash"></i>
                     </button>
@@ -479,9 +471,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     <p>Geen spelers gevonden.</p>
                 </div>
             `;
-            return;
-        }
-        
+    return;
+  }
+  
         // Sort players by name
         players.sort((a, b) => a.name.localeCompare(b.name));
         
@@ -521,9 +513,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     <p>Geen redenen gevonden.</p>
                 </div>
             `;
-            return;
-        }
-        
+    return;
+  }
+  
         // Sort reasons by description
         reasons.sort((a, b) => a.description.localeCompare(b.description));
         
@@ -569,7 +561,7 @@ document.addEventListener('DOMContentLoaded', function() {
             showToast('Boete succesvol verwijderd!', 'success');
             await loadFines(); // Reload fines
             return true;
-        } catch (error) {
+    } catch (error) {
             debug(`Failed to delete fine: ${error.message}`);
             return false;
         }
@@ -583,8 +575,8 @@ document.addEventListener('DOMContentLoaded', function() {
             return true;
         } catch (error) {
             debug(`Failed to add player: ${error.message}`);
-            return false;
-        }
+        return false;
+    }
     }
     
     async function deletePlayer(id) {
@@ -592,7 +584,7 @@ document.addEventListener('DOMContentLoaded', function() {
             await apiRequest(`/players/${id}`, 'DELETE');
             showToast('Speler succesvol verwijderd!', 'success');
             await Promise.all([loadPlayers(), loadFines()]); // Reload players and fines
-            return true;
+    return true;
         } catch (error) {
             debug(`Failed to delete player: ${error.message}`);
             return false;
@@ -605,7 +597,7 @@ document.addEventListener('DOMContentLoaded', function() {
             showToast('Reden succesvol toegevoegd!', 'success');
             await loadReasons(); // Reload reasons
             return true;
-        } catch (error) {
+  } catch (error) {
             debug(`Failed to add reason: ${error.message}`);
             return false;
         }
@@ -617,7 +609,7 @@ document.addEventListener('DOMContentLoaded', function() {
             showToast('Reden succesvol verwijderd!', 'success');
             await Promise.all([loadReasons(), loadFines()]); // Reload reasons and fines
             return true;
-        } catch (error) {
+            } catch (error) {
             debug(`Failed to delete reason: ${error.message}`);
             return false;
         }
@@ -629,7 +621,7 @@ document.addEventListener('DOMContentLoaded', function() {
             showToast('Alle data succesvol gereset!', 'success');
             await loadAllData(); // Reload all data
             return true;
-        } catch (error) {
+  } catch (error) {
             debug(`Failed to reset data: ${error.message}`);
             return false;
         }
@@ -681,7 +673,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     try {
                         $('#playerSelect').val('').trigger('change');
                         $('#reasonSelect').val('').trigger('change');
-                    } catch (error) {
+  } catch (error) {
                         debug(`Error resetting Select2: ${error.message}`);
                     }
                 }
@@ -698,9 +690,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 if (!playerName) {
                     showToast('Voer een geldige naam in!', 'error');
-                    return;
-                }
-                
+        return;
+    }
+    
                 const success = await addPlayer({
                     name: playerName
                 });
@@ -722,9 +714,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 if (!reasonDescription) {
                     showToast('Voer een geldige beschrijving in!', 'error');
-                    return;
-                }
-                
+        return;
+    }
+    
                 const success = await addReason({
                     description: reasonDescription
                 });
@@ -769,6 +761,45 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
+    // Add bulk import form handler
+    document.getElementById('bulkImportForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const textarea = document.getElementById('bulkPlayerNames');
+        const names = textarea.value.split('\n')
+            .map(name => name.trim())
+            .filter(name => name.length > 0);
+
+        if (names.length === 0) {
+            showToast('Voer ten minste één naam in', 'error');
+            return;
+        }
+
+        if (names.length > 30) {
+            showToast('Maximaal 30 namen toegestaan', 'error');
+            return;
+        }
+
+        showLoadingSpinner();
+        let successCount = 0;
+        let errorCount = 0;
+
+        for (const name of names) {
+            try {
+                await addPlayer(name);
+                successCount++;
+                console.log(`[DEBUG] Successfully added player: ${name}`);
+            } catch (error) {
+                errorCount++;
+                console.log(`[DEBUG] Failed to add player: ${name}`, error);
+            }
+        }
+
+        hideLoadingSpinner();
+        showToast(`${successCount} spelers toegevoegd, ${errorCount} fouten`, successCount > 0 ? 'success' : 'error');
+        textarea.value = '';
+        await loadPlayers();
+    });
+    
     // Initialization
     function init() {
         debug('Initializing admin panel...');
@@ -791,3 +822,12 @@ document.addEventListener('DOMContentLoaded', function() {
     // Start the application
     init();
 }); 
+
+// Fix the loading spinner function
+function showLoadingSpinner() {
+    showLoading(true);
+}
+
+function hideLoadingSpinner() {
+    showLoading(false);
+} 
