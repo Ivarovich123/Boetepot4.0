@@ -16,6 +16,6 @@
     }
   ],
   "rewrites": [
-    { "source": "/api/:path*", "destination": "https://boetepot-api.vercel.app/api/:path*" }
+    { "source": "/api/:path*", "destination": "https://vfsdttmqrzcdokqaoofd.supabase.co/rest/v1/:path*" }
   ]
 } 

@@ -1,5 +1,6 @@
 // API Base URL - make sure this matches your backend setup
 const API_BASE_URL = '/api';  // Use relative path to avoid CORS issues
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZmc2R0dG1xcnpjZG9rcWFvb2ZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE2Nzc1MDA5NTEsImV4cCI6MTk5MzA3Njk1MX0.BYVqeqh-qwox4Os_DCzPXjtEM32U2FvaSU3VetOjTwY';
 const SERVER_URL = 'https://www.boetepot.cloud';
 
 // Debug setting
@@ -322,13 +323,12 @@ async function fetchAPI(endpoint, options = {}) {
         toggleLoading(true);
         
         // Ensure endpoint starts with slash
-        const path = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+        const path = endpoint.startsWith('/') ? endpoint.substring(1) : endpoint;
         
         // Try different URL formats
         const urls = [
-            `${API_BASE_URL}${path}`,
-            `${window.location.origin}/api${path}`,
-            `https://boetepot-api.vercel.app/api${path}`
+            `${API_BASE_URL}/${path}`,
+            `${window.location.origin}/api/${path}`
         ];
         
         debug(`Trying URLs: ${urls.join(', ')}`);
@@ -345,6 +345,8 @@ async function fetchAPI(endpoint, options = {}) {
                     headers: {
                         'Content-Type': 'application/json',
                         'Accept': 'application/json',
+                        'apikey': SUPABASE_KEY,
+                        'Authorization': `Bearer ${SUPABASE_KEY}`,
                         ...options.headers
                     },
                     mode: 'cors',

@@ -2,6 +2,7 @@
 document.addEventListener('DOMContentLoaded', function() {
     // Configuration
     const API_BASE_URL = '/api';  // Use relative path to work with API proxy
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZmc2R0dG1xcnpjZG9rcWFvb2ZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE2Nzc1MDA5NTEsImV4cCI6MTk5MzA3Njk1MX0.BYVqeqh-qwox4Os_DCzPXjtEM32U2FvaSU3VetOjTwY';
     
     // Debug flag - set to true for console logs
     const DEBUG = true;
@@ -225,11 +226,15 @@ function formatDate(dateString) {
     // API & Data Functions - Direct API connection without mock data
     async function apiRequest(endpoint, method = 'GET', data = null) {
         try {
-            const url = `${API_BASE_URL}${endpoint}`;
+            const path = endpoint.startsWith('/') ? endpoint.substring(1) : endpoint;
+            const url = `${API_BASE_URL}/${path}`;
             const options = {
                 method,
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'apikey': SUPABASE_KEY,
+                    'Authorization': `Bearer ${SUPABASE_KEY}`,
+                    'Prefer': 'return=representation'
                 },
                 mode: 'cors',
                 credentials: 'omit'  // No credentials for CORS
