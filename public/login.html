@@ -145,7 +145,7 @@
             // Check if already authenticated
             if (Auth && Auth.check()) {
                 console.log("User already authenticated, redirecting to admin page");
-                window.location.href = '/admin.html';
+                window.location.href = 'admin.html';
             }
         });
         
@@ -194,7 +194,7 @@
                     if (success) {
                         showToast('Login succesvol! Doorsturen naar admin panel...');
                         setTimeout(() => {
-                            window.location.href = '/admin.html';
+                            window.location.href = 'admin.html';
                         }, 1000);
                     } else {
                         showToast('Ongeldig wachtwoord', 'error');
