@@ -1,7 +1,7 @@
 // Simplified admin panel without login
 document.addEventListener('DOMContentLoaded', function() {
     // Configuration
-    const API_BASE_URL = '/api';
+    const API_BASE_URL = 'https://boetepot-api.vercel.app/api';
     
     // Debug flag - set to true for console logs
     const DEBUG = true;

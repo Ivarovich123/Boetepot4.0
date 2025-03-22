@@ -1,6 +1,5 @@
 // API Base URL - make sure this matches your backend setup
-// Try the direct API endpoint first, or use a proxy if needed
-const API_BASE_URL = window.location.hostname === 'localhost' ? 'http://localhost:3000/api' : '/api';
+const API_BASE_URL = 'https://boetepot-api.vercel.app/api';
 const SERVER_URL = 'https://boetepot.cloud';
 
 // Debug setting
@@ -238,50 +237,21 @@ function toggleTheme() {
     }
 }
 
-function setupTheme() {
-    // Get the theme toggle button
-    const themeToggle = document.getElementById('theme-toggle');
-    if (themeToggle) {
-        // Update the initial icon based on current theme
-        const isDark = document.documentElement.classList.contains('dark');
-        const themeIcon = document.getElementById('theme-icon');
-        if (themeIcon) {
-            if (isDark) {
-                themeIcon.classList.remove('fa-moon');
-                themeIcon.classList.add('fa-sun');
-            } else {
-                themeIcon.classList.remove('fa-sun');
-                themeIcon.classList.add('fa-moon');
-            }
-        }
-        
-        // Add click event listener to toggle theme
-        themeToggle.addEventListener('click', toggleTheme);
-    }
-}
-
-// Initialize theme
-function initTheme() {
-    if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-        setTheme(true);
-    } else {
-        setTheme(false);
-    }
-}
-
-// Set up theme toggle when document is ready
+// Fix the theme toggle setup
 $(document).ready(function() {
     // Initialize theme based on saved preference or system preference
-    if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-        setTheme(true);
+    const isDarkSaved = localStorage.theme === 'dark';
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    
+    if (isDarkSaved || (!localStorage.theme && prefersDark)) {
+        document.documentElement.classList.add('dark');
     } else {
-        setTheme(false);
+        document.documentElement.classList.remove('dark');
     }
     
     // Add click handler for theme toggle button
     $('#theme-toggle').on('click', function() {
-        const isDark = document.documentElement.classList.contains('dark');
-        setTheme(!isDark);
+        toggleTheme();
     });
 });
 
@@ -727,54 +697,29 @@ function setupDebugControls() {
     });
 }
 
-// Auto-initialize dark mode
-document.addEventListener('DOMContentLoaded', function() {
-    // Set up the app
-    setupTheme();
-    setupPlayerHistory();
-    loadData();
-    setupActions();
-});
-
-function initializeApp() {
-    setupTheme();
-    setupPlayerHistory();
-    loadData();
-    setupActions();
-}
-
-// Initialize
+// Fix the initialization function to use proper theme handling
 $(document).ready(function() {
-    debug('Document ready');
-    
     // Initialize the UI
     try {
-        // Check and fix dark mode
-        const prefersDark = localStorage.theme === 'dark' || 
-            (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
-        setTheme(prefersDark);
+        debug('Document ready');
+        
+        // Setup theme
+        setupTheme();
         
         // Enable local data by default
         localStorage.setItem('useLocalData', 'true');
         
-        // Initialize Select2
-        initializeSelect2();
-        
         // Setup debug controls
         setupDebugControls();
         
-        // Load data
-        loadTotalAmount();
-        loadRecentFines();
-        loadLeaderboard();
-        loadPlayers();
+        // Setup player history
+        setupPlayerHistory();
         
-        // Set up player history dropdown change event
-        $('#playerSelect').on('change', function() {
-            const playerId = $(this).val();
-            debug(`Player selection changed to: ${playerId}`);
-            loadPlayerHistory(playerId);
-        });
+        // Load data
+        loadData();
+        
+        // Setup other actions
+        setupActions();
         
         debug('Initialization complete');
     } catch (error) {
@@ -1002,4 +947,26 @@ function updateTotalAmount(fines) {
     
     const formattedTotal = formatCurrency(total);
     totalContainer.querySelector('span').textContent = formattedTotal;
+}
+
+function setupTheme() {
+    // Get the theme toggle button
+    const themeToggle = document.getElementById('theme-toggle');
+    if (themeToggle) {
+        // Update the initial icon based on current theme
+        const isDark = document.documentElement.classList.contains('dark');
+        const themeIcon = document.getElementById('theme-icon');
+        if (themeIcon) {
+            if (isDark) {
+                themeIcon.classList.remove('fa-moon');
+                themeIcon.classList.add('fa-sun');
+            } else {
+                themeIcon.classList.remove('fa-sun');
+                themeIcon.classList.add('fa-moon');
+            }
+        }
+        
+        // Add click event listener to toggle theme
+        themeToggle.addEventListener('click', toggleTheme);
+    }
 } 
