@@ -231,9 +231,12 @@ function formatDate(dateString) {
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: data ? JSON.stringify(data) : null,
                 credentials: 'same-origin'
             };
+            
+            if (data && (method === 'POST' || method === 'PUT')) {
+                options.body = JSON.stringify(data);
+            }
             
             debug(`Making ${method} request to ${url}`);
             showLoading(true);
@@ -253,8 +256,8 @@ function formatDate(dateString) {
                 throw new Error(errorMessage);
             }
             
-            const data = await response.json();
-            return data;
+            const responseData = await response.json();
+            return responseData;
         } catch (error) {
             debug(`API Error: ${error.message}`);
             showToast(`API Error: ${error.message}`, 'error');
@@ -762,43 +765,53 @@ function formatDate(dateString) {
     }
     
     // Add bulk import form handler
-    document.getElementById('bulkImportForm').addEventListener('submit', async function(e) {
-        e.preventDefault();
-        const textarea = document.getElementById('bulkPlayerNames');
-        const names = textarea.value.split('\n')
-            .map(name => name.trim())
-            .filter(name => name.length > 0);
-
-        if (names.length === 0) {
-            showToast('Voer ten minste één naam in', 'error');
+    function setupBulkImport() {
+        const bulkImportForm = document.getElementById('bulkImportForm');
+        if (!bulkImportForm) {
+            debug('Bulk import form not found');
             return;
         }
+        
+        bulkImportForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const textarea = document.getElementById('bulkPlayerNames');
+            if (!textarea) return;
+            
+            const names = textarea.value.split('\n')
+                .map(name => name.trim())
+                .filter(name => name.length > 0);
 
-        if (names.length > 30) {
-            showToast('Maximaal 30 namen toegestaan', 'error');
-            return;
-        }
-
-        showLoadingSpinner();
-        let successCount = 0;
-        let errorCount = 0;
-
-        for (const name of names) {
-            try {
-                await addPlayer(name);
-                successCount++;
-                console.log(`[DEBUG] Successfully added player: ${name}`);
-            } catch (error) {
-                errorCount++;
-                console.log(`[DEBUG] Failed to add player: ${name}`, error);
+            if (names.length === 0) {
+                showToast('Voer ten minste één naam in', 'error');
+                return;
             }
-        }
 
-        hideLoadingSpinner();
-        showToast(`${successCount} spelers toegevoegd, ${errorCount} fouten`, successCount > 0 ? 'success' : 'error');
-        textarea.value = '';
-        await loadPlayers();
-    });
+            if (names.length > 30) {
+                showToast('Maximaal 30 namen toegestaan', 'error');
+                return;
+            }
+
+            showLoading(true);
+            let successCount = 0;
+            let errorCount = 0;
+
+            for (const name of names) {
+                try {
+                    await addPlayer({ name: name });
+                    successCount++;
+                    debug(`Successfully added player: ${name}`);
+                } catch (error) {
+                    errorCount++;
+                    debug(`Failed to add player: ${name} - ${error.message}`);
+                }
+            }
+
+            showLoading(false);
+            showToast(`${successCount} spelers toegevoegd, ${errorCount} fouten`, successCount > 0 ? 'success' : 'error');
+            textarea.value = '';
+            await loadPlayers();
+        });
+    }
     
     // Initialization
     function init() {
@@ -815,6 +828,9 @@ function formatDate(dateString) {
         
         // Setup event listeners
         setupEventListeners();
+        
+        // Setup bulk import
+        setupBulkImport();
         
         debug('Initialization complete');
     }

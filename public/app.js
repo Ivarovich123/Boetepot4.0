@@ -215,62 +215,49 @@ function formatDate(dateString) {
 }
 
 // Theme handling
-function setTheme(isDark) {
-    debug(`Setting theme to ${isDark ? 'dark' : 'light'}`);
+function toggleTheme() {
+    const isDark = document.documentElement.classList.contains('dark');
     if (isDark) {
-        document.documentElement.classList.add('dark');
-        localStorage.theme = 'dark';
-        $('#theme-icon').removeClass('fa-moon').addClass('fa-sun');
-    } else {
         document.documentElement.classList.remove('dark');
-        localStorage.theme = 'light';
-        $('#theme-icon').removeClass('fa-sun').addClass('fa-moon');
+        localStorage.setItem('theme', 'light');
+    } else {
+        document.documentElement.classList.add('dark');
+        localStorage.setItem('theme', 'dark');
     }
-    
-    // Update Select2 dropdowns theme
-    updateSelect2Theme(isDark);
+
+    // Update the theme icon
+    const themeIcon = document.getElementById('theme-icon');
+    if (themeIcon) {
+        if (isDark) {
+            themeIcon.classList.remove('fa-sun');
+            themeIcon.classList.add('fa-moon');
+        } else {
+            themeIcon.classList.remove('fa-moon');
+            themeIcon.classList.add('fa-sun');
+        }
+    }
 }
 
-function updateSelect2Theme(isDark) {
-    // Update the select2 theme to match the current theme
-    $('.select2-container--default .select2-selection--single').css({
-        'background-color': isDark ? 'rgb(31, 41, 55)' : 'white',
-        'border-color': isDark ? 'rgb(55, 65, 81)' : 'rgb(209, 213, 219)',
-        'color': isDark ? 'rgb(229, 231, 235)' : 'rgb(17, 24, 39)'
-    });
-    
-    $('.select2-container--default .select2-selection--single .select2-selection__rendered').css({
-        'color': isDark ? 'rgb(229, 231, 235)' : 'rgb(17, 24, 39)'
-    });
-    
-    $('.select2-container--default .select2-dropdown').css({
-        'background-color': isDark ? 'rgb(31, 41, 55)' : 'white',
-        'border-color': isDark ? 'rgb(55, 65, 81)' : 'rgb(209, 213, 219)',
-        'color': isDark ? 'rgb(229, 231, 235)' : 'rgb(17, 24, 39)'
-    });
-    
-    $('.select2-container--default .select2-results__option').css({
-        'color': isDark ? 'rgb(229, 231, 235)' : 'rgb(17, 24, 39)'
-    });
-    
-    $('.select2-container--default .select2-search__field').css({
-        'background-color': isDark ? 'rgb(17, 24, 39)' : 'white',
-        'color': isDark ? 'rgb(229, 231, 235)' : 'rgb(17, 24, 39)'
-    });
-    
-    // Fix for Select2 dropdown options when highlighted/selected
-    $('.select2-container--default .select2-results__option--highlighted').css({
-        'background-color': isDark ? 'rgb(55, 65, 81)' : 'rgb(243, 244, 246)',
-        'color': isDark ? 'rgb(255, 255, 255)' : 'rgb(17, 24, 39)'
-    });
-    
-    $('.select2-container--default .select2-results__option[aria-selected=true]').css({
-        'background-color': isDark ? 'rgb(75, 85, 99)' : 'rgb(229, 231, 235)'
-    });
-    
-    // Ensure dropdowns appear above other elements
-    $('.select2-dropdown').css('z-index', '9999');
-    $('.select2-container').css('z-index', '1051');
+function setupTheme() {
+    // Get the theme toggle button
+    const themeToggle = document.getElementById('theme-toggle');
+    if (themeToggle) {
+        // Update the initial icon based on current theme
+        const isDark = document.documentElement.classList.contains('dark');
+        const themeIcon = document.getElementById('theme-icon');
+        if (themeIcon) {
+            if (isDark) {
+                themeIcon.classList.remove('fa-moon');
+                themeIcon.classList.add('fa-sun');
+            } else {
+                themeIcon.classList.remove('fa-sun');
+                themeIcon.classList.add('fa-moon');
+            }
+        }
+        
+        // Add click event listener to toggle theme
+        themeToggle.addEventListener('click', toggleTheme);
+    }
 }
 
 // Initialize theme
@@ -741,31 +728,19 @@ function setupDebugControls() {
 }
 
 // Auto-initialize dark mode
-document.addEventListener('DOMContentLoaded', () => {
-    console.log('[DEBUG] DOMContentLoaded event fired');
-    initializeApp();
+document.addEventListener('DOMContentLoaded', function() {
+    // Set up the app
+    setupTheme();
+    setupPlayerHistory();
+    loadData();
+    setupActions();
 });
 
-// Initialize the application
 function initializeApp() {
-    console.log('[DEBUG] Initializing app...');
-    
-    try {
-        // Initialize UI components
-        setupTheme();
-        setupPlayerHistory();
-        
-        // Set up default data if needed and UI actions
-        setupActions();
-        
-        // Try to load data
-        console.log('[DEBUG] Attempting to load data automatically...');
-        loadData();
-        
-        console.log('[DEBUG] App initialized successfully');
-    } catch (error) {
-        console.error('[DEBUG] Error initializing app:', error);
-    }
+    setupTheme();
+    setupPlayerHistory();
+    loadData();
+    setupActions();
 }
 
 // Initialize
@@ -948,20 +923,6 @@ function setupDefaultData() {
         showToast('Fout bij het laden van standaard gegevens', 'error');
         return false;
     }
-}
-
-// Add function to setup theme
-function setupTheme() {
-    // Check and fix dark mode
-    const prefersDark = localStorage.theme === 'dark' || 
-        (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
-    setTheme(prefersDark);
-    
-    // Setup theme toggle
-    $('#theme-toggle').click(() => {
-        const isDark = document.documentElement.classList.contains('dark');
-        setTheme(!isDark);
-    });
 }
 
 // Add function to load all data
