@@ -227,17 +227,12 @@ function formatDate(dateString) {
     async function apiRequest(endpoint, method = 'GET', data = null) {
         try {
             const path = endpoint.startsWith('/') ? endpoint.substring(1) : endpoint;
-            const url = `${API_BASE_URL}/${path}`;
+            const url = `/api/${path}`;
             const options = {
                 method,
                 headers: {
-                    'Content-Type': 'application/json',
-                    'apikey': SUPABASE_KEY,
-                    'Authorization': `Bearer ${SUPABASE_KEY}`,
-                    'Prefer': 'return=representation'
-                },
-                mode: 'cors',
-                credentials: 'omit'  // No credentials for CORS
+                    'Content-Type': 'application/json'
+                }
             };
             
             if (data && (method === 'POST' || method === 'PUT')) {

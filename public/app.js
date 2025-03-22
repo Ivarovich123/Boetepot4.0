@@ -325,63 +325,39 @@ async function fetchAPI(endpoint, options = {}) {
         // Ensure endpoint starts with slash
         const path = endpoint.startsWith('/') ? endpoint.substring(1) : endpoint;
         
-        // Try different URL formats
-        const urls = [
-            `${API_BASE_URL}/${path}`,
-            `${window.location.origin}/api/${path}`
-        ];
+        // Only use the local API endpoint
+        const url = `/api/${path}`;
         
-        debug(`Trying URLs: ${urls.join(', ')}`);
+        debug(`Trying URL: ${url}`);
         
-        let lastError = null;
+        const fetchOptions = {
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                ...options.headers
+            },
+            signal: abortController.signal
+        };
         
-        // Try each URL until one works
-        for (const url of urls) {
-            try {
-                debug(`Trying URL: ${url}`);
-                
-                const fetchOptions = {
-                    ...options,
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                        'apikey': SUPABASE_KEY,
-                        'Authorization': `Bearer ${SUPABASE_KEY}`,
-                        ...options.headers
-                    },
-                    mode: 'cors',
-                    credentials: 'omit',
-                    signal: abortController.signal
-                };
-                
-                const response = await fetch(url, fetchOptions);
-                
-                if (!response.ok) {
-                    debug(`URL ${url} failed with ${response.status}`);
-                    lastError = new Error(`API Error: ${response.status} ${response.statusText}`);
-                    continue;
-                }
-                
-                // Check content type
-                const contentType = response.headers.get('content-type');
-                if (!contentType || !contentType.includes('application/json')) {
-                    debug(`Response from ${url} is not JSON: ${contentType}`);
-                    lastError = new Error('Response is not JSON');
-                    continue;
-                }
-                
-                // Try to parse as JSON
-                const data = await response.json();
-                debug(`API response successful with ${typeof data} from ${url}`);
-                return data;
-            } catch (error) {
-                debug(`Error for ${url}: ${error.message}`);
-                lastError = error;
-            }
+        const response = await fetch(url, fetchOptions);
+        
+        if (!response.ok) {
+            debug(`URL ${url} failed with ${response.status}`);
+            throw new Error(`API Error: ${response.status} ${response.statusText}`);
         }
         
-        // If all URLs failed, throw the last error
-        throw lastError || new Error('All API endpoints failed');
+        // Check content type
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            debug(`Response from ${url} is not JSON: ${contentType}`);
+            throw new Error('Response is not JSON');
+        }
+        
+        // Try to parse as JSON
+        const data = await response.json();
+        debug(`API response successful with ${typeof data} from ${url}`);
+        return data;
     } catch (error) {
         debug(`API Error: ${error.message}`);
         
