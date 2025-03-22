@@ -221,18 +221,10 @@ function setTheme(isDark) {
         document.documentElement.classList.add('dark');
         localStorage.theme = 'dark';
         $('#theme-icon').removeClass('fa-moon').addClass('fa-sun');
-        
-        // Additional dark mode fixes for containers and backgrounds
-        $('.bg-white').addClass('bg-gray-900').removeClass('bg-white');
-        $('.border-gray-200').addClass('border-gray-700').removeClass('border-gray-200');
     } else {
         document.documentElement.classList.remove('dark');
         localStorage.theme = 'light';
         $('#theme-icon').removeClass('fa-sun').addClass('fa-moon');
-        
-        // Revert dark mode changes
-        $('.bg-gray-900').addClass('bg-white').removeClass('bg-gray-900');
-        $('.border-gray-700').addClass('border-gray-200').removeClass('border-gray-700');
     }
     
     // Update Select2 dropdowns theme
@@ -290,14 +282,20 @@ function initTheme() {
     }
 }
 
-// Set up theme toggle listener when DOM is ready
+// Set up theme toggle when document is ready
 $(document).ready(function() {
-    $('#theme-toggle').click(function() {
-        setTheme(!document.documentElement.classList.contains('dark'));
-    });
+    // Initialize theme based on saved preference or system preference
+    if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        setTheme(true);
+    } else {
+        setTheme(false);
+    }
     
-    // Initialize theme on page load
-    initTheme();
+    // Add click handler for theme toggle button
+    $('#theme-toggle').on('click', function() {
+        const isDark = document.documentElement.classList.contains('dark');
+        setTheme(!isDark);
+    });
 });
 
 // Initialize Select2 for player dropdown
@@ -961,7 +959,8 @@ function setupTheme() {
     
     // Setup theme toggle
     $('#theme-toggle').click(() => {
-        setTheme(!document.documentElement.classList.contains('dark'));
+        const isDark = document.documentElement.classList.contains('dark');
+        setTheme(!isDark);
     });
 }
 

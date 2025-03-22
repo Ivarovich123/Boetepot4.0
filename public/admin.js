@@ -23,11 +23,11 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         // Log theme status
-        debug(`Theme initialized: ${document.body.classList.contains('dark') ? 'dark' : 'light'}`);
+        debug(`Theme initialized: ${document.documentElement.classList.contains('dark') ? 'dark' : 'light'}`);
     }
     
     function toggleTheme() {
-        const isDark = document.body.classList.contains('dark');
+        const isDark = document.documentElement.classList.contains('dark');
         debug(`Toggling theme from ${isDark ? 'dark' : 'light'} to ${!isDark ? 'dark' : 'light'}`);
         
         if (isDark) {
@@ -42,8 +42,10 @@ document.addEventListener('DOMContentLoaded', function() {
     function enableDarkMode() {
         document.documentElement.classList.add('dark');
         document.body.classList.add('dark');
-        themeIcon.classList.remove('fa-moon');
-        themeIcon.classList.add('fa-sun');
+        if (themeIcon) {
+            themeIcon.classList.remove('fa-moon');
+            themeIcon.classList.add('fa-sun');
+        }
         updateSelect2Theme(true);
         debug('Dark mode enabled');
     }
@@ -51,8 +53,10 @@ document.addEventListener('DOMContentLoaded', function() {
     function disableDarkMode() {
         document.documentElement.classList.remove('dark');
         document.body.classList.remove('dark');
-        themeIcon.classList.remove('fa-sun');
-        themeIcon.classList.add('fa-moon');
+        if (themeIcon) {
+            themeIcon.classList.remove('fa-sun');
+            themeIcon.classList.add('fa-moon');
+        }
         updateSelect2Theme(false);
         debug('Dark mode disabled');
     }
@@ -366,7 +370,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             
             // Update Select2 to match theme
-            updateSelect2Theme(document.body.classList.contains('dark'));
+            updateSelect2Theme(document.documentElement.classList.contains('dark'));
         } catch (error) {
             debug(`Error initializing Select2: ${error.message}`);
         }
@@ -401,7 +405,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             
             // Update Select2 to match theme
-            updateSelect2Theme(document.body.classList.contains('dark'));
+            updateSelect2Theme(document.documentElement.classList.contains('dark'));
         } catch (error) {
             debug(`Error initializing Select2: ${error.message}`);
         }
