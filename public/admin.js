@@ -1,7 +1,7 @@
 // Simplified admin panel without login
 document.addEventListener('DOMContentLoaded', function() {
     // Configuration
-    const API_BASE_URL = 'https://boetepot-api.vercel.app/api';
+    const API_BASE_URL = '/api';  // Use relative path to work with API proxy
     
     // Debug flag - set to true for console logs
     const DEBUG = true;
@@ -222,7 +222,7 @@ function formatDate(dateString) {
         tabBeheer.addEventListener('click', () => activateTab('beheer'));
     }
     
-    // API & Data Functions - Improved approach with better error handling and CORS fixes
+    // API & Data Functions - Direct API connection without mock data
     async function apiRequest(endpoint, method = 'GET', data = null) {
         try {
             const url = `${API_BASE_URL}${endpoint}`;
@@ -232,7 +232,7 @@ function formatDate(dateString) {
                     'Content-Type': 'application/json'
                 },
                 mode: 'cors',
-                credentials: 'omit' // Changed from 'same-origin' to fix CORS issues
+                credentials: 'omit'  // No credentials for CORS
             };
             
             if (data && (method === 'POST' || method === 'PUT')) {
@@ -242,13 +242,7 @@ function formatDate(dateString) {
             debug(`Making ${method} request to ${url}`);
             showLoading(true);
             
-            // Check if we should use mock data (if API is failing)
-            const useMockData = localStorage.getItem('useMockData') === 'true';
-            if (useMockData) {
-                debug('Using mock data instead of API call');
-                return getMockDataForEndpoint(endpoint, method, data);
-            }
-            
+            // Attempt the API request
             const response = await fetch(url, options);
             
             if (!response.ok) {
@@ -268,158 +262,11 @@ function formatDate(dateString) {
             return responseData;
         } catch (error) {
             debug(`API Error: ${error.message}`);
-            
-            // On first API error, enable mock data
-            if (error.message === 'Failed to fetch') {
-                debug('API server unreachable, enabling mock data');
-                localStorage.setItem('useMockData', 'true');
-                showToast('API server is unavailable. Using local data instead.', 'warning');
-                
-                // Return mock data for this call
-                return getMockDataForEndpoint(endpoint, method, data);
-            }
-            
             showToast(`API Error: ${error.message}`, 'error');
             throw error;
         } finally {
             showLoading(false);
         }
-    }
-    
-    // Function to get mock data for endpoints when API is unavailable
-    function getMockDataForEndpoint(endpoint, method, data) {
-        debug(`Getting mock data for ${method} ${endpoint}`);
-        
-        // Initialize mock data storage if it doesn't exist
-        if (!localStorage.getItem('mockPlayers')) {
-            localStorage.setItem('mockPlayers', JSON.stringify([
-                { id: 1, name: 'Marnix' },
-                { id: 2, name: 'Ivar' },
-                { id: 3, name: 'Jarno' },
-                { id: 4, name: 'Lars B' },
-                { id: 5, name: 'Lars R' }
-            ]));
-        }
-        
-        if (!localStorage.getItem('mockReasons')) {
-            localStorage.setItem('mockReasons', JSON.stringify([
-                { id: 1, description: 'Te laat' },
-                { id: 2, description: 'Corvee vergeten' },
-                { id: 3, description: 'Geen Polo' }
-            ]));
-        }
-        
-        if (!localStorage.getItem('mockFines')) {
-            localStorage.setItem('mockFines', JSON.stringify([
-                { id: 1, player_id: 1, reason_id: 1, player_name: 'Marnix', reason_description: 'Te laat', amount: 5, created_at: new Date().toISOString() },
-                { id: 2, player_id: 2, reason_id: 2, player_name: 'Ivar', reason_description: 'Corvee vergeten', amount: 10, created_at: new Date(Date.now() - 86400000).toISOString() }
-            ]));
-        }
-        
-        // Get data from localStorage
-        const mockPlayers = JSON.parse(localStorage.getItem('mockPlayers') || '[]');
-        const mockReasons = JSON.parse(localStorage.getItem('mockReasons') || '[]');
-        const mockFines = JSON.parse(localStorage.getItem('mockFines') || '[]');
-        
-        // Handle GET requests
-        if (method === 'GET') {
-            if (endpoint === '/players') {
-                return [...mockPlayers];
-            } else if (endpoint === '/reasons') {
-                return [...mockReasons];
-            } else if (endpoint === '/fines') {
-                return [...mockFines];
-            } else if (endpoint.startsWith('/fines/')) {
-                const id = parseInt(endpoint.split('/')[2]);
-                return mockFines.find(fine => fine.id === id) || null;
-            } else if (endpoint.startsWith('/players/')) {
-                const id = parseInt(endpoint.split('/')[2]);
-                return mockPlayers.find(player => player.id === id) || null;
-            } else if (endpoint.startsWith('/reasons/')) {
-                const id = parseInt(endpoint.split('/')[2]);
-                return mockReasons.find(reason => reason.id === id) || null;
-            }
-        } 
-        // Handle POST requests
-        else if (method === 'POST') {
-            if (endpoint === '/players' && data) {
-                const newPlayer = {
-                    id: mockPlayers.length > 0 ? Math.max(...mockPlayers.map(p => p.id)) + 1 : 1,
-                    name: data.name
-                };
-                mockPlayers.push(newPlayer);
-                localStorage.setItem('mockPlayers', JSON.stringify(mockPlayers));
-                return newPlayer;
-            } else if (endpoint === '/reasons' && data) {
-                const newReason = {
-                    id: mockReasons.length > 0 ? Math.max(...mockReasons.map(r => r.id)) + 1 : 1,
-                    description: data.description
-                };
-                mockReasons.push(newReason);
-                localStorage.setItem('mockReasons', JSON.stringify(mockReasons));
-                return newReason;
-            } else if (endpoint === '/fines' && data) {
-                const player = mockPlayers.find(p => p.id === parseInt(data.player_id)) || { name: 'Unknown' };
-                const reason = mockReasons.find(r => r.id === parseInt(data.reason_id)) || { description: 'Unknown' };
-                
-                const newFine = {
-                    id: mockFines.length > 0 ? Math.max(...mockFines.map(f => f.id)) + 1 : 1,
-                    player_id: parseInt(data.player_id),
-                    reason_id: parseInt(data.reason_id),
-                    player_name: player.name,
-                    reason_description: reason.description,
-                    amount: parseFloat(data.amount),
-                    created_at: new Date().toISOString()
-                };
-                mockFines.push(newFine);
-                localStorage.setItem('mockFines', JSON.stringify(mockFines));
-                return newFine;
-            } else if (endpoint === '/reset') {
-                localStorage.removeItem('mockPlayers');
-                localStorage.removeItem('mockReasons');
-                localStorage.removeItem('mockFines');
-                return { message: 'All data reset' };
-            }
-        } 
-        // Handle DELETE requests
-        else if (method === 'DELETE') {
-            if (endpoint.startsWith('/fines/')) {
-                const id = parseInt(endpoint.split('/')[2]);
-                const index = mockFines.findIndex(fine => fine.id === id);
-                if (index !== -1) {
-                    mockFines.splice(index, 1);
-                    localStorage.setItem('mockFines', JSON.stringify(mockFines));
-                    return { message: 'Fine deleted' };
-                }
-            } else if (endpoint.startsWith('/players/')) {
-                const id = parseInt(endpoint.split('/')[2]);
-                const index = mockPlayers.findIndex(player => player.id === id);
-                if (index !== -1) {
-                    mockPlayers.splice(index, 1);
-                    localStorage.setItem('mockPlayers', JSON.stringify(mockPlayers));
-                    
-                    // Also remove related fines
-                    const newFines = mockFines.filter(fine => fine.player_id !== id);
-                    localStorage.setItem('mockFines', JSON.stringify(newFines));
-                    return { message: 'Player deleted' };
-                }
-            } else if (endpoint.startsWith('/reasons/')) {
-                const id = parseInt(endpoint.split('/')[2]);
-                const index = mockReasons.findIndex(reason => reason.id === id);
-                if (index !== -1) {
-                    mockReasons.splice(index, 1);
-                    localStorage.setItem('mockReasons', JSON.stringify(mockReasons));
-                    
-                    // Also remove related fines
-                    const newFines = mockFines.filter(fine => fine.reason_id !== id);
-                    localStorage.setItem('mockFines', JSON.stringify(newFines));
-                    return { message: 'Reason deleted' };
-                }
-            }
-        }
-        
-        // Default fallback for unknown endpoints
-        return [];
     }
     
     // Data loading functions
@@ -917,79 +764,6 @@ function formatDate(dateString) {
                 }
             });
         }
-        
-        // Add a button to clear mock data
-        const debugPanel = document.getElementById('debugPanel');
-        if (debugPanel) {
-            const buttonRow = debugPanel.querySelector('.grid');
-            if (buttonRow) {
-                const clearMockDataBtn = document.createElement('button');
-                clearMockDataBtn.className = 'bg-purple-600 hover:bg-purple-700 text-white py-2 px-4 rounded-lg text-sm flex items-center justify-center';
-                clearMockDataBtn.innerHTML = '<i class="fas fa-database mr-2"></i>Reset Mock Data';
-                clearMockDataBtn.addEventListener('click', clearMockData);
-                buttonRow.appendChild(clearMockDataBtn);
-            }
-        }
-    }
-    
-    // Add bulk import form handler
-    function setupBulkImport() {
-        const bulkImportForm = document.getElementById('bulkImportForm');
-        if (!bulkImportForm) {
-            debug('Bulk import form not found');
-            return;
-        }
-        
-        bulkImportForm.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            const textarea = document.getElementById('bulkPlayerNames');
-            if (!textarea) return;
-            
-            const names = textarea.value.split('\n')
-                .map(name => name.trim())
-                .filter(name => name.length > 0);
-
-            if (names.length === 0) {
-                showToast('Voer ten minste één naam in', 'error');
-                return;
-            }
-
-            if (names.length > 30) {
-                showToast('Maximaal 30 namen toegestaan', 'error');
-                return;
-            }
-
-            showLoading(true);
-            let successCount = 0;
-            let errorCount = 0;
-
-            for (const name of names) {
-                try {
-                    await addPlayer({ name: name });
-                    successCount++;
-                    debug(`Successfully added player: ${name}`);
-                } catch (error) {
-                    errorCount++;
-                    debug(`Failed to add player: ${name} - ${error.message}`);
-                }
-            }
-
-            showLoading(false);
-            showToast(`${successCount} spelers toegevoegd, ${errorCount} fouten`, successCount > 0 ? 'success' : 'error');
-            textarea.value = '';
-            await loadPlayers();
-        });
-    }
-    
-    // Add a clear mock data function
-    function clearMockData() {
-        localStorage.removeItem('mockPlayers');
-        localStorage.removeItem('mockReasons');
-        localStorage.removeItem('mockFines');
-        localStorage.setItem('useMockData', 'false');
-        debug('Mock data cleared');
-        showToast('Mock data cleared. Attempting to use API again.', 'info');
-        setTimeout(() => location.reload(), 1500);
     }
     
     // Initialization
@@ -1007,9 +781,6 @@ function formatDate(dateString) {
         
         // Setup event listeners
         setupEventListeners();
-        
-        // Setup bulk import
-        setupBulkImport();
         
         debug('Initialization complete');
     }
