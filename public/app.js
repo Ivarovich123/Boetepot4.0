@@ -312,53 +312,17 @@ async function fetchAPI(endpoint, options = {}) {
         // Ensure endpoint starts with slash
         const path = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
         
-        // First try to get data from localStorage/admin panel
-        const useLocalData = localStorage.getItem('useLocalData') === 'true';
-        if (useLocalData) {
-            debug('Using local data from admin panel');
-            const localData = getFallbackData();
-            
-            // Normalize property names for endpoints
-            if (endpoint.includes('total-amount')) {
-                return { total: localData.totalAmount };
-            } else if (endpoint.includes('recent-fines')) {
-                debug(`Returning ${localData.recentFines.length} recent fines from local data`);
-                return localData.recentFines;
-            } else if (endpoint.includes('leaderboard')) {
-                debug(`Returning ${localData.leaderboard.length} leaderboard entries from local data`);
-                return localData.leaderboard;
-            } else if (endpoint.includes('players') && !endpoint.includes('player-fines')) {
-                debug(`Returning ${localData.players.length} players from local data`);
-                return localData.players;
-            } else if (endpoint.includes('reasons')) {
-                debug(`Returning ${localData.reasons.length} reasons from local data`);
-                return localData.reasons;
-            } else if (endpoint.includes('player-fines')) {
-                const playerId = parseInt(endpoint.split('/').pop(), 10);
-                const playerFines = localData.playerFinesHistory[playerId] || [];
-                debug(`Returning ${playerFines.length} fines for player ${playerId} from local data`);
-                return playerFines;
-            } else if (endpoint.includes('player/')) {
-                const playerId = parseInt(endpoint.split('/').pop(), 10);
-                const player = localData.players.find(player => player.id === playerId) || { id: 0, name: 'Onbekend' };
-                debug(`Returning player ${player.name} (${player.id}) from local data`);
-                return player;
-            } else if (endpoint.includes('fines')) {
-                const allFines = Object.values(localData.playerFinesHistory).flat();
-                debug(`Returning ${allFines.length} total fines from local data`);
-                return allFines;
-            }
-            
-            debug(`No specific handler for endpoint ${endpoint}, returning empty array`);
-            return [];
+        // Check if we should use mock data (if API is failing)
+        const useMockData = localStorage.getItem('useMockData') === 'true';
+        if (useMockData) {
+            debug('Using mock data instead of API call');
+            return getMockDataForEndpoint(path);
         }
         
         // Try different URL formats
         const urls = [
             `${API_BASE_URL}${path}`,
-            `${window.location.origin}/api${path}`,
-            `${SERVER_URL}/api${path}`,
-            `https://www.${SERVER_URL.replace('https://', '')}/api${path}`
+            `${window.location.origin}/api${path}`
         ];
         
         debug(`Trying URLs: ${urls[0]}, ${urls[1]}, ...`);
@@ -371,12 +335,14 @@ async function fetchAPI(endpoint, options = {}) {
                 debug(`Trying URL: ${url}`);
                 
                 const fetchOptions = {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
+                    ...options,
+                    headers: {
+                        'Content-Type': 'application/json',
                         'Accept': 'application/json',
-        ...options.headers
+                        ...options.headers
                     },
+                    mode: 'cors', // Add this for CORS support
+                    credentials: 'omit', // Changed from 'same-origin' to fix CORS issues
                     signal: abortController.signal
                 };
                 
@@ -399,16 +365,17 @@ async function fetchAPI(endpoint, options = {}) {
                 // Try to parse as JSON
                 const data = await response.json();
                 debug(`API response successful with ${typeof data} from ${url}`);
-    return data;
-  } catch (error) {
+                return data;
+            } catch (error) {
                 debug(`Error for ${url}: ${error.message}`);
                 lastError = error;
             }
         }
         
-        // If all URLs failed, fall back to local data
-        localStorage.setItem('useLocalData', 'true');
-        return getDefaultResponse(endpoint);
+        // If all URLs failed, enable mock data
+        localStorage.setItem('useMockData', 'true');
+        showToast('API server is unavailable. Using mock data instead.', 'warning');
+        return getMockDataForEndpoint(path);
     } catch (error) {
         debug(`API Error: ${error.message}`);
         
@@ -419,51 +386,92 @@ async function fetchAPI(endpoint, options = {}) {
             debug(`General API error: ${error.message}`);
         }
         
-        // Set to use local data on failure
-        localStorage.setItem('useLocalData', 'true');
-        return getDefaultResponse(endpoint);
+        // Enable mock data on failure
+        localStorage.setItem('useMockData', 'true');
+        showToast('API server is unavailable. Using mock data instead.', 'warning');
+        return getMockDataForEndpoint(path);
     } finally {
         clearTimeout(timeoutId);
         toggleLoading(false);
     }
 }
 
-// Get default response based on endpoint type
-function getDefaultResponse(endpoint) {
-    try {
-        const useLocalData = localStorage.getItem('useLocalData') === 'true';
-        if (useLocalData) {
-            debug(`Getting default response for ${endpoint} from local data`);
-            const localData = getFallbackData();
-            
-            // Normalize property names for endpoints
-            if (endpoint.includes('total-amount')) {
-                return { total: localData.totalAmount };
-            } else if (endpoint.includes('recent-fines')) {
-                return localData.recentFines;
-            } else if (endpoint.includes('leaderboard')) {
-                return localData.leaderboard;
-            } else if (endpoint.includes('players')) {
-                return localData.players;
-            } else if (endpoint.includes('reasons')) {
-                return localData.reasons;
-            } else if (endpoint.includes('player-fines')) {
-                const playerId = parseInt(endpoint.split('/').pop(), 10);
-                return localData.playerFinesHistory[playerId] || [];
-            } else if (endpoint.includes('player/')) {
-                const playerId = parseInt(endpoint.split('/').pop(), 10);
-                return localData.players.find(player => player.id === playerId) || { id: 0, name: 'Onbekend' };
-            } else if (endpoint.includes('fines')) {
-                return Object.values(localData.playerFinesHistory).flat();
-            }
-        }
-        
-        // Default empty response
-        return [];
-    } catch (error) {
-        debug(`Error in getDefaultResponse: ${error.message}`);
-        return [];
+// Function to get mock data for endpoints when API is unavailable
+function getMockDataForEndpoint(endpoint) {
+    debug(`Getting mock data for ${endpoint}`);
+    
+    // Initialize mock data storage if it doesn't exist
+    if (!localStorage.getItem('mockPlayers')) {
+        localStorage.setItem('mockPlayers', JSON.stringify([
+            { id: 1, name: 'Marnix' },
+            { id: 2, name: 'Ivar' },
+            { id: 3, name: 'Jarno' },
+            { id: 4, name: 'Lars B' },
+            { id: 5, name: 'Lars R' },
+            { id: 6, name: 'Rowan' },
+            { id: 7, name: 'Rinse' },
+            { id: 8, name: 'Jan Willem' },
+            { id: 9, name: 'Leon' }
+        ]));
     }
+    
+    if (!localStorage.getItem('mockReasons')) {
+        localStorage.setItem('mockReasons', JSON.stringify([
+            { id: 1, description: 'Te laat' },
+            { id: 2, description: 'Corvee vergeten' },
+            { id: 3, description: 'Geen Polo' }
+        ]));
+    }
+    
+    if (!localStorage.getItem('mockFines')) {
+        localStorage.setItem('mockFines', JSON.stringify([
+            { id: 1, player_id: 1, reason_id: 1, player_name: 'Marnix', reason_description: 'Te laat', amount: 5, created_at: new Date().toISOString() },
+            { id: 2, player_id: 2, reason_id: 2, player_name: 'Ivar', reason_description: 'Corvee vergeten', amount: 10, created_at: new Date(Date.now() - 86400000).toISOString() },
+            { id: 3, player_id: 3, reason_id: 3, player_name: 'Jarno', reason_description: 'Geen Polo', amount: 15, created_at: new Date(Date.now() - 172800000).toISOString() },
+            { id: 4, player_id: 4, reason_id: 1, player_name: 'Lars B', reason_description: 'Te laat', amount: 5, created_at: new Date(Date.now() - 259200000).toISOString() },
+            { id: 5, player_id: 5, reason_id: 2, player_name: 'Lars R', reason_description: 'Corvee vergeten', amount: 10, created_at: new Date(Date.now() - 345600000).toISOString() }
+        ]));
+    }
+    
+    // Get data from localStorage
+    const mockPlayers = JSON.parse(localStorage.getItem('mockPlayers') || '[]');
+    const mockReasons = JSON.parse(localStorage.getItem('mockReasons') || '[]');
+    const mockFines = JSON.parse(localStorage.getItem('mockFines') || '[]');
+    
+    // Create leaderboard data
+    const leaderboardData = mockPlayers.map(player => {
+        const playerFines = mockFines.filter(fine => fine.player_id === player.id);
+        const totalFined = playerFines.reduce((sum, fine) => sum + (parseFloat(fine.amount) || 0), 0);
+        return {
+            id: player.id,
+            name: player.name,
+            totalFined,
+            fineCount: playerFines.length
+        };
+    }).sort((a, b) => b.totalFined - a.totalFined);
+    
+    // Handle different endpoints
+    if (endpoint === '/total-amount') {
+        const total = mockFines.reduce((sum, fine) => sum + (parseFloat(fine.amount) || 0), 0);
+        return { total };
+    } else if (endpoint === '/recent-fines' || endpoint === '/fines') {
+        return [...mockFines].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    } else if (endpoint === '/leaderboard') {
+        return leaderboardData.slice(0, 5);
+    } else if (endpoint === '/players') {
+        return [...mockPlayers];
+    } else if (endpoint === '/reasons') {
+        return [...mockReasons];
+    } else if (endpoint.startsWith('/player-fines/')) {
+        const playerId = parseInt(endpoint.split('/').pop(), 10);
+        return mockFines.filter(fine => fine.player_id === playerId);
+    } else if (endpoint.startsWith('/player/')) {
+        const playerId = parseInt(endpoint.split('/').pop(), 10);
+        return mockPlayers.find(player => player.id === playerId) || { id: 0, name: 'Onbekend' };
+    }
+    
+    // Default response
+    return [];
 }
 
 // Format fine card - fixed dark mode
@@ -689,12 +697,36 @@ function setupDebugControls() {
     // Add a hidden debug control (activate with Alt+D)
     $(document).keydown(function(e) {
         if (e.altKey && e.key === 'd') {
-            const currentSetting = localStorage.getItem('useLocalData') === 'true';
-            localStorage.setItem('useLocalData', (!currentSetting).toString());
-            showToast(`Lokale data ${!currentSetting ? 'ingeschakeld' : 'uitgeschakeld'}`, 'info');
+            const currentSetting = localStorage.getItem('useMockData') === 'true';
+            localStorage.setItem('useMockData', (!currentSetting).toString());
+            showToast(`Mock data ${!currentSetting ? 'ingeschakeld' : 'uitgeschakeld'}`, 'info');
             setTimeout(() => location.reload(), 1000);
         }
     });
+    
+    // Add a visual indicator of mock data mode
+    if (localStorage.getItem('useMockData') === 'true') {
+        const indicator = document.createElement('div');
+        indicator.className = 'fixed bottom-2 left-2 bg-purple-600 text-white text-xs px-2 py-1 rounded z-50';
+        indicator.innerHTML = '<i class="fas fa-database mr-1"></i> Mock Data';
+        indicator.title = 'Using mock data instead of API';
+        document.body.appendChild(indicator);
+        
+        // Add click handler to toggle
+        indicator.addEventListener('click', function() {
+            if (confirm('Do you want to reset mock data and try using the API again?')) {
+                localStorage.setItem('useMockData', 'false');
+                
+                // Clear mock data
+                localStorage.removeItem('mockPlayers');
+                localStorage.removeItem('mockReasons');
+                localStorage.removeItem('mockFines');
+                
+                showToast('Trying API connection again...', 'info');
+                setTimeout(() => location.reload(), 1000);
+            }
+        });
+    }
 }
 
 // Fix the initialization function to use proper theme handling
@@ -705,9 +737,6 @@ $(document).ready(function() {
         
         // Setup theme
         setupTheme();
-        
-        // Enable local data by default
-        localStorage.setItem('useLocalData', 'true');
         
         // Setup debug controls
         setupDebugControls();
