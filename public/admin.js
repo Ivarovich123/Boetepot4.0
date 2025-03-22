@@ -21,10 +21,15 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             disableDarkMode();
         }
+        
+        // Log theme status
+        debug(`Theme initialized: ${document.body.classList.contains('dark') ? 'dark' : 'light'}`);
     }
     
     function toggleTheme() {
         const isDark = document.body.classList.contains('dark');
+        debug(`Toggling theme from ${isDark ? 'dark' : 'light'} to ${!isDark ? 'dark' : 'light'}`);
+        
         if (isDark) {
             disableDarkMode();
             localStorage.setItem('theme', 'light');
@@ -35,17 +40,21 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     function enableDarkMode() {
+        document.documentElement.classList.add('dark');
         document.body.classList.add('dark');
         themeIcon.classList.remove('fa-moon');
         themeIcon.classList.add('fa-sun');
         updateSelect2Theme(true);
+        debug('Dark mode enabled');
     }
     
     function disableDarkMode() {
+        document.documentElement.classList.remove('dark');
         document.body.classList.remove('dark');
         themeIcon.classList.remove('fa-sun');
         themeIcon.classList.add('fa-moon');
         updateSelect2Theme(false);
+        debug('Dark mode disabled');
     }
     
     function updateSelect2Theme(isDark) {

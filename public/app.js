@@ -282,14 +282,22 @@ function updateSelect2Theme(isDark) {
 }
 
 // Initialize theme
-if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-    setTheme(true);
-} else {
-    setTheme(false);
+function initTheme() {
+    if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        setTheme(true);
+    } else {
+        setTheme(false);
+    }
 }
 
-$('#theme-toggle').click(() => {
-    setTheme(!document.documentElement.classList.contains('dark'));
+// Set up theme toggle listener when DOM is ready
+$(document).ready(function() {
+    $('#theme-toggle').click(function() {
+        setTheme(!document.documentElement.classList.contains('dark'));
+    });
+    
+    // Initialize theme on page load
+    initTheme();
 });
 
 // Initialize Select2 for player dropdown
@@ -768,7 +776,7 @@ $(document).ready(function() {
     
     // Initialize the UI
     try {
-        // Check and fix dark mode first
+        // Check and fix dark mode
         const prefersDark = localStorage.theme === 'dark' || 
             (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
         setTheme(prefersDark);
