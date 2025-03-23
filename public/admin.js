@@ -164,7 +164,18 @@ document.addEventListener('DOMContentLoaded', function() {
     // API & Data Functions - Direct API connection to Supabase
     async function apiRequest(endpoint, options = {}) {
         try {
-            const url = addCacheBuster(`${API_BASE_URL}${endpoint}`);
+            showLoading(true);
+            
+            // Ensure endpoint starts with '/' if not already
+            if (!endpoint.startsWith('/')) {
+                endpoint = '/' + endpoint;
+            }
+            
+            // Make sure query parameters are properly formatted
+            let url = API_BASE_URL + endpoint;
+            
+            // Apply cache busting
+            url = addCacheBuster(url);
             
             if (DEBUG) console.log('API Request to:', url);
             
@@ -175,12 +186,31 @@ document.addEventListener('DOMContentLoaded', function() {
                     'Content-Type': 'application/json',
                     'Prefer': 'return=representation'
                 },
-                mode: 'cors'
+                mode: 'cors',
+                credentials: 'omit' // Don't send cookies
             };
             
             const requestOptions = { ...defaultOptions, ...options };
             
-            const response = await fetch(url, requestOptions);
+            // Add retry logic for network issues
+            let retries = 3;
+            let response = null;
+            
+            while (retries > 0) {
+                try {
+                    response = await fetch(url, requestOptions);
+                    break; // If successful, exit the retry loop
+                } catch (fetchError) {
+                    retries--;
+                    if (retries === 0) throw fetchError;
+                    // Wait before retrying (exponential backoff)
+                    await new Promise(resolve => setTimeout(resolve, (3 - retries) * 1000));
+                }
+            }
+            
+            if (!response) {
+                throw new Error('Network error after multiple retries');
+            }
             
             if (!response.ok) {
                 const errorText = await response.text();
@@ -188,12 +218,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 throw new Error(`API Error (${response.status}): ${errorText}`);
             }
             
-            // If response is 204 No Content, return null
-            if (response.status === 204) {
-                return null;
+            // If response is 204 No Content or a DELETE request, return empty success object
+            if (response.status === 204 || options.method === 'DELETE') {
+                return { success: true };
             }
             
-            // Otherwise parse JSON
+            // Parse JSON
             const data = await response.json();
             if (DEBUG) console.log('API Response Data:', data);
             return data;
@@ -203,14 +233,16 @@ document.addEventListener('DOMContentLoaded', function() {
             // More detailed error message to help with debugging
             let errorMessage = 'Fout bij verbinden met de database. ';
             
-            if (error.message.includes('Failed to fetch')) {
-                errorMessage += 'Controleer uw internetverbinding of Supabase server kan niet worden bereikt.';
+            if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+                errorMessage += 'Controleer uw internetverbinding of Supabase server kan niet worden bereikt. Mogelijk is er een CORS probleem.';
             } else {
                 errorMessage += error.message;
             }
             
             showToast(errorMessage, 'error');
             throw error;
+        } finally {
+            showLoading(false);
         }
     }
     
@@ -326,10 +358,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Clear any existing options
         playerSelect.empty();
         
-        // Add default empty option
-        playerSelect.append($('<option>').val('').text(''));
-        
-        // Add all players
+        // Add players
         players.forEach(player => {
             playerSelect.append($('<option>').val(player.id).text(player.name));
         });
@@ -341,39 +370,44 @@ document.addEventListener('DOMContentLoaded', function() {
             allowClear: true,
             multiple: true,
             dropdownParent: $('#addFineForm'), // Attach to form for better mobile positioning
-            tags: false, // Disable creating new tags
-            tokenSeparators: [], // Disable automatic tokenization
             language: {
                 noResults: function() { return "Geen spelers gevonden"; },
-                searching: function() { return "Zoeken..."; }
+                searching: function() { return "Zoeken..."; },
+                inputTooShort: function() { return "Begin met typen..."; }
+            },
+            minimumInputLength: 0,
+            templateResult: function(player) {
+                if (!player.id) return player.text;
+                return $(`<div class="select2-result">
+                    <div class="font-medium">${player.text}</div>
+                </div>`);
+            },
+            templateSelection: function(player) {
+                if (!player.id) return player.text;
+                return player.text;
             }
-        }).on('select2:opening', function() {
-            // Clear search input when dropdown opens
-            setTimeout(() => {
-                $('.select2-search__field').val('');
-            }, 0);
-        }).on('select2:close', function() {
-            // Clear search input when dropdown closes
-            setTimeout(() => {
-                $('.select2-search__field').val('');
-            }, 0);
         });
         
-        // Increase the height and font size of the search field for mobile
+        // Mobile optimization
         $('body').append(`
             <style>
                 @media (max-width: 767px) {
+                    .select2-container--open .select2-dropdown {
+                        width: 100% !important;
+                        max-width: none !important;
+                    }
+                    .select2-container .select2-selection--multiple {
+                        min-height: 42px;
+                    }
+                    .select2-container--default .select2-selection--multiple .select2-selection__choice {
+                        margin-top: 5px;
+                        margin-bottom: 5px;
+                    }
                     .select2-search__field {
                         font-size: 16px !important; /* Prevents iOS zoom on focus */
-                        padding: 12px 8px !important;
-                        height: auto !important;
-                    }
-                    .select2-container--open .select2-dropdown {
-                        min-width: 280px !important;
                     }
                     .select2-results__option {
-                        padding: 12px 8px !important;
-                        min-height: 48px;
+                        padding: 10px 8px !important;
                     }
                 }
             </style>
@@ -396,7 +430,8 @@ document.addEventListener('DOMContentLoaded', function() {
         reasons.forEach(reason => {
             const option = document.createElement('option');
             option.value = reason.id;
-            option.textContent = reason.description;
+            option.textContent = `${reason.description} (${formatCurrency(reason.amount)})`;
+            option.setAttribute('data-amount', reason.amount);
             select.appendChild(option);
         });
         
@@ -405,7 +440,23 @@ document.addEventListener('DOMContentLoaded', function() {
             $(select).select2({
                 placeholder: "Selecteer een reden",
                 allowClear: true,
-                width: '100%'
+                width: '100%',
+                dropdownParent: $('#addFineForm'),
+                language: {
+                    noResults: function() { return "Geen redenen gevonden"; }
+                }
+            }).on('change', function() {
+                // When reason changes, update the custom amount placeholder with the default amount
+                const reasonId = $(this).val();
+                const customAmountInput = document.getElementById('customAmount');
+                
+                if (reasonId && customAmountInput) {
+                    const selectedOption = select.querySelector(`option[value="${reasonId}"]`);
+                    if (selectedOption) {
+                        const defaultAmount = selectedOption.getAttribute('data-amount');
+                        customAmountInput.placeholder = `Standaard: ${formatCurrency(defaultAmount)}`;
+                    }
+                }
             });
         } catch (error) {
             debug(`Error initializing Select2: ${error.message}`);
@@ -564,45 +615,81 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // CRUD Operations
-    async function addFine(player_id, reason_id) {
+    async function addFine(playerIds, reasonId, customAmount = null) {
         try {
-            if (!player_id) {
-                showToast('Ongeldige speler selectie', 'error');
+            if (!playerIds || playerIds.length === 0) {
+                showToast('Selecteer minimaal één speler', 'error');
                 return false;
             }
             
-            if (!reason_id) {
-                showToast('Ongeldige reden selectie', 'error');
+            if (!reasonId) {
+                showToast('Selecteer een reden', 'error');
                 return false;
             }
             
             showLoading(true);
-            debug(`Adding fine: player ${player_id}, reason ${reason_id}`);
+            debug(`Adding fine for ${playerIds.length} players, reason ${reasonId}, custom amount: ${customAmount}`);
             
-            const fine = await apiRequest('/fines', {
-                method: 'POST',
-                body: JSON.stringify({
-                    player_id: player_id,
-                    reason_id: reason_id,
-                    created_at: new Date().toISOString()
-                })
-            });
+            // Get the reason details to use the default amount if no custom amount is provided
+            let reasonAmount = 0;
+            if (!customAmount) {
+                try {
+                    const reasonDetails = await apiRequest(`/reasons?id=eq.${reasonId}&select=amount`, { method: 'GET' });
+                    if (reasonDetails && reasonDetails.length > 0) {
+                        reasonAmount = reasonDetails[0].amount;
+                    } else {
+                        throw new Error('Reden niet gevonden');
+                    }
+                } catch (error) {
+                    console.error('Error fetching reason amount:', error);
+                    showToast('Fout bij ophalen van reden bedrag', 'error');
+                    return false;
+                }
+            }
             
-            if (fine) {
-                showToast('Boete succesvol toegevoegd!', 'success');
+            // Use custom amount if provided, otherwise use the reason amount
+            const amount = customAmount || reasonAmount;
+            
+            // Add a fine for each selected player
+            const addedFines = [];
+            for (const playerId of playerIds) {
+                try {
+                    const fine = await apiRequest('/fines', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            player_id: playerId,
+                            reason_id: reasonId,
+                            amount: amount,
+                            created_at: new Date().toISOString()
+                        })
+                    });
+                    
+                    if (fine) {
+                        addedFines.push(fine);
+                    }
+                } catch (error) {
+                    console.error(`Error adding fine for player ${playerId}:`, error);
+                    // Continue with other players even if one fails
+                }
+            }
+            
+            if (addedFines.length > 0) {
+                const playerCount = addedFines.length;
+                showToast(`${playerCount} boete${playerCount !== 1 ? 's' : ''} succesvol toegevoegd!`, 'success');
                 
-                // Reload data
-                await Promise.all([
-                    loadRecentFines(),
-                    loadTotalAmount()
-                ]);
+                // Reset select2 and custom amount
+                $('#playerSelect').val(null).trigger('change');
+                $('#customAmount').val('');
+                
+                // Reload fines list
+                await loadFines();
                 
                 return true;
             } else {
-                throw new Error('Geen antwoord van server');
+                throw new Error('Geen boetes toegevoegd');
             }
         } catch (error) {
-            debug(`Failed to add fine: ${error.message}`);
+            console.error('Failed to add fines:', error);
             showToast(`Fout bij toevoegen: ${error.message}`, 'error');
             return false;
         } finally {
@@ -1083,30 +1170,38 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 const playerSelect = document.getElementById('playerSelect');
                 const reasonSelect = document.getElementById('reasonSelect');
+                const customAmountInput = document.getElementById('customAmount');
                 
                 if (!playerSelect || !reasonSelect) {
                     showToast('Formulier elementen niet gevonden', 'error');
                     return;
                 }
                 
-                const playerId = playerSelect.value;
+                // Get all selected player IDs (may be multiple due to Select2 multiple selection)
+                let playerIds = [];
+                if ($(playerSelect).hasClass('select2-hidden-accessible')) {
+                    playerIds = $(playerSelect).val(); // This will be an array with Select2
+                } else {
+                    const playerId = playerSelect.value;
+                    if (playerId) {
+                        playerIds = [playerId];
+                    }
+                }
+                
                 const reasonId = reasonSelect.value;
                 
-                if (!playerId) {
-                    showToast('Selecteer een speler', 'error');
-                    return;
+                // Get custom amount if provided
+                let customAmount = null;
+                if (customAmountInput && customAmountInput.value.trim() !== '') {
+                    customAmount = parseFloat(customAmountInput.value.trim());
+                    
+                    if (isNaN(customAmount) || customAmount <= 0) {
+                        showToast('Vul een geldig bedrag in (groter dan 0)', 'error');
+                        return;
+                    }
                 }
                 
-                if (!reasonId) {
-                    showToast('Selecteer een reden', 'error');
-                    return;
-                }
-                
-                const success = await addFine(playerId, reasonId);
-                if (success) {
-                    // Optionally reset the form
-                    // addFineForm.reset();
-                }
+                await addFine(playerIds, reasonId, customAmount);
             });
         }
         

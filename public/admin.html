@@ -243,7 +243,7 @@
         <div class="bg-white rounded-2xl shadow-md overflow-hidden mb-6">
             <div class="border-b border-gray-200">
                 <div class="flex">
-                    <button id="addFineTab" class="tab-button active px-6 py-4 text-center flex-1">
+                    <button id="finesTab" class="tab-button active px-6 py-4 text-center flex-1">
                         <i class="fas fa-plus-circle mr-2"></i>Boete Toevoegen
                     </button>
                     <button id="manageTab" class="tab-button px-6 py-4 text-center flex-1">
@@ -252,40 +252,48 @@
                 </div>
             </div>
             
-            <!-- Add Fine Tab Content -->
-            <div id="addFineContent" class="tab-content active p-6">
-                <form id="addFineForm" class="mb-6">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                        <div>
-                            <label for="playerSelect" class="block text-sm font-medium mb-2">Speler</label>
-                            <select id="playerSelect" name="player" class="w-full p-3 border border-gray-300 rounded-xl" required>
-                                <option value="">-- Selecteer speler --</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label for="reasonSelect" class="block text-sm font-medium mb-2">Reden</label>
-                            <select id="reasonSelect" name="reason" class="w-full p-3 border border-gray-300 rounded-xl" required>
-                                <option value="">-- Selecteer reden --</option>
-                            </select>
-                        </div>
+            <!-- Fines Tab Content -->
+            <div id="finesTab" class="tab-content active p-6">
+                <h2 class="text-xl font-semibold mb-6">Boete Toevoegen</h2>
+                
+                <form id="addFineForm" class="space-y-4">
+                    <div class="mb-4">
+                        <label for="playerSelect" class="block text-sm font-medium text-gray-700 mb-1">Speler(s)</label>
+                        <select id="playerSelect" name="playerSelect" class="select2-multiple w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" multiple>
+                            <!-- Players will be loaded via JS -->
+                        </select>
                     </div>
                     
-                    <div class="flex justify-end">
-                        <button type="submit" class="btn-primary px-6 py-3 rounded-xl">
-                            <i class="fas fa-plus-circle mr-2"></i>Boete Toevoegen
-                        </button>
+                    <div class="mb-4">
+                        <label for="reasonSelect" class="block text-sm font-medium text-gray-700 mb-1">Reden</label>
+                        <select id="reasonSelect" name="reasonSelect" class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                            <!-- Reasons will be loaded via JS -->
+                        </select>
                     </div>
+                    
+                    <div class="mb-4">
+                        <label for="customAmount" class="block text-sm font-medium text-gray-700 mb-1">Bedrag (optioneel)</label>
+                        <div class="relative rounded-md shadow-sm">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <span class="text-gray-500 sm:text-sm">€</span>
+                            </div>
+                            <input type="number" id="customAmount" name="customAmount" step="0.01" min="0" placeholder="Standaard bedrag of aangepast" class="w-full pl-8 p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <p class="text-sm text-gray-500 mt-1">Laat leeg om het standaard boetebedrag te gebruiken</p>
+                    </div>
+                    
+                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition duration-200">
+                        Boete Toevoegen
+                    </button>
                 </form>
                 
-                <div>
-                    <h3 class="text-lg font-semibold mb-4 flex items-center">
-                        <i class="fas fa-list-ul text-blue-600 mr-2"></i>Recente Boetes
-                    </h3>
-                    <div id="recentFines" class="space-y-3">
-                        <!-- Recent fines will be loaded here -->
-                        <div id="noRecentFines" class="text-gray-400 text-center py-4">
-                            Geen recente boetes gevonden
-                        </div>
+                <div class="mt-8">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">Recente Boetes</h3>
+                    <div id="noRecentFines" class="hidden text-center py-6 text-gray-500">
+                        Geen recente boetes gevonden
+                    </div>
+                    <div id="recentFines" class="space-y-4">
+                        <!-- Recent fines will be loaded via JS -->
                     </div>
                 </div>
             </div>

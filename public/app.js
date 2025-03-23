@@ -114,7 +114,16 @@ function addCacheBust(url) {
 async function apiRequest(endpoint, options = {}) {
     showLoading(true);
     try {
-        const url = addCacheBust(`${API_BASE_URL}${endpoint}`);
+        // Ensure endpoint starts with '/' if not already
+        if (!endpoint.startsWith('/')) {
+            endpoint = '/' + endpoint;
+        }
+        
+        // Make sure query parameters are properly formatted
+        let url = API_BASE_URL + endpoint;
+        
+        // Apply cache busting
+        url = addCacheBust(url);
         
         if (DEBUG) console.log('API Request to:', url);
         
@@ -125,12 +134,31 @@ async function apiRequest(endpoint, options = {}) {
                 'Content-Type': 'application/json',
                 'Prefer': 'return=representation'
             },
-            mode: 'cors'
+            mode: 'cors',
+            credentials: 'omit' // Don't send cookies
         };
         
         const requestOptions = { ...defaultOptions, ...options };
         
-        const response = await fetch(url, requestOptions);
+        // Add retry logic for network issues
+        let retries = 3;
+        let response = null;
+        
+        while (retries > 0) {
+            try {
+                response = await fetch(url, requestOptions);
+                break; // If successful, exit the retry loop
+            } catch (fetchError) {
+                retries--;
+                if (retries === 0) throw fetchError;
+                // Wait before retrying (exponential backoff)
+                await new Promise(resolve => setTimeout(resolve, (3 - retries) * 1000));
+            }
+        }
+        
+        if (!response) {
+            throw new Error('Network error after multiple retries');
+        }
         
         if (!response.ok) {
             const errorText = await response.text();
@@ -138,12 +166,7 @@ async function apiRequest(endpoint, options = {}) {
             throw new Error(`API Error (${response.status}): ${errorText}`);
         }
         
-        // If response is 204 No Content, return null
-        if (response.status === 204) {
-            return null;
-        }
-        
-        // Otherwise parse JSON
+        // Parse JSON
         const data = await response.json();
         if (DEBUG) console.log('API Response Data:', data);
         return data;
@@ -153,8 +176,8 @@ async function apiRequest(endpoint, options = {}) {
         // More detailed error message to help with debugging
         let errorMessage = 'Fout bij verbinden met de database. ';
         
-        if (error.message.includes('Failed to fetch')) {
-            errorMessage += 'Controleer uw internetverbinding of Supabase server kan niet worden bereikt.';
+        if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+            errorMessage += 'Controleer uw internetverbinding of Supabase server kan niet worden bereikt. Mogelijk is er een CORS probleem.';
         } else {
             errorMessage += error.message;
         }
@@ -320,7 +343,7 @@ async function loadPlayerHistory(playerId) {
 async function loadLeaderboard() {
     try {
         // Get all fines with player info and reason amount
-        const fines = await apiRequest('/fines?select=player_id,players(name),reasons(amount)');
+        const fines = await apiRequest('/fines?select=player_id,reasons(amount)');
         const players = await apiRequest('/players?select=id,name');
         
         if (DEBUG) console.log('Fines data:', fines);
