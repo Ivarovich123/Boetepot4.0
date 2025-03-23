@@ -228,14 +228,19 @@ function formatDate(dateString) {
         try {
             // Ensure endpoint does not start with slash when appending to API path
             const path = endpoint.startsWith('/') ? endpoint.substring(1) : endpoint;
-            const url = `/api/${path}`;
+            const url = `${API_BASE_URL}/${path}`;
             
             const options = {
                 method,
                 headers: {
                     'Content-Type': 'application/json',
-                    'Accept': 'application/json'
-                }
+                    'Accept': 'application/json',
+                    'apikey': SUPABASE_KEY,
+                    'Authorization': `Bearer ${SUPABASE_KEY}`,
+                    'Prefer': 'return=representation'
+                },
+                mode: 'cors',
+                credentials: 'omit'
             };
             
             if (data && (method === 'POST' || method === 'PUT')) {
@@ -268,6 +273,16 @@ function formatDate(dateString) {
         } catch (error) {
             debug(`API Error: ${error.message}`);
             showToast(`API Error: ${error.message}`, 'error');
+            
+            // Try to use mock data if API fails
+            if (endpoint.includes('players')) {
+                return getMockDataForAdmin('players');
+            } else if (endpoint.includes('reasons')) {
+                return getMockDataForAdmin('reasons');
+            } else if (endpoint.includes('fines')) {
+                return getMockDataForAdmin('fines');
+            }
+            
             throw error;
         } finally {
             showLoading(false);
@@ -601,204 +616,94 @@ function formatDate(dateString) {
         }
     }
     
-    async function addReason(data) {
-        try {
-            await apiRequest('/reasons', 'POST', data);
-            showToast('Reden succesvol toegevoegd!', 'success');
-            await loadReasons(); // Reload reasons
-            return true;
-  } catch (error) {
-            debug(`Failed to add reason: ${error.message}`);
-            return false;
-        }
-    }
-    
     async function deleteReason(id) {
         try {
             await apiRequest(`/reasons/${id}`, 'DELETE');
             showToast('Reden succesvol verwijderd!', 'success');
-            await Promise.all([loadReasons(), loadFines()]); // Reload reasons and fines
+            await loadReasons(); // Reload reasons
             return true;
-            } catch (error) {
+        } catch (error) {
             debug(`Failed to delete reason: ${error.message}`);
             return false;
         }
     }
     
-    async function resetAllData() {
-        try {
-            await apiRequest('/reset', 'POST');
-            showToast('Alle data succesvol gereset!', 'success');
-            await loadAllData(); // Reload all data
-            return true;
-  } catch (error) {
-            debug(`Failed to reset data: ${error.message}`);
-            return false;
+    // Function to get mock data when API fails
+    function getMockDataForAdmin(type) {
+        debug(`Getting mock data for admin: ${type}`);
+        
+        // Add players
+        const players = [
+            { id: 1, name: 'Marnix' },
+            { id: 2, name: 'Ivar' },
+            { id: 3, name: 'Jarno' },
+            { id: 4, name: 'Lars B' },
+            { id: 5, name: 'Lars R' },
+            { id: 6, name: 'Rowan' },
+            { id: 7, name: 'Rinse' },
+            { id: 8, name: 'Jan Willem' },
+            { id: 9, name: 'Leon' },
+            { id: 10, name: 'Job' },
+            { id: 11, name: 'Bryan' },
+            { id: 12, name: 'Steven' },
+            { id: 13, name: 'Robbie' },
+            { id: 14, name: 'Boaz' },
+            { id: 15, name: 'Riewing' },
+            { id: 16, name: 'Jordy' },
+            { id: 17, name: 'Pouwel' },
+            { id: 18, name: 'Ramon' },
+            { id: 19, name: 'Steffen' },
+            { id: 20, name: 'Bram' },
+            { id: 21, name: 'Max' },
+            { id: 22, name: 'Mark' },
+            { id: 23, name: 'Jur' },
+            { id: 24, name: 'Erwin' },
+            { id: 25, name: 'Michiel' },
+            { id: 26, name: 'Ian' }
+        ];
+        
+        // Add reasons
+        const reasons = [
+            { id: 1, description: 'Te laat' },
+            { id: 2, description: 'Corvee vergeten' },
+            { id: 3, description: 'Rijden/wassen vergeten' },
+            { id: 4, description: 'Niet optijd afmelden' },
+            { id: 5, description: 'Gele/rode kaart' },
+            { id: 6, description: 'Geen Polo' },
+            { id: 7, description: 'Correctie' }
+        ];
+        
+        // Add fine history - use player_id and reason_id for consistency
+        const fines = [
+            { id: 1, player_id: 2, reason_id: null, amount: 46, timestamp: new Date('2025-02-27T21:57:47').toISOString() },
+            { id: 2, player_id: 3, reason_id: null, amount: 20, timestamp: new Date('2025-02-27T21:58:09').toISOString() },
+            { id: 3, player_id: 4, reason_id: null, amount: 1, timestamp: new Date('2025-02-27T21:58:32').toISOString() },
+            { id: 4, player_id: 5, reason_id: null, amount: 6, timestamp: new Date('2025-02-27T21:58:42').toISOString() },
+            { id: 5, player_id: 6, reason_id: null, amount: 1, timestamp: new Date('2025-02-27T21:58:51').toISOString() },
+            { id: 6, player_id: 8, reason_id: null, amount: 20, timestamp: new Date('2025-02-27T21:59:06').toISOString() },
+            { id: 7, player_id: 9, reason_id: null, amount: 27, timestamp: new Date('2025-02-27T21:59:26').toISOString() },
+            { id: 8, player_id: 10, reason_id: null, amount: 10, timestamp: new Date('2025-02-27T21:59:35').toISOString() },
+            { id: 9, player_id: 11, reason_id: null, amount: 38, timestamp: new Date('2025-02-27T21:59:51').toISOString() },
+            { id: 10, player_id: 12, reason_id: null, amount: 10, timestamp: new Date('2025-02-27T22:00:07').toISOString() }
+        ];
+        
+        // Store in localStorage
+        localStorage.setItem('players', JSON.stringify(players));
+        localStorage.setItem('reasons', JSON.stringify(reasons));
+        localStorage.setItem('fines', JSON.stringify(fines));
+        
+        // Show toast about using mock data
+        showToast('Using offline data - database connection failed', 'warning');
+        
+        // Return requested data type
+        if (type === 'players') {
+            return players;
+        } else if (type === 'reasons') {
+            return reasons;
+        } else if (type === 'fines') {
+            return fines;
         }
+        
+        return [];
     }
-    
-    // Event Listeners
-    function setupEventListeners() {
-        // Theme toggle
-        themeToggle.addEventListener('click', toggleTheme);
-        
-        // Add Fine Form
-        const addFineForm = document.getElementById('addFineForm');
-        if (addFineForm) {
-            addFineForm.addEventListener('submit', async function(e) {
-                e.preventDefault();
-                
-                const playerId = document.getElementById('playerSelect').value;
-                const reasonId = document.getElementById('reasonSelect').value;
-                const amount = document.getElementById('amount').value;
-                
-                if (!playerId) {
-                    showToast('Selecteer een speler!', 'error');
-                    return;
-                }
-                
-                if (!reasonId) {
-                    showToast('Selecteer een reden!', 'error');
-                    return;
-                }
-                
-                if (!amount || isNaN(amount) || parseFloat(amount) <= 0) {
-                    showToast('Voer een geldig bedrag in!', 'error');
-                    return;
-                }
-                
-                const success = await addFine({
-                    player_id: playerId,
-                    reason_id: reasonId,
-                    amount: parseFloat(amount)
-                });
-                
-                if (success) {
-                    // Reset form
-                    document.getElementById('playerSelect').value = '';
-                    document.getElementById('reasonSelect').value = '';
-                    document.getElementById('amount').value = '';
-                    
-                    // Reset Select2
-                    try {
-                        $('#playerSelect').val('').trigger('change');
-                        $('#reasonSelect').val('').trigger('change');
-  } catch (error) {
-                        debug(`Error resetting Select2: ${error.message}`);
-                    }
-                }
-            });
-        }
-        
-        // Add Player Form
-        const addPlayerForm = document.getElementById('addPlayerForm');
-        if (addPlayerForm) {
-            addPlayerForm.addEventListener('submit', async function(e) {
-                e.preventDefault();
-                
-                const playerName = document.getElementById('playerName').value.trim();
-                
-                if (!playerName) {
-                    showToast('Voer een geldige naam in!', 'error');
-        return;
-    }
-    
-                const success = await addPlayer({
-                    name: playerName
-                });
-                
-                if (success) {
-                    // Reset form
-                    document.getElementById('playerName').value = '';
-                }
-            });
-        }
-        
-        // Add Reason Form
-        const addReasonForm = document.getElementById('addReasonForm');
-        if (addReasonForm) {
-            addReasonForm.addEventListener('submit', async function(e) {
-                e.preventDefault();
-                
-                const reasonDescription = document.getElementById('reasonDescription').value.trim();
-                
-                if (!reasonDescription) {
-                    showToast('Voer een geldige beschrijving in!', 'error');
-        return;
-    }
-    
-                const success = await addReason({
-                    description: reasonDescription
-                });
-                
-                if (success) {
-                    // Reset form
-                    document.getElementById('reasonDescription').value = '';
-                }
-            });
-        }
-        
-        // Reset Button
-        const resetButton = document.getElementById('resetButton');
-        if (resetButton) {
-            resetButton.addEventListener('click', async function() {
-                if (confirm('WAARSCHUWING: Dit zal ALLE data verwijderen! Weet je zeker dat je door wilt gaan?')) {
-                    if (confirm('Dit is je laatste kans! Alle boetes, spelers en redenen worden verwijderd. Dit kan niet ongedaan worden gemaakt!')) {
-                        await resetAllData();
-                    }
-                }
-            });
-        }
-        
-        // Manual Load Button
-        const manualLoadButton = document.getElementById('manualLoadButton');
-        if (manualLoadButton) {
-            manualLoadButton.addEventListener('click', loadAllData);
-        }
-        
-        // Clear Storage Button
-        const clearStorageButton = document.getElementById('clearStorageButton');
-        if (clearStorageButton) {
-            clearStorageButton.addEventListener('click', function() {
-                if (confirm('Weet je zeker dat je alle lokale opslag wilt wissen?')) {
-                    localStorage.clear();
-                    showToast('Lokale opslag gewist!', 'info');
-                    setTimeout(() => {
-                        location.reload();
-                    }, 1500);
-                }
-            });
-        }
-    }
-    
-    // Initialization
-    function init() {
-        debug('Initializing admin panel...');
-        
-        // Initialize theme
-        initTheme();
-        
-        // Setup tabs
-        setupTabs();
-        
-        // Load data
-        loadAllData();
-        
-        // Setup event listeners
-        setupEventListeners();
-        
-        debug('Initialization complete');
-    }
-    
-    // Start the application
-    init();
-}); 
-
-// Fix the loading spinner function
-function showLoadingSpinner() {
-    showLoading(true);
-}
-
-function hideLoadingSpinner() {
-    showLoading(false);
-} 
+});

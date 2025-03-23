@@ -326,7 +326,7 @@ async function fetchAPI(endpoint, options = {}) {
         const path = endpoint.startsWith('/') ? endpoint.substring(1) : endpoint;
         
         // Use the API path through our serverless function
-        const url = `/api/${path}`;
+        const url = `${API_BASE_URL}/${path}`;
         
         debug(`Trying URL: ${url}`);
         
@@ -335,11 +335,17 @@ async function fetchAPI(endpoint, options = {}) {
             headers: {
                 'Content-Type': 'application/json',
                 'Accept': 'application/json',
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`,
+                'Prefer': 'return=representation',
                 ...options.headers
             },
+            mode: 'cors',
+            credentials: 'omit',
             signal: abortController.signal
         };
         
+        debug(`Fetch options: ${JSON.stringify(fetchOptions)}`);
         const response = await fetch(url, fetchOptions);
         
         // Check for API errors
@@ -360,6 +366,16 @@ async function fetchAPI(endpoint, options = {}) {
             showToast('De server reageert niet. Probeer het later opnieuw.', 'error');
         } else {
             debug(`General API error: ${error.message}`);
+            
+            // Try to load mock data if API fails
+            localStorage.setItem('useMockData', 'true');
+            const mockData = getMockDataForEndpoint(endpoint);
+            if (mockData) {
+                debug(`Using mock data for ${endpoint}`);
+                showToast('Using offline data - database connection failed', 'warning');
+                return mockData;
+            }
+            
             showToast(`API fout: ${error.message}`, 'error');
         }
         
@@ -658,15 +674,34 @@ function setupPlayerHistory() {
     }
 }
 
+// Function to get mock data for specific endpoints
+function getMockDataForEndpoint(endpoint) {
+    debug(`Getting mock data for endpoint: ${endpoint}`);
+    
+    // Clean up the endpoint string
+    const path = endpoint.startsWith('/') ? endpoint.substring(1) : endpoint;
+    
+    // Return appropriate mock data based on the endpoint
+    if (path.includes('players')) {
+        return setupDefaultData().players;
+    } else if (path.includes('reasons')) {
+        return setupDefaultData().reasons;
+    } else if (path.includes('fines')) {
+        return setupDefaultData().fines;
+    } else if (path.includes('total-amount')) {
+        const fines = setupDefaultData().fines;
+        const total = fines.reduce((sum, fine) => sum + (parseFloat(fine.amount) || 0), 0);
+        return { total };
+    }
+    
+    // Default empty response
+    return null;
+}
+
 // Helper function to set up default player data
 function setupDefaultData() {
     try {
-        console.log('[DEBUG] Setting up default data');
-        
-        // Clear existing data
-        localStorage.removeItem('players');
-        localStorage.removeItem('reasons');
-        localStorage.removeItem('fines');
+        debug('Setting up default data');
         
         // Add players
         const players = [
@@ -734,31 +769,16 @@ function setupDefaultData() {
             { id: 21, player_id: 26, reason_id: 6, amount: 5, timestamp: new Date('2025-03-08T12:00:00').toISOString() }
         ];
         
-        // Save to localStorage
+        // Store data in localStorage for backup
         localStorage.setItem('players', JSON.stringify(players));
         localStorage.setItem('reasons', JSON.stringify(reasons));
         localStorage.setItem('fines', JSON.stringify(fines));
-        localStorage.setItem('useLocalData', 'true');
         
-        console.log('[DEBUG] Default data setup completed');
-        
-        // Show success message
-        showToast('Standaard gegevens zijn geladen', 'success');
-        
-        // Force immediate reload of data
-        loadData();
-        setupPlayerHistory();
-        
-        // Reload the page after a short delay to ensure everything is refreshed
-        setTimeout(() => {
-            location.reload();
-        }, 500);
-        
-        return true;
+        debug('Default data setup complete');
+        return { players, reasons, fines };
     } catch (error) {
-        console.error('[DEBUG] Error setting up default data:', error);
-        showToast('Fout bij het laden van standaard gegevens', 'error');
-        return false;
+        debug(`Error setting up default data: ${error.message}`);
+        return { players: [], reasons: [], fines: [] };
     }
 }
 
