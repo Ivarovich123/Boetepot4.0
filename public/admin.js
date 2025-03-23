@@ -1,8 +1,8 @@
 // Simplified admin panel without login
 document.addEventListener('DOMContentLoaded', function() {
     // Global variables and config
-    const API_BASE_URL = '/api';
-    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNzaXlzY2R1d21keW95Z2J1YXZ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTA5MzU0NTgsImV4cCI6MjAyNjUxMTQ1OH0.PiTT51A3a4sJYYnr_M-F4jq6TmCqYp1Tr_eG6yv4OXI';
+    const API_BASE_URL = 'https://hfjbkhvwstsjbgmepyxg.supabase.co/rest/v1';
+    const API_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhmamJraHZ3c3RzamJnbWVweXhnIiwicm9sZSI6ImFub24iLCJpYXQiOjE2ODkwMTAwODcsImV4cCI6MjAwNDU4NjA4N30.thTZjFw9PnLR9KgTkyZQIR7EWy-m5HCkfGVNqrhbDI8';
     
     // Debug flag - set to true for console logs
     const DEBUG = true;
@@ -186,8 +186,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json',
-                    'apikey': SUPABASE_KEY,
-                    'Authorization': `Bearer ${SUPABASE_KEY}`,
+                    'apikey': API_KEY,
+                    'Authorization': `Bearer ${API_KEY}`,
                     'Cache-Control': 'no-cache, no-store, must-revalidate',
                     'Pragma': 'no-cache',
                     'Expires': '0',
@@ -641,8 +641,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json',
-                    'apikey': SUPABASE_KEY,
-                    'Authorization': `Bearer ${SUPABASE_KEY}`
+                    'apikey': API_KEY,
+                    'Authorization': `Bearer ${API_KEY}`
                 }
             });
             
@@ -676,8 +676,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'apikey': SUPABASE_KEY,
-                    'Authorization': `Bearer ${SUPABASE_KEY}`,
+                    'apikey': API_KEY,
+                    'Authorization': `Bearer ${API_KEY}`,
                     'Prefer': 'return=representation'
                 },
                 body: JSON.stringify(data)
@@ -720,8 +720,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json',
-                    'apikey': SUPABASE_KEY,
-                    'Authorization': `Bearer ${SUPABASE_KEY}`
+                    'apikey': API_KEY,
+                    'Authorization': `Bearer ${API_KEY}`
                 }
             });
             
@@ -756,8 +756,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json',
-                    'apikey': SUPABASE_KEY,
-                    'Authorization': `Bearer ${SUPABASE_KEY}`,
+                    'apikey': API_KEY,
+                    'Authorization': `Bearer ${API_KEY}`,
                     'Prefer': 'return=representation'
                 },
                 body: JSON.stringify(data)
@@ -793,8 +793,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json',
-                    'apikey': SUPABASE_KEY,
-                    'Authorization': `Bearer ${SUPABASE_KEY}`
+                    'apikey': API_KEY,
+                    'Authorization': `Bearer ${API_KEY}`
                 }
             });
             
@@ -1071,8 +1071,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         headers: {
                             'Content-Type': 'application/json',
                             'Accept': 'application/json',
-                            'apikey': SUPABASE_KEY,
-                            'Authorization': `Bearer ${SUPABASE_KEY}`,
+                            'apikey': API_KEY,
+                            'Authorization': `Bearer ${API_KEY}`,
                             'Prefer': 'return=representation'
                         },
                         body: JSON.stringify({ description })
