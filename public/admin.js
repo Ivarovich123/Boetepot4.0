@@ -264,27 +264,42 @@ function formatDate(dateString) {
                     url += path;
                 }
             } else if (method === 'POST') {
-                // For POST requests, we just need the base table name
+                // For POST, we need to use RPC endpoints instead of direct table access
                 if (path === 'players') {
-                    url += 'players';
+                    // Use RPC function
+                    url = `${API_BASE_URL.replace('/rest/v1', '/rest/v1/rpc/insert_player')}`;
                 } else if (path === 'reasons') {
-                    url += 'reasons';
+                    // Use RPC function
+                    url = `${API_BASE_URL.replace('/rest/v1', '/rest/v1/rpc/insert_reason')}`;
                 } else if (path === 'fines') {
-                    url += 'fines';
+                    // Use RPC function
+                    url = `${API_BASE_URL.replace('/rest/v1', '/rest/v1/rpc/insert_fine')}`;
                 } else {
                     url += path;
                 }
             } else if (method === 'DELETE') {
-                // Handle DELETE requests
+                // For DELETE, we need to use RPC endpoints with POST method
                 if (path.startsWith('players/')) {
                     const id = path.split('/')[1];
-                    url += `players?id=eq.${id}`;
+                    url = `${API_BASE_URL.replace('/rest/v1', '/rest/v1/rpc/delete_player')}`;
+                    // Convert method to POST since RPC doesn't use DELETE
+                    method = 'POST';
+                    // Set up data for RPC call
+                    data = { id };
                 } else if (path.startsWith('reasons/')) {
                     const id = path.split('/')[1];
-                    url += `reasons?id=eq.${id}`;
+                    url = `${API_BASE_URL.replace('/rest/v1', '/rest/v1/rpc/delete_reason')}`;
+                    // Convert method to POST since RPC doesn't use DELETE
+                    method = 'POST';
+                    // Set up data for RPC call
+                    data = { id };
                 } else if (path.startsWith('fines-delete')) {
                     const id = path.split('=')[1];
-                    url += `fines?id=eq.${id}`;
+                    url = `${API_BASE_URL.replace('/rest/v1', '/rest/v1/rpc/delete_fine')}`;
+                    // Convert method to POST since RPC doesn't use DELETE
+                    method = 'POST';
+                    // Set up data for RPC call
+                    data = { id };
                 } else {
                     url += path;
                 }
@@ -306,18 +321,9 @@ function formatDate(dateString) {
                 credentials: 'omit'
             };
             
-            // Special handling for non-GET requests that need auth bypass for RLS
-            if (method !== 'GET') {
-                // Add auth parameter to URL to bypass RLS
-                url += url.includes('?') ? '&auth=bypass' : '?auth=bypass';
-                
-                // Add special header to help identify admin requests in Supabase policies
-                options.headers['x-auth-role'] = 'admin';
-            }
-            
             // Add Prefer header for inserts to return the created item
             if (method === 'POST') {
-                options.headers['Prefer'] = 'return=representation';
+                options.headers['Prefer'] = 'return=minimal';
             }
             
             if (data && (method === 'POST' || method === 'PUT')) {
@@ -725,9 +731,10 @@ function formatDate(dateString) {
     // CRUD Operations
     async function addFine(data) {
         try {
-            const url = `${API_BASE_URL}/fines`;
+            // Use Supabase RPC endpoint for stored procedure
+            const url = `${API_BASE_URL.replace('/rest/v1', '/rest/v1/rpc/insert_fine')}`;
             
-            debug(`Making POST request to ${url}`);
+            debug(`Making RPC call to insert_fine with data: ${JSON.stringify(data)}`);
             
             const options = {
                 method: 'POST',
@@ -736,10 +743,7 @@ function formatDate(dateString) {
                     'Accept': 'application/json',
                     'apikey': SUPABASE_KEY,
                     'Authorization': `Bearer ${SUPABASE_KEY}`,
-                    'Prefer': 'return=representation',
-                    'x-client-info': 'boetepot-app',
-                    // Special header for RLS bypass
-                    'x-auth-bypass': 'true'
+                    'Prefer': 'return=minimal'
                 },
                 mode: 'cors',
                 credentials: 'omit',
@@ -769,22 +773,23 @@ function formatDate(dateString) {
     
     async function deleteFine(id) {
         try {
-            const url = `${API_BASE_URL}/fines?id=eq.${id}&auth=bypass`;
+            // Use RPC endpoint for deleting fines
+            const url = `${API_BASE_URL.replace('/rest/v1', '/rest/v1/rpc/delete_fine')}`;
             
-            debug(`Making DELETE request to ${url}`);
+            debug(`Making RPC call to delete_fine with id: ${id}`);
             
             const options = {
-                method: 'DELETE',
+                method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json',
                     'apikey': SUPABASE_KEY,
                     'Authorization': `Bearer ${SUPABASE_KEY}`,
-                    'x-client-info': 'boetepot-app',
-                    'x-auth-role': 'admin'
+                    'Prefer': 'return=minimal'
                 },
                 mode: 'cors',
-                credentials: 'omit'
+                credentials: 'omit',
+                body: JSON.stringify({ id })
             };
             
             showLoading(true);
@@ -810,9 +815,10 @@ function formatDate(dateString) {
     
     async function addPlayer(data) {
         try {
-            const url = `${API_BASE_URL}/players?auth=bypass`;
+            // Use RPC endpoint for adding players
+            const url = `${API_BASE_URL.replace('/rest/v1', '/rest/v1/rpc/insert_player')}`;
             
-            debug(`Making POST request to ${url}`);
+            debug(`Making RPC call to insert_player with data: ${JSON.stringify(data)}`);
             
             const options = {
                 method: 'POST',
@@ -821,9 +827,7 @@ function formatDate(dateString) {
                     'Accept': 'application/json',
                     'apikey': SUPABASE_KEY,
                     'Authorization': `Bearer ${SUPABASE_KEY}`,
-                    'Prefer': 'return=representation',
-                    'x-client-info': 'boetepot-app',
-                    'x-auth-role': 'admin'
+                    'Prefer': 'return=minimal'
                 },
                 mode: 'cors',
                 credentials: 'omit',
@@ -853,22 +857,23 @@ function formatDate(dateString) {
     
     async function deletePlayer(id) {
         try {
-            const url = `${API_BASE_URL}/players?id=eq.${id}&auth=bypass`;
+            // Use RPC endpoint for deleting players
+            const url = `${API_BASE_URL.replace('/rest/v1', '/rest/v1/rpc/delete_player')}`;
             
-            debug(`Making DELETE request to ${url}`);
+            debug(`Making RPC call to delete_player with id: ${id}`);
             
             const options = {
-                method: 'DELETE',
+                method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json',
                     'apikey': SUPABASE_KEY,
                     'Authorization': `Bearer ${SUPABASE_KEY}`,
-                    'x-client-info': 'boetepot-app',
-                    'x-auth-role': 'admin'
+                    'Prefer': 'return=minimal'
                 },
                 mode: 'cors',
-                credentials: 'omit'
+                credentials: 'omit',
+                body: JSON.stringify({ id })
             };
             
             showLoading(true);
@@ -894,22 +899,23 @@ function formatDate(dateString) {
     
     async function deleteReason(id) {
         try {
-            const url = `${API_BASE_URL}/reasons?id=eq.${id}&auth=bypass`;
+            // Use RPC endpoint for deleting reasons
+            const url = `${API_BASE_URL.replace('/rest/v1', '/rest/v1/rpc/delete_reason')}`;
             
-            debug(`Making DELETE request to ${url}`);
+            debug(`Making RPC call to delete_reason with id: ${id}`);
             
             const options = {
-                method: 'DELETE',
+                method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json',
                     'apikey': SUPABASE_KEY,
                     'Authorization': `Bearer ${SUPABASE_KEY}`,
-                    'x-client-info': 'boetepot-app',
-                    'x-auth-role': 'admin'
+                    'Prefer': 'return=minimal'
                 },
                 mode: 'cors',
-                credentials: 'omit'
+                credentials: 'omit',
+                body: JSON.stringify({ id })
             };
             
             showLoading(true);
@@ -1142,9 +1148,10 @@ function formatDate(dateString) {
                 }
                 
                 try {
-                    const url = `${API_BASE_URL}/reasons?auth=bypass`;
+                    // Use RPC endpoint for adding reasons
+                    const url = `${API_BASE_URL.replace('/rest/v1', '/rest/v1/rpc/insert_reason')}`;
                     
-                    debug(`Making POST request to ${url}`);
+                    debug(`Making RPC call to insert_reason with description: ${description}`);
                     
                     const options = {
                         method: 'POST',
@@ -1153,9 +1160,7 @@ function formatDate(dateString) {
                             'Accept': 'application/json',
                             'apikey': SUPABASE_KEY,
                             'Authorization': `Bearer ${SUPABASE_KEY}`,
-                            'Prefer': 'return=representation',
-                            'x-client-info': 'boetepot-app',
-                            'x-auth-role': 'admin'
+                            'Prefer': 'return=minimal'
                         },
                         mode: 'cors',
                         credentials: 'omit',
