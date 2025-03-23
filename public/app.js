@@ -1,6 +1,6 @@
 // API Base URL - make sure this matches your backend setup
 const API_BASE_URL = 'https://jvhgdidaoasgxqqixywl.supabase.co/rest/v1';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp2aGdkaWRhb2FzZ3hxcWl4eXdsIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTY4MzIyNTU5MywiZXhwIjoxOTk4ODAxNTkzfQ.cxOIWWJx40MO31i3K3Ykr9yZnLi-Nd9dpZWQNrfID1Y';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp2aGdkaWRhb2FzZ3hxcWl4eXdsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI1MDA3OTYsImV4cCI6MjA1ODA3Njc5Nn0.2qrrNC2bKichC63SvUhNgXlcG0ElViRsqM5CYU3QSfg';
 const SERVER_URL = 'https://www.boetepot.cloud';
 
 // Debug setting
