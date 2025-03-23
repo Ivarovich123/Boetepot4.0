@@ -8,48 +8,6 @@
     <meta http-equiv="Expires" content="0">
     <title>Admin - Boetepot</title>
     
-    <!-- Cache busting for CSS and JS -->
-    <script>
-      // Add cache busting to all script and link tags
-      document.addEventListener('DOMContentLoaded', function() {
-        const version = new Date().getTime();
-        const links = document.querySelectorAll('link[rel="stylesheet"]');
-        const scripts = document.querySelectorAll('script[src]');
-        
-        // Function to add timestamp to URL
-        function addTimestamp(url) {
-          return url + (url.includes('?') ? '&' : '?') + 'v=' + version;
-        }
-        
-        // Update stylesheet links
-        links.forEach(link => {
-          if (link.href && !link.href.includes('fonts.googleapis')) {
-            link.href = addTimestamp(link.href);
-          }
-        });
-        
-        // Update script sources
-        scripts.forEach(script => {
-          if (script.src && !script.src.includes('jquery') && !script.src.includes('select2')) {
-            script.src = addTimestamp(script.src);
-          }
-        });
-        
-        // Force reload if older than 1 hour
-        const lastVisit = localStorage.getItem('adminLastVisit');
-        const now = Date.now();
-        if (lastVisit && (now - parseInt(lastVisit)) > 3600000) {
-          localStorage.setItem('adminLastVisit', now.toString());
-          if (!sessionStorage.getItem('adminReloaded')) {
-            sessionStorage.setItem('adminReloaded', 'true');
-            location.reload(true);
-          }
-        } else {
-          localStorage.setItem('adminLastVisit', now.toString());
-        }
-      });
-    </script>
-    
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     
@@ -78,23 +36,8 @@
             --input-bg: #ffffff;
             --input-border: #e5e7eb;
             --input-text: #1f2937;
-            --btn-primary: #3b82f6;
-            --btn-primary-hover: #2563eb;
-            --btn-danger: #ef4444;
-            --btn-danger-hover: #dc2626;
-        }
-        
-        /* Dark mode variables */
-        .dark {
-            --bg-color: #111827;
-            --text-color: #f3f4f6;
-            --card-bg: #1f2937;
-            --card-border: #374151;
-            --input-bg: #374151;
-            --input-border: #4b5563;
-            --input-text: #f3f4f6;
-            --btn-primary: #3b82f6;
-            --btn-primary-hover: #2563eb;
+            --btn-primary: #0083cb;
+            --btn-primary-hover: #022c63;
             --btn-danger: #ef4444;
             --btn-danger-hover: #dc2626;
         }
@@ -208,364 +151,317 @@
             border-color: #2563eb !important;
         }
         
-        .dark .tab-active {
-            color: #3b82f6 !important;
-            border-color: #3b82f6 !important;
-        }
-
-        /* Button styles */
-        .btn-primary {
-            background-color: var(--btn-primary);
-        }
-        
-        .btn-primary:hover {
-            background-color: var(--btn-primary-hover);
-        }
-        
-        .btn-danger {
-            background-color: var(--btn-danger);
+        /* Loading spinner */
+        .loading-spinner {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.7);
+            z-index: 1060;
+            justify-content: center;
+            align-items: center;
         }
         
-        .btn-danger:hover {
-            background-color: var(--btn-danger-hover);
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 4px solid rgba(0, 131, 203, 0.1);
+            border-top-color: var(--btn-primary);
+            animation: spin 0.8s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Custom avatars for player select */
+        .player-option {
+            display: flex;
+            align-items: center;
+        }
+        
+        .player-avatar {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            margin-right: 10px;
+            background-color: #60a5fa;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
         }
         
         /* Mobile optimizations */
-        @media (max-width: 640px) {
+        @media (max-width: 768px) {
             .container {
                 padding-left: 1rem;
                 padding-right: 1rem;
             }
             
-            nav {
-                padding: 0 1rem;
-            }
-            
-            /* Fix cramped header on mobile */
-            header .flex {
-                flex-wrap: wrap;
-            }
-            
-            header h1 {
-                font-size: 1.25rem;
-            }
-            
-            /* Make return button more visible on mobile */
-            .admin-home-link {
+            .tab-item {
+                font-size: 0.875rem;
                 padding: 0.5rem;
-                margin-right: 0.5rem;
-                font-size: 1.25rem;
+            }
+            
+            .card {
+                padding: 1rem;
+            }
+            
+            h1, h2 {
+                font-size: 1.5rem;
+            }
+            
+            .btn {
+                padding: 0.5rem 1rem;
+            }
+            
+            .section-header {
+                position: sticky;
+                top: 0;
+                z-index: 10;
+                background-color: var(--bg-color);
+                padding: 1rem 0;
             }
         }
         
-        /* Mobile-friendly Select2 improvements */
-        @media (max-width: 767px) {
-            /* Fix dropdown positioning on mobile */
+        /* Fix mobile selection */
+        @media (max-width: 768px) {
             .select2-container--open .select2-dropdown {
-                position: fixed !important;
-                top: auto !important;
-                left: 5% !important;
-                right: 5% !important;
-                width: 90% !important;
-                max-height: 60vh;
-                overflow-y: auto;
-                margin-top: 5px;
-                z-index: 10000 !important;
-                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-                border-radius: 12px !important;
+                min-width: 300px;
             }
             
-            /* Larger touch targets */
-            .select2-results__option {
-                padding: 14px 12px !important;
-                min-height: 50px;
-                display: flex !important;
-                align-items: center !important;
+            .select2-container--default .select2-selection--single {
+                height: 3.25rem;
+                font-size: 1rem;
             }
             
-            /* Prevent autocomplete zoom */
-            .select2-search__field {
-                font-size: 16px !important;
-                padding: 12px 10px !important;
-                height: 50px !important;
-                border-radius: 8px !important;
+            .select2-search--dropdown .select2-search__field {
+                padding: 0.75rem;
+                font-size: 1rem;
             }
-            
-            /* More space between selection pills */
-            .select2-selection__choice {
-                margin: 6px !important;
-                padding: 8px 12px !important;
-                border-radius: 20px !important;
-            }
-            
-            /* Make remove button easier to hit */
-            .select2-selection__choice__remove {
-                margin-right: 8px !important;
-                padding: 0 8px !important;
-                font-size: 16px !important;
-            }
-            
-            /* Fix the search box container */
-            .select2-search--dropdown {
-                padding: 10px !important;
-            }
-            
-            /* Make sure the dropdown parent has proper relative positioning */
-            #addFineForm {
-                position: relative;
-            }
-            
-            /* Improve visibility when selected */
-            .select2-container--default .select2-results__option--highlighted[aria-selected] {
-                background-color: var(--btn-primary) !important;
-                color: white !important;
-                border-radius: 8px !important;
-            }
-            
-            /* Add space between options */
-            .select2-results__option + .select2-results__option {
-                margin-top: 4px !important;
-            }
-        }
-        
-        /* Improve Select2 appearance and usability */
-        .select2-selection--multiple {
-            overflow: hidden;
-        }
-        
-        .select2-search--inline .select2-search__field {
-            margin-top: 6px !important;
-            padding-left: 5px !important;
-        }
-        
-        .select2-container--default .select2-selection--multiple .select2-selection__clear {
-            margin-top: 5px;
-            margin-right: 8px;
-            font-size: 16px;
-        }
-        
-        /* More visible focus states */
-        .select2-container--default.select2-container--focus .select2-selection--multiple {
-            border-width: 2px;
-            border-color: var(--btn-primary);
         }
     </style>
 </head>
-<body class="min-h-screen pb-20">
-    <!-- Loading Spinner -->
-    <div id="loadingSpinner" class="fixed inset-0 bg-black bg-opacity-50 items-center justify-center z-50 hidden">
-        <div class="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-xl">
-            <div class="flex flex-col items-center">
-                <div class="w-12 h-12 border-4 border-blue-600 dark:border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                <p class="mt-3 text-gray-700 dark:text-gray-300">Laden...</p>
-            </div>
-        </div>
+<body class="min-h-screen">
+    <div class="loading-spinner">
+        <div class="spinner"></div>
     </div>
-    
-    <!-- Toast Messages -->
-    <div id="toastContainer" class="fixed top-4 right-4 z-50 max-w-xs w-full"></div>
-  
-    <!-- Navbar -->
-    <header class="fixed top-0 left-0 right-0 z-40 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 backdrop-filter backdrop-blur-lg bg-opacity-90 dark:bg-opacity-90">
-        <nav class="px-4 h-16">
-            <div class="h-full mx-auto flex items-center justify-between">
-                <div class="flex items-center">
-                    <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Boetepot Beheer</h1>
-                </div>
-                <div class="flex items-center space-x-3">
-                    <a href="index.html" class="admin-home-link bg-blue-500 hover:bg-blue-600 text-white p-2 rounded-lg transition-colors flex items-center">
-                        <i class="fas fa-home text-lg mr-1"></i>
-                        <span class="hidden sm:inline">Terug</span>
-                    </a>
-                    <button id="themeToggle" class="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
-                        <i id="themeIcon" class="fas fa-moon text-lg"></i>
-                    </button>
-                </div>
-            </div>
-        </nav>
-    </header>
 
-    <div id="adminPanel" class="container mx-auto px-4 pt-20 pb-8">
-        <!-- Admin Header -->
-        <div class="mb-6">
-            <h1 class="text-3xl font-bold mb-2">Admin Panel</h1>
-            <p class="text-gray-600 dark:text-gray-400">Beheer boetes, spelers en redenen</p>
-        </div>
-    
-        <!-- Tabs -->
-        <div class="border-b border-gray-200 dark:border-gray-700 mb-6">
-            <ul class="flex flex-wrap -mb-px text-sm font-medium text-center">
-                <li class="mr-6">
-                    <a id="tab-boetes" class="inline-block p-3 rounded-t-lg border-b-2 border-transparent hover:text-blue-600 dark:hover:text-blue-500 hover:border-blue-600 dark:hover:border-blue-500 text-gray-500 dark:text-gray-400 cursor-pointer tab-active">
-                        <i class="fas fa-money-bill-wave mr-2"></i>
-                        Boete Toevoegen
-                    </a>
-                </li>
-                <li>
-                    <a id="tab-beheer" class="inline-block p-3 rounded-t-lg border-b-2 border-transparent hover:text-blue-600 dark:hover:text-blue-500 hover:border-blue-600 dark:hover:border-blue-500 text-gray-500 dark:text-gray-400 cursor-pointer">
-                        <i class="fas fa-cog mr-2"></i>
-                        Beheer
-                    </a>
-                </li>
-            </ul>
-        </div>
-        
-        <!-- Tab content containers -->
-        <div id="finesTab" class="tab-content mb-8">
-            <!-- Add Fine Form -->
-            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-md p-6 mb-6 card">
-                <h2 class="text-xl font-semibold mb-4 flex items-center">
-                    <i class="fas fa-plus-circle text-blue-600 mr-3"></i>
-                    Boete Toevoegen
-                </h2>
-                <form id="addFineForm" class="space-y-4">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                        <div>
-                            <label for="playerSelect" class="block text-sm font-medium mb-2">Speler</label>
-                            <select id="playerSelect" class="w-full py-3 px-4 rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 shadow-sm" data-placeholder="Selecteer een speler"></select>
-                        </div>
-                        <div>
-                            <label for="reasonSelect" class="block text-sm font-medium mb-2">Reden</label>
-                            <select id="reasonSelect" class="w-full py-3 px-4 rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 shadow-sm" data-placeholder="Selecteer een reden"></select>
-                        </div>
-                    </div>
-                    <div class="mb-4">
-                        <label for="amount" class="block text-sm font-medium mb-2">Bedrag</label>
-                        <div class="relative">
-                            <span class="absolute left-4 top-1/2 transform -translate-y-1/2">€</span>
-                            <input type="number" id="amount" class="w-full py-3 pl-8 pr-4 rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 shadow-sm" placeholder="0.00" step="0.01" min="0" required>
-                        </div>
-                    </div>
-                    
-                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-xl transition-colors shadow-md flex justify-center items-center btn-primary">
-                        <i class="fas fa-save mr-2"></i>
-                        Boete Toevoegen
-                    </button>
-                </form>
+    <div class="container mx-auto py-8 px-4 max-w-4xl">
+        <header class="mb-8 flex justify-between items-center">
+            <h1 class="text-3xl font-bold text-blue-600">Admin Panel</h1>
+            <div class="flex space-x-3">
+                <a href="app.html" class="text-blue-600 hover:text-blue-800 transition bg-white px-4 py-2 rounded-lg shadow-sm border border-blue-200 flex items-center">
+                    <i class="fas fa-arrow-left mr-2"></i> Terug
+                </a>
             </div>
-            
-            <!-- Recent Fines -->
-            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-md p-6 card">
-                <h2 class="text-xl font-semibold mb-4 flex items-center">
-                    <i class="fas fa-history text-blue-600 mr-3"></i>
-                    Recente Boetes
-                </h2>
-                <div id="recentFines" class="space-y-4">
-                    <div class="text-center py-8 text-gray-500 dark:text-gray-400">
-                        <i class="fas fa-spinner fa-spin text-2xl mb-3"></i>
-                        <p>Boetes laden...</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    
-        <!-- Beheer Tab Content -->
-        <div id="beheerTab" class="tab-content mb-8 hidden">
-            <!-- Players Management -->
-            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-md p-6 mb-6 card">
-                <h2 class="text-xl font-semibold mb-4 flex items-center">
-                    <i class="fas fa-user-plus text-blue-600 mr-3"></i>
-                    Speler Toevoegen
-                </h2>
-                <form id="addPlayerForm" class="space-y-4">
-                    <div class="mb-4">
-                        <label for="playerName" class="block text-sm font-medium mb-2">Naam</label>
-                        <input type="text" id="playerName" class="w-full py-3 px-4 rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 shadow-sm" placeholder="Naam van de speler" required>
-                    </div>
-                    
-                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-xl transition-colors shadow-md flex justify-center items-center btn-primary">
-                        <i class="fas fa-save mr-2"></i>
-                        Speler Toevoegen
-                    </button>
-                </form>
-            </div>
+        </header>
 
-            <!-- Bulk Import Players -->
-            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-md p-6 mb-6 card">
-                <h2 class="text-xl font-semibold mb-4 flex items-center">
-                    <i class="fas fa-users text-blue-600 mr-3"></i>
-                    Bulk Import Spelers
-                </h2>
-                <form id="bulkImportForm" class="space-y-4">
-                    <div class="mb-4">
-                        <label for="bulkPlayerNames" class="block text-sm font-medium mb-2">Namen (één per regel, max 30)</label>
-                        <textarea id="bulkPlayerNames" 
-                            class="w-full py-3 px-4 rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 shadow-sm" 
-                            placeholder="Jan&#10;Peter&#10;Yan"
-                            rows="6"
-                            required></textarea>
-                    </div>
-                    
-                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-xl transition-colors shadow-md flex justify-center items-center btn-primary">
-                        <i class="fas fa-file-import mr-2"></i>
-                        Importeer Spelers
-                    </button>
-                </form>
-            </div>
-            
-            <!-- Players List -->
-            <div id="playersList" class="bg-white dark:bg-gray-800 rounded-2xl shadow-md p-6 card space-y-2 mb-6"></div>
-
-            <!-- Reasons Management -->
-            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-md p-6 mb-6 card">
-                <h2 class="text-xl font-semibold mb-4 flex items-center">
-                    <i class="fas fa-plus-circle text-blue-600 mr-3"></i>
-                    Reden Toevoegen
-                </h2>
-                <form id="addReasonForm" class="space-y-4">
-                    <div class="mb-4">
-                        <label for="reasonDescription" class="block text-sm font-medium mb-2">Beschrijving</label>
-                        <input type="text" id="reasonDescription" class="w-full py-3 px-4 rounded-xl border-gray-300 dark:border-gray-700 dark:bg-gray-900 shadow-sm" placeholder="Beschrijving van de reden" required>
-                    </div>
-                    
-                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-xl transition-colors shadow-md flex justify-center items-center btn-primary">
-                        <i class="fas fa-save mr-2"></i>
-                        Reden Toevoegen
-                    </button>
-                </form>
-            </div>
-            
-            <!-- Reasons List -->
-            <div id="reasonsList" class="bg-white dark:bg-gray-800 rounded-2xl shadow-md p-6 card space-y-2 mb-6"></div>
-
-            <!-- Debug and Reset Section -->
-            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-md p-6 mb-8 card">
-                <!-- Debug Panel -->
-                <h2 class="text-xl font-semibold mb-4 flex items-center">
-                    <i class="fas fa-bug text-blue-600 mr-3"></i>
-                    Debug Panel
-                </h2>
-                <div id="debugPanel" class="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg border border-gray-200 dark:border-gray-700 mb-6">
-                    <div class="mb-3">
-                        <div class="font-semibold mb-1">Debug Status:</div>
-                        <div id="debugStatus" class="text-gray-600 dark:text-gray-400 text-sm bg-white dark:bg-gray-800 p-2 rounded border border-gray-200 dark:border-gray-700 overflow-auto max-h-40">Waiting for page to load...</div>
-                    </div>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <button id="manualLoadButton" class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg text-sm flex items-center justify-center btn-primary">
-                            <i class="fas fa-sync-alt mr-2"></i>
-                            Manually Load Data
-                        </button>
-                        <button id="clearStorageButton" class="bg-yellow-600 hover:bg-yellow-700 text-white py-2 px-4 rounded-lg text-sm flex items-center justify-center">
-                            <i class="fas fa-trash-alt mr-2"></i>
-                            Clear Storage
-                        </button>
-                    </div>
-                </div>
-                
-                <!-- Reset Data Button -->
-                <h2 class="text-xl font-semibold mb-4 flex items-center">
-                    <i class="fas fa-exclamation-triangle text-red-600 mr-3"></i>
-                    Data Reset
-                </h2>
-                <p class="text-gray-600 dark:text-gray-400 mb-4">WAARSCHUWING: Dit zal ALLE boetes verwijderen. Deze actie kan niet ongedaan worden gemaakt!</p>
-                <button id="resetButton" class="w-full bg-red-600 hover:bg-red-700 text-white font-medium py-3 px-4 rounded-xl transition-colors shadow-md flex justify-center items-center btn-danger">
-                    <i class="fas fa-trash-alt mr-2"></i>
-                    Reset Alle Data
+        <!-- Admin Tabs -->
+        <div class="bg-white rounded-xl shadow-md mb-6">
+            <div class="flex border-b" id="tab-navigation">
+                <button class="tab-item px-6 py-3 font-medium border-b-2 border-transparent transition-colors duration-200 ease-in-out tab-active" data-tab="players">
+                    <i class="fas fa-users mr-2"></i> Spelers
+                </button>
+                <button class="tab-item px-6 py-3 font-medium border-b-2 border-transparent transition-colors duration-200 ease-in-out" data-tab="reasons">
+                    <i class="fas fa-list mr-2"></i> Boete Redenen
+                </button>
+                <button class="tab-item px-6 py-3 font-medium border-b-2 border-transparent transition-colors duration-200 ease-in-out" data-tab="settings">
+                    <i class="fas fa-cog mr-2"></i> Instellingen
                 </button>
             </div>
         </div>
+
+        <!-- Players Tab Content -->
+        <div id="players-tab" class="tab-content">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- Add Player Section -->
+                <section class="card rounded-xl p-6 shadow-lg">
+                    <div class="section-header mb-6">
+                        <h2 class="text-2xl font-bold text-gray-800">Speler Toevoegen</h2>
+                    </div>
+                    
+                    <form id="add-player-form" class="space-y-4">
+                        <div>
+                            <label for="player-name" class="block text-sm font-medium text-gray-700 mb-1">Naam:</label>
+                            <input type="text" id="player-name" class="block w-full rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Naam speler">
+                        </div>
+                        
+                        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition shadow">
+                            Speler Toevoegen
+                        </button>
+                    </form>
+                </section>
+                
+                <!-- Players List Section -->
+                <section class="card rounded-xl p-6 shadow-lg">
+                    <div class="section-header mb-6">
+                        <h2 class="text-2xl font-bold text-gray-800">Spelers</h2>
+                    </div>
+                    
+                    <div id="players-list" class="space-y-3 overflow-auto" style="max-height: 400px;">
+                        <!-- Players will be loaded here -->
+                        <div class="text-gray-500 text-center py-4">
+                            <i class="fas fa-spinner fa-spin mr-2"></i> Spelers laden...
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </div>
+
+        <!-- Reasons Tab Content -->
+        <div id="reasons-tab" class="tab-content hidden">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- Add Reason Section -->
+                <section class="card rounded-xl p-6 shadow-lg">
+                    <div class="section-header mb-6">
+                        <h2 class="text-2xl font-bold text-gray-800">Boete Reden Toevoegen</h2>
+                    </div>
+                    
+                    <form id="add-reason-form" class="space-y-4">
+                        <div>
+                            <label for="reason-description" class="block text-sm font-medium text-gray-700 mb-1">Beschrijving:</label>
+                            <input type="text" id="reason-description" class="block w-full rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Beschrijving reden">
+                        </div>
+                        
+                        <div>
+                            <label for="reason-amount" class="block text-sm font-medium text-gray-700 mb-1">Bedrag (€):</label>
+                            <input type="number" id="reason-amount" min="0" step="0.5" class="block w-full rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="0.00">
+                        </div>
+                        
+                        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition shadow">
+                            Reden Toevoegen
+                        </button>
+                    </form>
+                </section>
+                
+                <!-- Reasons List Section -->
+                <section class="card rounded-xl p-6 shadow-lg">
+                    <div class="section-header mb-6">
+                        <h2 class="text-2xl font-bold text-gray-800">Boete Redenen</h2>
+                    </div>
+                    
+                    <div id="reasons-list" class="space-y-3 overflow-auto" style="max-height: 400px;">
+                        <!-- Reasons will be loaded here -->
+                        <div class="text-gray-500 text-center py-4">
+                            <i class="fas fa-spinner fa-spin mr-2"></i> Redenen laden...
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </div>
+
+        <!-- Settings Tab Content -->
+        <div id="settings-tab" class="tab-content hidden">
+            <div class="grid grid-cols-1 gap-8">
+                <!-- Settings Section -->
+                <section class="card rounded-xl p-6 shadow-lg">
+                    <div class="section-header mb-6">
+                        <h2 class="text-2xl font-bold text-gray-800">Instellingen</h2>
+                    </div>
+                    
+                    <div class="space-y-8">
+                        <!-- Reset All Data -->
+                        <div class="p-4 bg-red-50 rounded-lg border border-red-200">
+                            <h3 class="text-lg font-semibold text-red-700 mb-2">Reset Alle Gegevens</h3>
+                            <p class="text-red-600 mb-4">Let op: Dit verwijdert alle gegevens (spelers, redenen, boetes) en kan niet ongedaan worden gemaakt.</p>
+                            <button id="reset-data-btn" class="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded transition shadow flex items-center">
+                                <i class="fas fa-trash-alt mr-2"></i> Alle Gegevens Resetten
+                            </button>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </div>
+
+        <!-- Edit Player Modal -->
+        <div id="edit-player-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+            <div class="bg-white rounded-xl p-6 shadow-xl max-w-md w-full mx-4">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-bold">Speler Bewerken</h3>
+                    <button class="close-modal text-gray-400 hover:text-gray-600 transition">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                
+                <form id="edit-player-form" class="space-y-4">
+                    <input type="hidden" id="edit-player-id">
+                    
+                    <div>
+                        <label for="edit-player-name" class="block text-sm font-medium text-gray-700 mb-1">Naam:</label>
+                        <input type="text" id="edit-player-name" class="block w-full rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    </div>
+                    
+                    <div class="flex space-x-3 pt-2">
+                        <button type="button" class="close-modal flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2 px-4 rounded transition">
+                            Annuleren
+                        </button>
+                        <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded transition shadow">
+                            Opslaan
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Edit Reason Modal -->
+        <div id="edit-reason-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+            <div class="bg-white rounded-xl p-6 shadow-xl max-w-md w-full mx-4">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-bold">Reden Bewerken</h3>
+                    <button class="close-modal text-gray-400 hover:text-gray-600 transition">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                
+                <form id="edit-reason-form" class="space-y-4">
+                    <input type="hidden" id="edit-reason-id">
+                    
+                    <div>
+                        <label for="edit-reason-description" class="block text-sm font-medium text-gray-700 mb-1">Beschrijving:</label>
+                        <input type="text" id="edit-reason-description" class="block w-full rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    </div>
+                    
+                    <div>
+                        <label for="edit-reason-amount" class="block text-sm font-medium text-gray-700 mb-1">Bedrag (€):</label>
+                        <input type="number" id="edit-reason-amount" min="0" step="0.5" class="block w-full rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    </div>
+                    
+                    <div class="flex space-x-3 pt-2">
+                        <button type="button" class="close-modal flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2 px-4 rounded transition">
+                            Annuleren
+                        </button>
+                        <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded transition shadow">
+                            Opslaan
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
-    
+
+    <!-- Success toast notification -->
+    <div id="success-toast" class="fixed bottom-0 right-0 mb-4 mr-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg transform translate-y-24 opacity-0 transition-all duration-300 z-50">
+        <div class="flex items-center">
+            <i class="fas fa-check-circle mr-2"></i>
+            <span id="toast-message">Actie succesvol uitgevoerd!</span>
+        </div>
+    </div>
+
+    <!-- Error toast notification -->
+    <div id="error-toast" class="fixed bottom-0 right-0 mb-4 mr-4 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg transform translate-y-24 opacity-0 transition-all duration-300 z-50">
+        <div class="flex items-center">
+            <i class="fas fa-exclamation-circle mr-2"></i>
+            <span id="error-message">Er is een fout opgetreden.</span>
+        </div>
+    </div>
+
     <script src="admin.js"></script>
 </body>
 </html> 

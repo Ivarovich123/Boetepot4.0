@@ -1,99 +1,20 @@
 // Simplified admin panel without login
 document.addEventListener('DOMContentLoaded', function() {
-    // Configuration
-    const API_BASE_URL = 'https://jvhgdidaoasgxqqixywl.supabase.co/rest/v1';  // Direct connection to Supabase
-    
-    // Use an approach that doesn't expose the full key in the code
-    // This is split to avoid GitHub detecting it as a secret
-    const SUPABASE_KEY_PART1 = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJz';
-    const SUPABASE_KEY_PART2 = 'dXBhYmFzZSIsInJlZiI6Imp2aGdkaWRhb2FzZ3hxcWl4eXds';
-    const SUPABASE_KEY_PART3 = 'Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI1MDA3OTYsImV4cCI6MjA1ODA3Njc5Nn0.2qrrNC2bKichC63SvUhNgXlcG0ElViRsqM5CYU3QSfg';
-    const SUPABASE_KEY = SUPABASE_KEY_PART1 + SUPABASE_KEY_PART2 + SUPABASE_KEY_PART3;
+    // Global variables and config
+    const API_BASE_URL = '/api';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNzaXlzY2R1d21keW95Z2J1YXZ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTA5MzU0NTgsImV4cCI6MjAyNjUxMTQ1OH0.PiTT51A3a4sJYYnr_M-F4jq6TmCqYp1Tr_eG6yv4OXI';
     
     // Debug flag - set to true for console logs
     const DEBUG = true;
     
     // DOM Elements
-    const themeToggle = document.getElementById('themeToggle');
-    const themeIcon = document.getElementById('themeIcon');
-    
-    // Dark mode handling - simplified approach
-    function initTheme() {
-        // Check for saved theme preference or use system preference
-        const savedTheme = localStorage.getItem('theme');
-        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        
-        if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
-            enableDarkMode();
-        } else {
-            disableDarkMode();
-        }
-        
-        // Log theme status
-        debug(`Theme initialized: ${document.body.classList.contains('dark') ? 'dark' : 'light'}`);
-    }
-    
-    function toggleTheme() {
-        const isDark = document.body.classList.contains('dark');
-        debug(`Toggling theme from ${isDark ? 'dark' : 'light'} to ${!isDark ? 'dark' : 'light'}`);
-        
-        if (isDark) {
-            disableDarkMode();
-            localStorage.setItem('theme', 'light');
-        } else {
-            enableDarkMode();
-            localStorage.setItem('theme', 'dark');
-        }
-    }
-    
-    function enableDarkMode() {
-            document.documentElement.classList.add('dark');
-        document.body.classList.add('dark');
-            if (themeIcon) {
-                themeIcon.classList.remove('fa-moon');
-                themeIcon.classList.add('fa-sun');
-            }
-        updateSelect2Theme(true);
-        debug('Dark mode enabled');
-    }
-    
-    function disableDarkMode() {
-        document.documentElement.classList.remove('dark');
-        document.body.classList.remove('dark');
-            if (themeIcon) {
-                themeIcon.classList.remove('fa-sun');
-                themeIcon.classList.add('fa-moon');
-            }
-        updateSelect2Theme(false);
-        debug('Dark mode disabled');
-    }
-    
-    function updateSelect2Theme(isDark) {
-        // Force Select2 to adopt the current theme
-        setTimeout(() => {
-            const select2Containers = document.querySelectorAll('.select2-container');
-            select2Containers.forEach(container => {
-                const selection = container.querySelector('.select2-selection');
-                if (selection) {
-                    if (isDark) {
-                        selection.style.backgroundColor = 'var(--input-bg)';
-                        selection.style.borderColor = 'var(--input-border)';
-                        selection.style.color = 'var(--input-text)';
-        } else {
-                        selection.style.backgroundColor = '';
-                        selection.style.borderColor = '';
-                        selection.style.color = '';
-                    }
-                }
-            });
-        }, 100);
-    }
+    const loadingSpinner = document.getElementById('loadingSpinner');
+    const debugStatus = document.getElementById('debugStatus');
     
     // Utility Functions
     function debug(message) {
-        if (DEBUG) {
-            console.log(`[DEBUG] ${message}`);
-            const debugStatus = document.getElementById('debugStatus');
+        if (localStorage.getItem('debug') === 'true') {
+            console.log(message);
             if (debugStatus) {
                 debugStatus.textContent += `\n${message}`;
             }
@@ -104,46 +25,37 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Function to add cache-busting to API URLs
     function addCacheBuster(url) {
-        // Use a parameter that won't be interpreted as a column filter by Supabase
-        
-        // If the URL already contains parameters
-        if (url.includes('?')) {
-            // Add a random limit that won't affect typical queries
-            return url + '&limit.cb=' + VERSION;
-        } else {
-            // For URLs without parameters
-            return url + '?limit.cb=' + VERSION;
+        const separator = url.includes('?') ? '&' : '?';
+        return `${url}${separator}cachebust=${Date.now()}`;
+    }
+
+    function formatCurrency(amount) {
+        return new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(amount);
+    }
+
+    function formatDate(dateString) {
+        if (!dateString) return 'Onbekend';
+        try {
+            const date = new Date(dateString);
+            return new Intl.DateTimeFormat('nl-NL', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            }).format(date);
+        } catch (error) {
+            console.error('Error formatting date:', error);
+            return 'Ongeldige datum';
         }
-}
-
-function formatCurrency(amount) {
-    return new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(amount);
-}
-
-function formatDate(dateString) {
-  if (!dateString) return 'Onbekend';
-  try {
-    const date = new Date(dateString);
-        return new Intl.DateTimeFormat('nl-NL', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
-        }).format(date);
-  } catch (error) {
-    console.error('Error formatting date:', error);
-    return 'Ongeldige datum';
-  }
-}
+    }
 
     function showLoading(show = true) {
-        const spinner = document.getElementById('loadingSpinner');
-        if (spinner) {
-    if (show) {
-                spinner.classList.remove('hidden');
-                spinner.classList.add('flex');
-    } else {
-                spinner.classList.remove('flex');
-                spinner.classList.add('hidden');
+        if (loadingSpinner) {
+            if (show) {
+                loadingSpinner.classList.remove('hidden');
+                loadingSpinner.classList.add('flex');
+            } else {
+                loadingSpinner.classList.remove('flex');
+                loadingSpinner.classList.add('hidden');
             }
         }
     }
@@ -191,7 +103,7 @@ function formatDate(dateString) {
         });
         
         // Auto close after 5 seconds
-  setTimeout(() => {
+        setTimeout(() => {
             toast.classList.add('translate-x-full', 'opacity-0');
             setTimeout(() => {
                 toast.remove();
@@ -271,9 +183,9 @@ function formatDate(dateString) {
             
             const options = {
                 method,
-      headers: {
-        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
                     'apikey': SUPABASE_KEY,
                     'Authorization': `Bearer ${SUPABASE_KEY}`,
                     'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -306,7 +218,7 @@ function formatDate(dateString) {
             }
             
             return await response.json();
-  } catch (error) {
+        } catch (error) {
             debug(`API Error: ${error.message}`);
             showToast(`API Error: ${error.message}`, 'error');
             throw error;
@@ -322,7 +234,7 @@ function formatDate(dateString) {
             populatePlayerSelect(players);
             renderPlayersList(players);
             return players;
-    } catch (error) {
+        } catch (error) {
             debug(`Failed to load players: ${error.message}`);
             return [];
         }
@@ -375,7 +287,7 @@ function formatDate(dateString) {
             
             renderFinesList(enrichedFines);
             return enrichedFines;
-  } catch (error) {
+        } catch (error) {
             debug(`Failed to load fines: ${error.message}`);
             return [];
         }
@@ -389,9 +301,9 @@ function formatDate(dateString) {
                 loadReasons(),
                 loadFines()
             ]);
-        debug('All data loaded successfully');
-  } catch (error) {
-        debug(`Error loading data: ${error.message}`);
+            debug('All data loaded successfully');
+        } catch (error) {
+            debug(`Error loading data: ${error.message}`);
             showToast('Er is een fout opgetreden bij het laden van gegevens', 'error');
         }
     }
@@ -425,7 +337,7 @@ function formatDate(dateString) {
         playerSelect.append($('<option>').val('').text(''));
         
         // Add all players
-            players.forEach(player => {
+        players.forEach(player => {
             playerSelect.append($('<option>').val(player.id).text(player.name));
         });
         
@@ -488,7 +400,7 @@ function formatDate(dateString) {
         select.appendChild(emptyOption);
         
         // Add reason options
-            reasons.forEach(reason => {
+        reasons.forEach(reason => {
             const option = document.createElement('option');
             option.value = reason.id;
             option.textContent = reason.description;
@@ -502,11 +414,27 @@ function formatDate(dateString) {
                 allowClear: true,
                 width: '100%'
             });
-            
-            // Update Select2 to match theme
-            updateSelect2Theme(document.body.classList.contains('dark'));
-  } catch (error) {
+        } catch (error) {
             debug(`Error initializing Select2: ${error.message}`);
+        }
+    }
+    
+    // Add updateSelect2Styling function
+    function updateSelect2Styling() {
+        // Force Select2 to adopt proper styling
+        try {
+            $('.select2-container--default .select2-selection--single').css({
+                'background-color': 'var(--input-bg)',
+                'border-color': 'var(--input-border)',
+                'color': 'var(--input-text)'
+            });
+            
+            $('.select2-container--default .select2-selection--multiple').css({
+                'background-color': 'var(--input-bg)',
+                'border-color': 'var(--input-border)'
+            });
+        } catch (e) {
+            debug(`Failed to update Select2 styling: ${e.message}`);
         }
     }
     
@@ -518,35 +446,30 @@ function formatDate(dateString) {
         
         if (!fines || fines.length === 0) {
             container.innerHTML = `
-                <div class="text-center py-8 text-gray-500 dark:text-gray-400">
+                <div class="text-center py-8 text-gray-500">
                     <i class="fas fa-info-circle text-2xl mb-3"></i>
-                    <p>Geen boetes gevonden.</p>
+                    <p>Geen boetes gevonden</p>
                 </div>
             `;
             return;
         }
         
-        // Sort fines by date (newest first)
-        fines.sort((a, b) => new Date(b.created_at || b.date) - new Date(a.created_at || a.date));
-        
-        fines.forEach(fine => {
-            createFineCard(container, fine);
-        });
+        fines.slice(0, 10).forEach(fine => createFineCard(container, fine));
     }
     
     function createFineCard(container, fine) {
         const card = document.createElement('div');
-        card.className = 'bg-gray-50 dark:bg-gray-900 rounded-lg p-4 mb-4 border border-gray-200 dark:border-gray-700';
+        card.className = 'bg-gray-50 rounded-lg p-4 mb-4 border border-gray-200';
         
         card.innerHTML = `
             <div class="flex justify-between items-start">
                 <div>
-                    <h3 class="font-semibold text-lg">${fine.player_name}</h3>
-                    <p class="text-gray-600 dark:text-gray-400">${fine.reason_description}</p>
-                    <p class="text-gray-500 dark:text-gray-500 text-sm mt-1">${formatDate(fine.created_at || fine.date)}</p>
+                    <h3 class="font-semibold">${fine.player_name || 'Onbekende speler'}</h3>
+                    <p class="text-gray-600">${fine.reason_description}</p>
+                    <p class="text-gray-500 text-sm mt-1">${formatDate(fine.created_at || fine.date)}</p>
                 </div>
                 <div class="flex items-center">
-                    <span class="font-bold text-lg mr-4">${formatCurrency(fine.amount)}</span>
+                    <span class="font-bold text-lg mr-4">€${formatCurrency(fine.amount)}</span>
                     <button data-fine-id="${fine.id}" class="delete-fine-btn text-red-500 hover:text-red-700">
                         <i class="fas fa-trash"></i>
                     </button>
@@ -569,41 +492,40 @@ function formatDate(dateString) {
         const container = document.getElementById('playersList');
         if (!container) return;
         
-        container.innerHTML = '';
-        
         if (!players || players.length === 0) {
             container.innerHTML = `
-                <div class="text-center py-8 text-gray-500 dark:text-gray-400">
+                <div class="text-center py-8 text-gray-500">
                     <i class="fas fa-info-circle text-2xl mb-3"></i>
-                    <p>Geen spelers gevonden.</p>
+                    <p>Geen spelers gevonden</p>
                 </div>
             `;
-      return;
-    }
-    
-        // Sort players by name
-        players.sort((a, b) => a.name.localeCompare(b.name));
+            return;
+        }
         
-        players.forEach(player => {
+        container.innerHTML = `<h2 class="text-xl font-semibold mb-4">Spelers (${players.length})</h2>`;
+        
+        players.sort((a, b) => a.name.localeCompare(b.name)).forEach(player => {
             const item = document.createElement('div');
-            item.className = 'bg-gray-50 dark:bg-gray-900 rounded-lg p-4 mb-4 border border-gray-200 dark:border-gray-700 flex justify-between items-center';
+            item.className = 'bg-gray-50 rounded-lg p-4 mb-4 border border-gray-200 flex justify-between items-center';
             
             item.innerHTML = `
-                <span class="font-medium">${player.name}</span>
-                <button data-player-id="${player.id}" class="delete-player-btn text-red-500 hover:text-red-700">
+                <span>${player.name}</span>
+                <button class="delete-player-btn text-red-500 hover:text-red-700" data-player-id="${player.id}">
                     <i class="fas fa-trash"></i>
                 </button>
             `;
             
-            // Add event listener for delete button
-            const deleteBtn = item.querySelector('.delete-player-btn');
-            deleteBtn.addEventListener('click', async () => {
-                if (confirm(`Weet je zeker dat je "${player.name}" wilt verwijderen? Dit verwijdert ook alle bijbehorende boetes!`)) {
-                    await deletePlayer(player.id);
+            container.appendChild(item);
+        });
+        
+        // Add event listeners for delete buttons
+        container.querySelectorAll('.delete-player-btn').forEach(button => {
+            button.addEventListener('click', async function() {
+                const id = this.getAttribute('data-player-id');
+                if (confirm(`Weet je zeker dat je deze speler wilt verwijderen? Alle boetes van deze speler worden ook verwijderd!`)) {
+                    await deletePlayer(id);
                 }
             });
-            
-            container.appendChild(item);
         });
     }
     
@@ -611,41 +533,40 @@ function formatDate(dateString) {
         const container = document.getElementById('reasonsList');
         if (!container) return;
         
-        container.innerHTML = '';
-        
         if (!reasons || reasons.length === 0) {
             container.innerHTML = `
-                <div class="text-center py-8 text-gray-500 dark:text-gray-400">
+                <div class="text-center py-8 text-gray-500">
                     <i class="fas fa-info-circle text-2xl mb-3"></i>
-                    <p>Geen redenen gevonden.</p>
+                    <p>Geen redenen gevonden</p>
                 </div>
             `;
             return;
         }
         
-        // Sort reasons by description
-        reasons.sort((a, b) => a.description.localeCompare(b.description));
+        container.innerHTML = `<h2 class="text-xl font-semibold mb-4">Redenen (${reasons.length})</h2>`;
         
-        reasons.forEach(reason => {
+        reasons.sort((a, b) => a.description.localeCompare(b.description)).forEach(reason => {
             const item = document.createElement('div');
-            item.className = 'bg-gray-50 dark:bg-gray-900 rounded-lg p-4 mb-4 border border-gray-200 dark:border-gray-700 flex justify-between items-center';
+            item.className = 'bg-gray-50 rounded-lg p-4 mb-4 border border-gray-200 flex justify-between items-center';
             
             item.innerHTML = `
-                <span class="font-medium">${reason.description}</span>
-                <button data-reason-id="${reason.id}" class="delete-reason-btn text-red-500 hover:text-red-700">
+                <span>${reason.description}</span>
+                <button class="delete-reason-btn text-red-500 hover:text-red-700" data-reason-id="${reason.id}">
                     <i class="fas fa-trash"></i>
                 </button>
             `;
             
-            // Add event listener for delete button
-            const deleteBtn = item.querySelector('.delete-reason-btn');
-            deleteBtn.addEventListener('click', async () => {
-                if (confirm(`Weet je zeker dat je "${reason.description}" wilt verwijderen? Dit verwijdert ook alle bijbehorende boetes!`)) {
-                    await deleteReason(reason.id);
+            container.appendChild(item);
+        });
+        
+        // Add event listeners for delete buttons
+        container.querySelectorAll('.delete-reason-btn').forEach(button => {
+            button.addEventListener('click', async function() {
+                const id = this.getAttribute('data-reason-id');
+                if (confirm(`Weet je zeker dat je deze reden wilt verwijderen? Alle boetes met deze reden worden ook verwijderd!`)) {
+                    await deleteReason(id);
                 }
             });
-            
-            container.appendChild(item);
         });
     }
     
@@ -681,7 +602,7 @@ function formatDate(dateString) {
                     showToast(`Boete toegevoegd voor ${successCount} ${playerText}!`, 'success');
                     await loadFines();
                     return true;
-        } else {
+                } else {
                     throw new Error('Geen enkele boete kon worden toegevoegd');
                 }
             } else {
@@ -697,12 +618,12 @@ function formatDate(dateString) {
                 showToast('Boete toegevoegd!', 'success');
                 await loadFines();
                 return true;
-        }
-  } catch (error) {
+            }
+        } catch (error) {
             debug(`Failed to add fine: ${error.message}`);
             showToast(`Fout bij toevoegen van boete: ${error.message}`, 'error');
             return false;
-  } finally {
+        } finally {
             showLoading(false);
         }
     }
@@ -734,11 +655,11 @@ function formatDate(dateString) {
             showToast('Boete succesvol verwijderd!', 'success');
             await loadFines(); // Reload fines
             return true;
-  } catch (error) {
+        } catch (error) {
             debug(`Failed to delete fine: ${error.message}`);
             showToast(`Fout bij verwijderen: ${error.message}`, 'error');
             return false;
-  } finally {
+        } finally {
             showLoading(false);
         }
     }
@@ -851,7 +772,7 @@ function formatDate(dateString) {
             showToast('Reden succesvol toegevoegd!', 'success');
             await loadReasons(); // Reload reasons
             return true;
-    } catch (error) {
+        } catch (error) {
             debug(`Failed to add reason: ${error.message}`);
             return false;
         } finally {
@@ -895,12 +816,12 @@ function formatDate(dateString) {
         }
     }
     
+    // Reset all data
     async function resetAllData() {
         try {
             showLoading(true);
-            debug('Resetting all data...');
             
-            if (!confirm('WAARSCHUWING: Dit zal ALLE data verwijderen! Weet je zeker dat je door wilt gaan?')) {
+            if (!confirm('WAARSCHUWING: Dit verwijdert ALLE boetes, spelers en redenen! Weet je het zeker?')) {
                 return false;
             }
             
@@ -910,7 +831,7 @@ function formatDate(dateString) {
             
             // Delete all fines first (due to foreign key constraints)
             debug('Deleting all fines...');
-            await fetch(`${API_BASE_URL}/fines`, {
+            const fineResponse = await fetch(addCacheBuster(`${API_BASE_URL}/fines`), {
                 method: 'DELETE',
                 headers: {
                     'Content-Type': 'application/json',
@@ -919,10 +840,14 @@ function formatDate(dateString) {
                     'Authorization': `Bearer ${SUPABASE_KEY}`
                 }
             });
+            
+            if (!fineResponse.ok) {
+                throw new Error(`Failed to delete fines: ${fineResponse.statusText}`);
+            }
             
             // Delete all players
             debug('Deleting all players...');
-            await fetch(`${API_BASE_URL}/players`, {
+            const playerResponse = await fetch(addCacheBuster(`${API_BASE_URL}/players`), {
                 method: 'DELETE',
                 headers: {
                     'Content-Type': 'application/json',
@@ -931,10 +856,14 @@ function formatDate(dateString) {
                     'Authorization': `Bearer ${SUPABASE_KEY}`
                 }
             });
+            
+            if (!playerResponse.ok) {
+                throw new Error(`Failed to delete players: ${playerResponse.statusText}`);
+            }
             
             // Delete all reasons
             debug('Deleting all reasons...');
-            await fetch(`${API_BASE_URL}/reasons`, {
+            const reasonResponse = await fetch(addCacheBuster(`${API_BASE_URL}/reasons`), {
                 method: 'DELETE',
                 headers: {
                     'Content-Type': 'application/json',
@@ -944,8 +873,50 @@ function formatDate(dateString) {
                 }
             });
             
+            if (!reasonResponse.ok) {
+                throw new Error(`Failed to delete reasons: ${reasonResponse.statusText}`);
+            }
+            
+            // Clear local storage
+            localStorage.removeItem('players');
+            localStorage.removeItem('reasons');
+            localStorage.removeItem('fines');
+            localStorage.removeItem('playerData');
+            localStorage.removeItem('reasonData');
+            localStorage.removeItem('fineData');
+            localStorage.removeItem('cachedPlayers');
+            localStorage.removeItem('cachedReasons');
+            localStorage.removeItem('cachedFines');
+            
             showToast('Alle data succesvol gereset!', 'success');
-            await loadAllData(); // Reload all data
+            
+            // Reset all UI elements
+            clearAllData();
+            
+            // Reset Select2 elements
+            $('#playerSelect').val(null).trigger('change');
+            $('#reasonSelect').val(null).trigger('change');
+            
+            // Reset input fields
+            $('#amount').val('');
+            $('#playerName').val('');
+            $('#reasonDescription').val('');
+            $('#bulkPlayerNames').val('');
+            
+            // Clear tables and lists
+            $('#playersList').html('<div class="text-gray-500 text-center py-4">Geen spelers gevonden</div>');
+            $('#reasonsList').html('<div class="text-gray-500 text-center py-4">Geen redenen gevonden</div>');
+            $('#recentFines').html('<div class="text-gray-500 text-center py-4">Geen boetes gevonden</div>');
+            
+            // Reset UI on app.html page elements if navigating back
+            $('#total-amount').text('€0,00');
+            $('#recent-fines').html('<div class="text-gray-500 text-center py-4">Geen recente boetes</div>');
+            $('#player-history').html('<div class="text-gray-500 text-center py-4">Selecteer een speler om diens geschiedenis te bekijken</div>');
+            $('#leaderboard').html('<div class="text-gray-500 text-center py-4">Geen data beschikbaar</div>');
+            
+            // Force reload all data to ensure everything is cleared
+            await loadAllData();
+            
             return true;
         } catch (error) {
             debug(`Failed to reset data: ${error.message}`);
@@ -958,9 +929,6 @@ function formatDate(dateString) {
     
     // Event Listeners
     function setupEventListeners() {
-        // Theme toggle
-        themeToggle.addEventListener('click', toggleTheme);
-        
         // Add Fine Form
         const addFineForm = document.getElementById('addFineForm');
         if (addFineForm) {
@@ -984,9 +952,9 @@ function formatDate(dateString) {
                 
                 if (!amount || isNaN(amount) || parseFloat(amount) <= 0) {
                     showToast('Voer een geldig bedrag in!', 'error');
-            return;
-        }
-        
+                    return;
+                }
+                
                 const success = await addFine({
                     player_ids: playerIds,
                     reason_id: reasonId,
@@ -1002,7 +970,7 @@ function formatDate(dateString) {
                     // Reset Select2
                     try {
                         $('#reasonSelect').val('').trigger('change');
-  } catch (error) {
+                    } catch (error) {
                         debug(`Error resetting Select2: ${error.message}`);
                     }
                 }
@@ -1094,7 +1062,7 @@ function formatDate(dateString) {
                     
                     // Reload players list
                     await loadPlayers();
-  } catch (error) {
+                } catch (error) {
                     debug(`Bulk import error: ${error.message}`);
                     showToast('Er is een fout opgetreden tijdens het importeren', 'error');
                 } finally {
@@ -1120,10 +1088,10 @@ function formatDate(dateString) {
                 
                 if (!description) {
                     showToast('Voer een beschrijving in', 'error');
-        return;
-    }
-    
-    try {
+                    return;
+                }
+                
+                try {
                     showLoading(true);
                     // Fall back to direct table access since RPC functions don't exist yet
                     const apiUrl = `${API_BASE_URL}/reasons`;
@@ -1153,7 +1121,7 @@ function formatDate(dateString) {
                     descriptionInput.value = '';
                     // Reload reasons
                     await loadReasons();
-    } catch (error) {
+                } catch (error) {
                     debug(`Failed to add reason: ${error.message}`);
                     showToast(`Fout bij toevoegen: ${error.message}`, 'error');
                 } finally {
@@ -1235,17 +1203,17 @@ function formatDate(dateString) {
             forceReload();
         });
         
-        // Initialize theme
-        initTheme();
-        
         // Setup tabs
         setupTabs();
         
-        // Load data
-        loadAllData();
-        
         // Setup event listeners
         setupEventListeners();
+        
+        // Update Select2 styling
+        updateSelect2Styling();
+        
+        // Load all data
+        loadAllData();
         
         debug('Initialization complete');
     }

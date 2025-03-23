@@ -22,8 +22,8 @@ function debug(message) {
 
 // Function to add cache-busting to API URLs
 function addCacheBuster(url) {
-    // No cache busting in the URL - we'll use headers instead
-    return url;
+    const separator = url.includes('?') ? '&' : '?';
+    return `${url}${separator}cachebust=${Date.now()}`;
 }
 
 // Get local data (used for fallback when API is not available)
