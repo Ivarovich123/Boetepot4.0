@@ -23,32 +23,18 @@ document.addEventListener('DOMContentLoaded', function() {
         const savedTheme = localStorage.getItem('theme');
         const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
         
-        // Set initial dark mode immediately on page load
         if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
-            document.documentElement.classList.add('dark');
-            document.body.classList.add('dark');
-            if (themeIcon) {
-                themeIcon.classList.remove('fa-moon');
-                themeIcon.classList.add('fa-sun');
-            }
+            enableDarkMode();
         } else {
-            document.documentElement.classList.remove('dark');
-            document.body.classList.remove('dark');
-            if (themeIcon) {
-                themeIcon.classList.remove('fa-sun');
-                themeIcon.classList.add('fa-moon');
-            }
+            disableDarkMode();
         }
         
-        // Apply dark mode to Select2 elements
-        updateSelect2Theme(document.documentElement.classList.contains('dark'));
-        
         // Log theme status
-        debug(`Theme initialized: ${document.documentElement.classList.contains('dark') ? 'dark' : 'light'}`);
+        debug(`Theme initialized: ${document.body.classList.contains('dark') ? 'dark' : 'light'}`);
     }
     
     function toggleTheme() {
-        const isDark = document.documentElement.classList.contains('dark');
+        const isDark = document.body.classList.contains('dark');
         debug(`Toggling theme from ${isDark ? 'dark' : 'light'} to ${!isDark ? 'dark' : 'light'}`);
         
         if (isDark) {
@@ -63,10 +49,8 @@ document.addEventListener('DOMContentLoaded', function() {
     function enableDarkMode() {
             document.documentElement.classList.add('dark');
         document.body.classList.add('dark');
-            if (themeIcon) {
                 themeIcon.classList.remove('fa-moon');
                 themeIcon.classList.add('fa-sun');
-            }
         updateSelect2Theme(true);
         debug('Dark mode enabled');
     }
@@ -74,10 +58,8 @@ document.addEventListener('DOMContentLoaded', function() {
     function disableDarkMode() {
         document.documentElement.classList.remove('dark');
         document.body.classList.remove('dark');
-            if (themeIcon) {
                 themeIcon.classList.remove('fa-sun');
                 themeIcon.classList.add('fa-moon');
-            }
         updateSelect2Theme(false);
         debug('Dark mode disabled');
     }
@@ -200,32 +182,38 @@ function formatDate(dateString) {
     // Tab functionality
     function setupTabs() {
         const tabBoetes = document.getElementById('tab-boetes');
-        const tabBeheer = document.getElementById('tab-beheer');
+        const tabPlayers = document.getElementById('tab-players');
+        const tabReasons = document.getElementById('tab-reasons');
         const finesTab = document.getElementById('finesTab');
-        const beheerTab = document.getElementById('beheerTab');
+        const playersTab = document.getElementById('playersTab');
+        const reasonsTab = document.getElementById('reasonsTab');
         
         // Check if elements exist
-        if (!tabBoetes || !tabBeheer || !finesTab || !beheerTab) {
+        if (!tabBoetes || !tabPlayers || !tabReasons || !finesTab || !playersTab || !reasonsTab) {
             debug('Tab elements missing!');
             return;
         }
         
         function activateTab(tabId) {
             // Reset all tabs
-            [tabBoetes, tabBeheer].forEach(tab => {
+            [tabBoetes, tabPlayers, tabReasons].forEach(tab => {
                 tab.classList.remove('tab-active');
             });
             
             // Hide all content
-            [finesTab, beheerTab].forEach(content => {
+            [finesTab, playersTab, reasonsTab].forEach(content => {
                 content.classList.add('hidden');
             });
             
             // Activate selected tab
-            if (tabId === 'beheer') {
-                tabBeheer.classList.add('tab-active');
-                beheerTab.classList.remove('hidden');
-                localStorage.setItem('activeTab', 'beheer');
+            if (tabId === 'players') {
+                tabPlayers.classList.add('tab-active');
+                playersTab.classList.remove('hidden');
+                localStorage.setItem('activeTab', 'players');
+            } else if (tabId === 'reasons') {
+                tabReasons.classList.add('tab-active');
+                reasonsTab.classList.remove('hidden');
+                localStorage.setItem('activeTab', 'reasons');
             } else {
                 // Default to fines tab
                 tabBoetes.classList.add('tab-active');
@@ -240,73 +228,72 @@ function formatDate(dateString) {
         
         // Add click event listeners
         tabBoetes.addEventListener('click', () => activateTab('boetes'));
-        tabBeheer.addEventListener('click', () => activateTab('beheer'));
+        tabPlayers.addEventListener('click', () => activateTab('players'));
+        tabReasons.addEventListener('click', () => activateTab('reasons'));
     }
     
-    // API & Data Functions - Direct API connection without mock data
+    // API & Data Functions - Simplified approach
     async function apiRequest(endpoint, method = 'GET', data = null) {
         try {
-            // Ensure endpoint does not start with slash when appending to API path
-            const path = endpoint.startsWith('/') ? endpoint.substring(1) : endpoint;
+            const url = `${API_BASE_URL}${endpoint}`;
+            const options = {
+                method,
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            };
             
-            // Build URL with proper query parameters for Supabase
-            let url = `${API_BASE_URL}/`;
-            
-            // Handle different endpoints based on HTTP method
-            if (method === 'GET') {
-                if (path === 'players') {
-                    url += 'players?select=*';
-                } else if (path === 'reasons') {
-                    url += 'reasons?select=*';
-                } else if (path === 'fines') {
-                    url += 'fines?select=id,amount,date,player_id,reason_id&order=date.desc';
-                } else {
-                    url += path;
-                }
-            } else if (method === 'POST') {
-                // For POST, we need to use RPC endpoints instead of direct table access
-                if (path === 'players') {
-                    // Use RPC function
-                    url = `${API_BASE_URL.replace('/rest/v1', '/rest/v1/rpc/insert_player')}`;
-                } else if (path === 'reasons') {
-                    // Use RPC function
-                    url = `${API_BASE_URL.replace('/rest/v1', '/rest/v1/rpc/insert_reason')}`;
-                } else if (path === 'fines') {
-                    // Use RPC function
-                    url = `${API_BASE_URL.replace('/rest/v1', '/rest/v1/rpc/insert_fine')}`;
-                } else {
-                    url += path;
-                }
-            } else if (method === 'DELETE') {
-                // For DELETE, we need to use RPC endpoints with POST method
-                if (path.startsWith('players/')) {
-                    const id = path.split('/')[1];
-                    url = `${API_BASE_URL.replace('/rest/v1', '/rest/v1/rpc/delete_player')}`;
-                    // Convert method to POST since RPC doesn't use DELETE
-                    method = 'POST';
-                    // Set up data for RPC call
-                    data = { id };
-                } else if (path.startsWith('reasons/')) {
-                    const id = path.split('/')[1];
-                    url = `${API_BASE_URL.replace('/rest/v1', '/rest/v1/rpc/delete_reason')}`;
-                    // Convert method to POST since RPC doesn't use DELETE
-                    method = 'POST';
-                    // Set up data for RPC call
-                    data = { id };
-                } else if (path.startsWith('fines-delete')) {
-                    const id = path.split('=')[1];
-                    url = `${API_BASE_URL.replace('/rest/v1', '/rest/v1/rpc/delete_fine')}`;
-                    // Convert method to POST since RPC doesn't use DELETE
-                    method = 'POST';
-                    // Set up data for RPC call
-                    data = { id };
-                } else {
-                    url += path;
-                }
+            if (data && (method === 'POST' || method === 'PUT')) {
+                options.body = JSON.stringify(data);
             }
             
             debug(`Making ${method} request to ${url}`);
             showLoading(true);
+            
+            const response = await fetch(url, options);
+            
+            if (!response.ok) {
+                let errorMessage = `API error: ${response.status}`;
+                try {
+                    const errorData = await response.json();
+                    if (errorData && errorData.message) {
+                        errorMessage = errorData.message;
+                    }
+                } catch (e) {
+                    // Ignore JSON parsing errors
+                }
+                throw new Error(errorMessage);
+            }
+            
+            return await response.json();
+        } catch (error) {
+            debug(`API Error: ${error.message}`);
+            showToast(`API Error: ${error.message}`, 'error');
+            throw error;
+        } finally {
+            showLoading(false);
+        }
+    }
+    
+    // API & Data Functions - Direct API connection to Supabase
+    async function apiRequest(endpoint, method = 'GET', data = null) {
+        try {
+            let url;
+            
+            // Handle different endpoints for GET requests
+            if (method === 'GET') {
+                if (endpoint === '/players') {
+                    url = `${API_BASE_URL}/players?select=*`;
+                } else if (endpoint === '/reasons') {
+                    url = `${API_BASE_URL}/reasons?select=*`;
+                } else if (endpoint === '/fines') {
+                    url = `${API_BASE_URL}/fines?select=id,amount,date,player_id,reason_id&order=date.desc`;
+                } else {
+                    url = `${API_BASE_URL}${endpoint}`;
+                }
+            } else {
+                url = `${API_BASE_URL}${endpoint}`;
+            }
             
             const options = {
                 method,
@@ -314,136 +301,36 @@ function formatDate(dateString) {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json',
                     'apikey': SUPABASE_KEY,
-                    'Authorization': `Bearer ${SUPABASE_KEY}`,
-                    'x-client-info': 'boetepot-app'
-                },
-                mode: 'cors',
-                credentials: 'omit'
+                    'Authorization': `Bearer ${SUPABASE_KEY}`
+                }
             };
             
-            // Add Prefer header for inserts to return the created item
-            if (method === 'POST') {
-                options.headers['Prefer'] = 'return=minimal';
-            }
-            
             if (data && (method === 'POST' || method === 'PUT')) {
+                options.headers['Prefer'] = 'return=representation';
                 options.body = JSON.stringify(data);
             }
             
-            // Log request details
-            debug(`Request options: ${JSON.stringify(options)}`);
+            debug(`Making ${method} request to ${url}`);
+            showLoading(true);
             
-            // Attempt the API request with enhanced error capturing
-            let response;
-            try {
-                response = await fetch(url, options);
-                debug(`Response status: ${response.status} ${response.statusText}`);
-                
-                // Log response headers for debugging
-                const headers = {};
-                response.headers.forEach((value, key) => {
-                    headers[key] = value;
-                });
-                debug(`Response headers: ${JSON.stringify(headers)}`);
-            } catch (fetchError) {
-                debug(`Network error: ${fetchError.message}`);
-                throw new Error(`Network Error: ${fetchError.message}`);
-            }
+            const response = await fetch(url, options);
             
             if (!response.ok) {
                 let errorMessage = `API error: ${response.status}`;
                 try {
                     const errorText = await response.text();
                     debug(`Error response body: ${errorText}`);
-                    try {
-                        const errorData = JSON.parse(errorText);
-                        if (errorData && errorData.message) {
-                            errorMessage = errorData.message;
-                        } else if (errorData && errorData.error) {
-                            errorMessage = errorData.error;
-                        }
-                    } catch (e) {
-                        // Not JSON, use the raw text
-                        errorMessage = `API error: ${response.status} - ${errorText}`;
-                    }
+                    errorMessage = errorText;
                 } catch (e) {
                     // Ignore JSON parsing errors
-                    debug(`Could not read error response: ${e.message}`);
                 }
                 throw new Error(errorMessage);
             }
             
-            // For GET requests, return the JSON data
-            // For DELETE, often there's no content returned
-            if (method === 'GET' || method === 'POST') {
-                let responseData;
-                try {
-                    responseData = await response.json();
-                    debug(`Response data: ${JSON.stringify(responseData).substring(0, 100)}...`);
-                } catch (jsonError) {
-                    debug(`JSON parse error: ${jsonError.message}`);
-                    throw new Error(`Invalid JSON response: ${jsonError.message}`);
-                }
-                
-                // For fines endpoint, join with player and reason data
-                if (path === 'fines' && Array.isArray(responseData)) {
-                    // Fetch all players and reasons in one request each for efficiency
-                    const [playersResponse, reasonsResponse] = await Promise.all([
-                        fetch(`${API_BASE_URL}/players?select=id,name`, {
-                            headers: {
-                                'apikey': SUPABASE_KEY,
-                                'Authorization': `Bearer ${SUPABASE_KEY}`
-                            }
-                        }),
-                        fetch(`${API_BASE_URL}/reasons?select=id,description`, {
-                            headers: {
-                                'apikey': SUPABASE_KEY,
-                                'Authorization': `Bearer ${SUPABASE_KEY}`
-                            }
-                        })
-                    ]);
-                    
-                    const players = await playersResponse.json();
-                    const reasons = await reasonsResponse.json();
-                    
-                    // Map player and reason data to each fine
-                    const enhancedFines = responseData.map(fine => {
-                        const player = players.find(p => p.id === fine.player_id);
-                        const reason = reasons.find(r => r.id === fine.reason_id);
-                        
-                        return {
-                            ...fine,
-                            player_name: player ? player.name : 'Onbekend',
-                            reason_description: reason ? reason.description : 'Onbekend'
-                        };
-                    });
-                    
-                    return enhancedFines;
-                }
-                
-                return responseData;
-            }
-            
-            // For DELETE, return success
-            return { success: true };
+            return await response.json();
         } catch (error) {
             debug(`API Error: ${error.message}`);
             showToast(`API Error: ${error.message}`, 'error');
-            
-            // Recommend using test-api.html for diagnosis
-            showToast('Voor hulp bij het oplossen van problemen, gebruik de test-api.html pagina', 'info');
-            
-            // Return empty arrays for GET requests
-            if (method === 'GET') {
-                if (endpoint.includes('players')) {
-                    return [];
-                } else if (endpoint.includes('reasons')) {
-                    return [];
-                } else if (endpoint.includes('fines')) {
-                    return [];
-                }
-            }
-            
             throw error;
         } finally {
             showLoading(false);
@@ -548,7 +435,7 @@ function formatDate(dateString) {
             });
             
             // Update Select2 to match theme
-            updateSelect2Theme(document.documentElement.classList.contains('dark'));
+            updateSelect2Theme(document.body.classList.contains('dark'));
   } catch (error) {
             debug(`Error initializing Select2: ${error.message}`);
         }
@@ -583,7 +470,7 @@ function formatDate(dateString) {
             });
             
             // Update Select2 to match theme
-            updateSelect2Theme(document.documentElement.classList.contains('dark'));
+            updateSelect2Theme(document.body.classList.contains('dark'));
     } catch (error) {
             debug(`Error initializing Select2: ${error.message}`);
         }
@@ -621,11 +508,11 @@ function formatDate(dateString) {
             <div class="flex justify-between items-start">
                 <div>
                     <h3 class="font-semibold text-lg">${fine.player_name}</h3>
-                    <p class="text-gray-600 dark:text-gray-300">${fine.reason_description}</p>
-                    <p class="text-gray-500 dark:text-gray-400 text-sm mt-1">${formatDate(fine.date)}</p>
+                    <p class="text-gray-600 dark:text-gray-400">${fine.reason_description}</p>
+                    <p class="text-gray-500 dark:text-gray-500 text-sm mt-1">${formatDate(fine.created_at || fine.date)}</p>
                 </div>
                 <div class="flex items-center">
-                    <span class="font-bold text-lg mr-4 text-blue-600 dark:text-blue-400">${formatCurrency(fine.amount)}</span>
+                    <span class="font-bold text-lg mr-4">${formatCurrency(fine.amount)}</span>
                     <button data-fine-id="${fine.id}" class="delete-fine-btn text-red-500 hover:text-red-700">
                         <i class="fas fa-trash"></i>
                     </button>
@@ -731,27 +618,23 @@ function formatDate(dateString) {
     // CRUD Operations
     async function addFine(data) {
         try {
-            // Use Supabase RPC endpoint for stored procedure
-            const url = `${API_BASE_URL.replace('/rest/v1', '/rest/v1/rpc/insert_fine')}`;
+            showLoading(true);
+            // Fall back to direct table access since RPC functions don't exist yet
+            const apiUrl = `${API_BASE_URL}/fines`;
             
-            debug(`Making RPC call to insert_fine with data: ${JSON.stringify(data)}`);
+            debug(`Making POST request to ${apiUrl} with data: ${JSON.stringify(data)}`);
             
-            const options = {
+            const response = await fetch(apiUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json',
                     'apikey': SUPABASE_KEY,
                     'Authorization': `Bearer ${SUPABASE_KEY}`,
-                    'Prefer': 'return=minimal'
+                    'Prefer': 'return=representation'
                 },
-                mode: 'cors',
-                credentials: 'omit',
                 body: JSON.stringify(data)
-            };
-            
-            showLoading(true);
-            const response = await fetch(url, options);
+            });
             
             if (!response.ok) {
                 const errorText = await response.text();
@@ -773,27 +656,21 @@ function formatDate(dateString) {
     
     async function deleteFine(id) {
         try {
-            // Use RPC endpoint for deleting fines
-            const url = `${API_BASE_URL.replace('/rest/v1', '/rest/v1/rpc/delete_fine')}`;
+            showLoading(true);
+            // Fall back to direct table access since RPC functions don't exist yet
+            const apiUrl = `${API_BASE_URL}/fines?id=eq.${id}`;
             
-            debug(`Making RPC call to delete_fine with id: ${id}`);
+            debug(`Making DELETE request to ${apiUrl}`);
             
-            const options = {
-                method: 'POST',
+            const response = await fetch(apiUrl, {
+                method: 'DELETE',
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json',
                     'apikey': SUPABASE_KEY,
-                    'Authorization': `Bearer ${SUPABASE_KEY}`,
-                    'Prefer': 'return=minimal'
-                },
-                mode: 'cors',
-                credentials: 'omit',
-                body: JSON.stringify({ id })
-            };
-            
-            showLoading(true);
-            const response = await fetch(url, options);
+                    'Authorization': `Bearer ${SUPABASE_KEY}`
+                }
+            });
             
             if (!response.ok) {
                 const errorText = await response.text();
@@ -815,32 +692,33 @@ function formatDate(dateString) {
     
     async function addPlayer(data) {
         try {
-            // Use RPC endpoint for adding players
-            const url = `${API_BASE_URL.replace('/rest/v1', '/rest/v1/rpc/insert_player')}`;
+            showLoading(true);
+            // Fall back to direct table access since RPC functions don't exist yet
+            const apiUrl = `${API_BASE_URL}/players`;
             
-            debug(`Making RPC call to insert_player with data: ${JSON.stringify(data)}`);
+            debug(`Making POST request to ${apiUrl} with data: ${JSON.stringify(data)}`);
             
-            const options = {
+            const response = await fetch(apiUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Accept': 'application/json',
                     'apikey': SUPABASE_KEY,
                     'Authorization': `Bearer ${SUPABASE_KEY}`,
-                    'Prefer': 'return=minimal'
+                    'Prefer': 'return=representation'
                 },
-                mode: 'cors',
-                credentials: 'omit',
                 body: JSON.stringify(data)
-            };
-            
-            showLoading(true);
-            const response = await fetch(url, options);
+            });
             
             if (!response.ok) {
-                const errorText = await response.text();
-                debug(`Error response body: ${errorText}`);
-                throw new Error(errorText);
+                let errorMessage = `API error: ${response.status}`;
+                try {
+                    const errorText = await response.text();
+                    debug(`Error response body: ${errorText}`);
+                    errorMessage = errorText;
+                } catch (e) {
+                    // Ignore JSON parsing errors
+                }
+                throw new Error(errorMessage);
             }
             
             showToast('Speler succesvol toegevoegd!', 'success');
@@ -857,27 +735,21 @@ function formatDate(dateString) {
     
     async function deletePlayer(id) {
         try {
-            // Use RPC endpoint for deleting players
-            const url = `${API_BASE_URL.replace('/rest/v1', '/rest/v1/rpc/delete_player')}`;
+            showLoading(true);
+            // Fall back to direct table access since RPC functions don't exist yet
+            const apiUrl = `${API_BASE_URL}/players?id=eq.${id}`;
             
-            debug(`Making RPC call to delete_player with id: ${id}`);
+            debug(`Making DELETE request to ${apiUrl}`);
             
-            const options = {
-                method: 'POST',
+            const response = await fetch(apiUrl, {
+                method: 'DELETE',
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json',
                     'apikey': SUPABASE_KEY,
-                    'Authorization': `Bearer ${SUPABASE_KEY}`,
-                    'Prefer': 'return=minimal'
-                },
-                mode: 'cors',
-                credentials: 'omit',
-                body: JSON.stringify({ id })
-            };
-            
-            showLoading(true);
-            const response = await fetch(url, options);
+                    'Authorization': `Bearer ${SUPABASE_KEY}`
+                }
+            });
             
             if (!response.ok) {
                 const errorText = await response.text();
@@ -897,29 +769,60 @@ function formatDate(dateString) {
         }
     }
     
-    async function deleteReason(id) {
+    async function addReason(data) {
         try {
-            // Use RPC endpoint for deleting reasons
-            const url = `${API_BASE_URL.replace('/rest/v1', '/rest/v1/rpc/delete_reason')}`;
+            showLoading(true);
+            // Fall back to direct table access since RPC functions don't exist yet
+            const apiUrl = `${API_BASE_URL}/reasons`;
             
-            debug(`Making RPC call to delete_reason with id: ${id}`);
+            debug(`Making POST request to ${apiUrl} with data: ${JSON.stringify(data)}`);
             
-            const options = {
+            const response = await fetch(apiUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json',
                     'apikey': SUPABASE_KEY,
                     'Authorization': `Bearer ${SUPABASE_KEY}`,
-                    'Prefer': 'return=minimal'
+                    'Prefer': 'return=representation'
                 },
-                mode: 'cors',
-                credentials: 'omit',
-                body: JSON.stringify({ id })
-            };
+                body: JSON.stringify(data)
+            });
             
+            if (!response.ok) {
+                const errorText = await response.text();
+                debug(`Error response body: ${errorText}`);
+                throw new Error(errorText);
+            }
+            
+            showToast('Reden succesvol toegevoegd!', 'success');
+            await loadReasons(); // Reload reasons
+            return true;
+  } catch (error) {
+            debug(`Failed to add reason: ${error.message}`);
+            return false;
+        } finally {
+            showLoading(false);
+        }
+    }
+    
+    async function deleteReason(id) {
+        try {
             showLoading(true);
-            const response = await fetch(url, options);
+            // Fall back to direct table access since RPC functions don't exist yet
+            const apiUrl = `${API_BASE_URL}/reasons?id=eq.${id}`;
+            
+            debug(`Making DELETE request to ${apiUrl}`);
+            
+            const response = await fetch(apiUrl, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'apikey': SUPABASE_KEY,
+                    'Authorization': `Bearer ${SUPABASE_KEY}`
+                }
+            });
             
             if (!response.ok) {
                 const errorText = await response.text();
@@ -939,161 +842,67 @@ function formatDate(dateString) {
         }
     }
     
-    // Function to get mock data when API fails
-    function getMockDataForAdmin(type) {
-        debug(`Getting mock data for admin: ${type}`);
-        
-        // Add players
-        const players = [
-            { id: 1, name: 'Marnix' },
-            { id: 2, name: 'Ivar' },
-            { id: 3, name: 'Jarno' },
-            { id: 4, name: 'Lars B' },
-            { id: 5, name: 'Lars R' },
-            { id: 6, name: 'Rowan' },
-            { id: 7, name: 'Rinse' },
-            { id: 8, name: 'Jan Willem' },
-            { id: 9, name: 'Leon' },
-            { id: 10, name: 'Job' },
-            { id: 11, name: 'Bryan' },
-            { id: 12, name: 'Steven' },
-            { id: 13, name: 'Robbie' },
-            { id: 14, name: 'Boaz' },
-            { id: 15, name: 'Riewing' },
-            { id: 16, name: 'Jordy' },
-            { id: 17, name: 'Pouwel' },
-            { id: 18, name: 'Ramon' },
-            { id: 19, name: 'Steffen' },
-            { id: 20, name: 'Bram' },
-            { id: 21, name: 'Max' },
-            { id: 22, name: 'Mark' },
-            { id: 23, name: 'Jur' },
-            { id: 24, name: 'Erwin' },
-            { id: 25, name: 'Michiel' },
-            { id: 26, name: 'Ian' }
-        ];
-        
-        // Add reasons
-        const reasons = [
-            { id: 1, description: 'Te laat' },
-            { id: 2, description: 'Corvee vergeten' },
-            { id: 3, description: 'Rijden/wassen vergeten' },
-            { id: 4, description: 'Niet optijd afmelden' },
-            { id: 5, description: 'Gele/rode kaart' },
-            { id: 6, description: 'Geen Polo' },
-            { id: 7, description: 'Correctie' }
-        ];
-        
-        // Add fine history - use player_id and reason_id for consistency
-        const fines = [
-            { id: 1, player_id: 2, reason_id: null, amount: 46, timestamp: new Date('2025-02-27T21:57:47').toISOString() },
-            { id: 2, player_id: 3, reason_id: null, amount: 20, timestamp: new Date('2025-02-27T21:58:09').toISOString() },
-            { id: 3, player_id: 4, reason_id: null, amount: 1, timestamp: new Date('2025-02-27T21:58:32').toISOString() },
-            { id: 4, player_id: 5, reason_id: null, amount: 6, timestamp: new Date('2025-02-27T21:58:42').toISOString() },
-            { id: 5, player_id: 6, reason_id: null, amount: 1, timestamp: new Date('2025-02-27T21:58:51').toISOString() },
-            { id: 6, player_id: 8, reason_id: null, amount: 20, timestamp: new Date('2025-02-27T21:59:06').toISOString() },
-            { id: 7, player_id: 9, reason_id: null, amount: 27, timestamp: new Date('2025-02-27T21:59:26').toISOString() },
-            { id: 8, player_id: 10, reason_id: null, amount: 10, timestamp: new Date('2025-02-27T21:59:35').toISOString() },
-            { id: 9, player_id: 11, reason_id: null, amount: 38, timestamp: new Date('2025-02-27T21:59:51').toISOString() },
-            { id: 10, player_id: 12, reason_id: null, amount: 10, timestamp: new Date('2025-02-27T22:00:07').toISOString() }
-        ];
-        
-        // Store in localStorage
-        localStorage.setItem('players', JSON.stringify(players));
-        localStorage.setItem('reasons', JSON.stringify(reasons));
-        localStorage.setItem('fines', JSON.stringify(fines));
-        
-        // Show toast about using mock data
-        showToast('Using offline data - database connection failed', 'warning');
-        
-        // Return requested data type
-        if (type === 'players') {
-            return players;
-        } else if (type === 'reasons') {
-            return reasons;
-        } else if (type === 'fines') {
-            return fines;
+    async function resetAllData() {
+        try {
+            await apiRequest('/reset', 'POST');
+            showToast('Alle data succesvol gereset!', 'success');
+            await loadAllData(); // Reload all data
+            return true;
+  } catch (error) {
+            debug(`Failed to reset data: ${error.message}`);
+            return false;
         }
-        
-        return [];
-    }
-
-    // Initialize the admin panel
-    async function initializeAdminPanel() {
-        debug('Initializing admin panel...');
-        
-        // Initialize theme
-        initTheme();
-        
-        // Setup theme toggle
-        if (themeToggle) {
-            themeToggle.addEventListener('click', toggleTheme);
-            debug('Theme toggle setup completed');
-        } else {
-            debug('Theme toggle button not found');
-        }
-        
-        // Setup tabs
-        setupTabs();
-        
-        // Load data
-        await loadAllData();
-        
-        // Setup form submissions
-        setupFormSubmissions();
-        
-        debug('Admin panel initialization complete');
     }
     
-    function setupFormSubmissions() {
+    // Event Listeners
+    function setupEventListeners() {
+        // Theme toggle
+        themeToggle.addEventListener('click', toggleTheme);
+        
         // Add Fine Form
         const addFineForm = document.getElementById('addFineForm');
         if (addFineForm) {
-            addFineForm.addEventListener('submit', async (e) => {
+            addFineForm.addEventListener('submit', async function(e) {
                 e.preventDefault();
                 
-                const playerSelect = document.getElementById('playerSelect');
-                const reasonSelect = document.getElementById('reasonSelect');
-                const amountInput = document.getElementById('amount');
+                const playerId = document.getElementById('playerSelect').value;
+                const reasonId = document.getElementById('reasonSelect').value;
+                const amount = document.getElementById('amount').value;
                 
-                if (!playerSelect || !reasonSelect || !amountInput) {
-                    showToast('Formulier elementen ontbreken!', 'error');
+                if (!playerId) {
+                    showToast('Selecteer een speler!', 'error');
                     return;
                 }
                 
-                const player_id = playerSelect.value;
-                const reason_id = reasonSelect.value;
-                const amount = parseFloat(amountInput.value);
-                
-                if (!player_id) {
-                    showToast('Selecteer een speler', 'error');
+                if (!reasonId) {
+                    showToast('Selecteer een reden!', 'error');
                     return;
                 }
                 
-                if (!reason_id) {
-                    showToast('Selecteer een reden', 'error');
+                if (!amount || isNaN(amount) || parseFloat(amount) <= 0) {
+                    showToast('Voer een geldig bedrag in!', 'error');
                     return;
                 }
                 
-                if (isNaN(amount) || amount <= 0) {
-                    showToast('Voer een geldig bedrag in', 'error');
-                    return;
-                }
-                
-                const data = {
-                    player_id,
-                    reason_id,
-                    amount,
-                    date: new Date().toISOString()
-                };
-                
-                const success = await addFine(data);
+                const success = await addFine({
+                    player_id: playerId,
+                    reason_id: reasonId,
+                    amount: parseFloat(amount)
+                });
                 
                 if (success) {
                     // Reset form
-                    $(playerSelect).val('').trigger('change');
-                    $(reasonSelect).val('').trigger('change');
-                    amountInput.value = '';
+                    document.getElementById('playerSelect').value = '';
+                    document.getElementById('reasonSelect').value = '';
+                    document.getElementById('amount').value = '';
+                    
+                    // Reset Select2
+                    try {
+                        $('#playerSelect').val('').trigger('change');
+                        $('#reasonSelect').val('').trigger('change');
+  } catch (error) {
+                        debug(`Error resetting Select2: ${error.message}`);
+                    }
                 }
             });
         }
@@ -1101,28 +910,23 @@ function formatDate(dateString) {
         // Add Player Form
         const addPlayerForm = document.getElementById('addPlayerForm');
         if (addPlayerForm) {
-            addPlayerForm.addEventListener('submit', async (e) => {
+            addPlayerForm.addEventListener('submit', async function(e) {
                 e.preventDefault();
                 
-                const nameInput = document.getElementById('playerName');
+                const playerName = document.getElementById('playerName').value.trim();
                 
-                if (!nameInput) {
-                    showToast('Formulier elementen ontbreken!', 'error');
-                    return;
-                }
-                
-                const name = nameInput.value.trim();
-                
-                if (!name) {
-                    showToast('Voer een naam in', 'error');
-                    return;
-                }
-                
-                const success = await addPlayer({ name });
+                if (!playerName) {
+                    showToast('Voer een geldige naam in!', 'error');
+        return;
+    }
+    
+                const success = await addPlayer({
+                    name: playerName
+                });
                 
                 if (success) {
                     // Reset form
-                    nameInput.value = '';
+                    document.getElementById('playerName').value = '';
                 }
             });
         }
@@ -1148,27 +952,23 @@ function formatDate(dateString) {
                 }
                 
                 try {
-                    // Use RPC endpoint for adding reasons
-                    const url = `${API_BASE_URL.replace('/rest/v1', '/rest/v1/rpc/insert_reason')}`;
+                    showLoading(true);
+                    // Fall back to direct table access since RPC functions don't exist yet
+                    const apiUrl = `${API_BASE_URL}/reasons`;
                     
-                    debug(`Making RPC call to insert_reason with description: ${description}`);
+                    debug(`Making POST request to ${apiUrl} with description: ${description}`);
                     
-                    const options = {
+                    const response = await fetch(apiUrl, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
                             'Accept': 'application/json',
                             'apikey': SUPABASE_KEY,
                             'Authorization': `Bearer ${SUPABASE_KEY}`,
-                            'Prefer': 'return=minimal'
+                            'Prefer': 'return=representation'
                         },
-                        mode: 'cors',
-                        credentials: 'omit',
                         body: JSON.stringify({ description })
-                    };
-                    
-                    showLoading(true);
-                    const response = await fetch(url, options);
+                    });
                     
                     if (!response.ok) {
                         const errorText = await response.text();
@@ -1189,8 +989,59 @@ function formatDate(dateString) {
                 }
             });
         }
+        
+        // Reset Button
+        const resetButton = document.getElementById('resetButton');
+        if (resetButton) {
+            resetButton.addEventListener('click', async function() {
+                if (confirm('WAARSCHUWING: Dit zal ALLE data verwijderen! Weet je zeker dat je door wilt gaan?')) {
+                    if (confirm('Dit is je laatste kans! Alle boetes, spelers en redenen worden verwijderd. Dit kan niet ongedaan worden gemaakt!')) {
+                        await resetAllData();
+                    }
+                }
+            });
+        }
+        
+        // Manual Load Button
+        const manualLoadButton = document.getElementById('manualLoadButton');
+        if (manualLoadButton) {
+            manualLoadButton.addEventListener('click', loadAllData);
+        }
+        
+        // Clear Storage Button
+        const clearStorageButton = document.getElementById('clearStorageButton');
+        if (clearStorageButton) {
+            clearStorageButton.addEventListener('click', function() {
+                if (confirm('Weet je zeker dat je alle lokale opslag wilt wissen?')) {
+                    localStorage.clear();
+                    showToast('Lokale opslag gewist!', 'info');
+                    setTimeout(() => {
+                        location.reload();
+                    }, 1500);
+                }
+            });
+        }
     }
     
-    // Start initialization
-    initializeAdminPanel();
-});
+    // Initialization
+    function init() {
+        debug('Initializing admin panel...');
+        
+        // Initialize theme
+        initTheme();
+        
+        // Setup tabs
+        setupTabs();
+        
+        // Load data
+        loadAllData();
+        
+        // Setup event listeners
+        setupEventListeners();
+        
+        debug('Initialization complete');
+    }
+    
+    // Start the application
+    init();
+}); 
