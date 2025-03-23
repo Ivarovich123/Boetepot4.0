@@ -224,6 +224,8 @@ function formatDate(dateString) {
 // Theme handling
 function toggleTheme() {
     const isDark = document.documentElement.classList.contains('dark');
+    debug(`Toggling theme from ${isDark ? 'dark' : 'light'} to ${!isDark ? 'dark' : 'light'}`);
+    
     if (isDark) {
         document.documentElement.classList.remove('dark');
         document.body.classList.remove('dark');
@@ -233,7 +235,7 @@ function toggleTheme() {
         document.body.classList.add('dark');
         localStorage.setItem('theme', 'dark');
     }
-
+    
     // Update the theme icon
     const themeIcon = document.getElementById('theme-icon');
     if (themeIcon) {

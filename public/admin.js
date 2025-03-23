@@ -47,10 +47,12 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     function enableDarkMode() {
-            document.documentElement.classList.add('dark');
+        document.documentElement.classList.add('dark');
         document.body.classList.add('dark');
-                themeIcon.classList.remove('fa-moon');
-                themeIcon.classList.add('fa-sun');
+        if (themeIcon) {
+            themeIcon.classList.remove('fa-moon');
+            themeIcon.classList.add('fa-sun');
+        }
         updateSelect2Theme(true);
         debug('Dark mode enabled');
     }
@@ -58,8 +60,10 @@ document.addEventListener('DOMContentLoaded', function() {
     function disableDarkMode() {
         document.documentElement.classList.remove('dark');
         document.body.classList.remove('dark');
-                themeIcon.classList.remove('fa-sun');
-                themeIcon.classList.add('fa-moon');
+        if (themeIcon) {
+            themeIcon.classList.remove('fa-sun');
+            themeIcon.classList.add('fa-moon');
+        }
         updateSelect2Theme(false);
         debug('Dark mode disabled');
     }
@@ -182,54 +186,51 @@ function formatDate(dateString) {
     // Tab functionality
     function setupTabs() {
         const tabBoetes = document.getElementById('tab-boetes');
-        const tabPlayers = document.getElementById('tab-players');
-        const tabReasons = document.getElementById('tab-reasons');
+        const tabBeheer = document.getElementById('tab-beheer');
         const finesTab = document.getElementById('finesTab');
-        const playersTab = document.getElementById('playersTab');
-        const reasonsTab = document.getElementById('reasonsTab');
+        const beheerTab = document.getElementById('beheerTab');
         
-        // Check if elements exist
-        if (!tabBoetes || !tabPlayers || !tabReasons || !finesTab || !playersTab || !reasonsTab) {
+        debug('Setting up tabs');
+        
+        if (!tabBoetes || !tabBeheer || !finesTab || !beheerTab) {
             debug('Tab elements missing!');
             return;
         }
         
         function activateTab(tabId) {
             // Reset all tabs
-            [tabBoetes, tabPlayers, tabReasons].forEach(tab => {
+            [tabBoetes, tabBeheer].forEach(tab => {
                 tab.classList.remove('tab-active');
             });
             
-            // Hide all content
-            [finesTab, playersTab, reasonsTab].forEach(content => {
+            [finesTab, beheerTab].forEach(content => {
                 content.classList.add('hidden');
             });
             
             // Activate selected tab
-            if (tabId === 'players') {
-                tabPlayers.classList.add('tab-active');
-                playersTab.classList.remove('hidden');
-                localStorage.setItem('activeTab', 'players');
-            } else if (tabId === 'reasons') {
-                tabReasons.classList.add('tab-active');
-                reasonsTab.classList.remove('hidden');
-                localStorage.setItem('activeTab', 'reasons');
+            if (tabId === 'beheer') {
+                tabBeheer.classList.add('tab-active');
+                beheerTab.classList.remove('hidden');
+                localStorage.setItem('activeTab', 'beheer');
             } else {
                 // Default to fines tab
                 tabBoetes.classList.add('tab-active');
                 finesTab.classList.remove('hidden');
                 localStorage.setItem('activeTab', 'boetes');
             }
+            
+            debug(`Activated tab: ${tabId}`);
         }
         
         // Set default active tab from localStorage or default to fines
         const activeTab = localStorage.getItem('activeTab') || 'boetes';
         activateTab(activeTab);
         
-        // Add click event listeners
+        // Add event listeners to tabs
         tabBoetes.addEventListener('click', () => activateTab('boetes'));
-        tabPlayers.addEventListener('click', () => activateTab('players'));
-        tabReasons.addEventListener('click', () => activateTab('reasons'));
+        tabBeheer.addEventListener('click', () => activateTab('beheer'));
+        
+        debug('Tab event listeners attached');
     }
     
     // API & Data Functions - Simplified approach
