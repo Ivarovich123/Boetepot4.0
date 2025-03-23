@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Database Connection Status</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      line-height: 1.6;
+    }
+    .status-card {
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    .success {
+      background-color: #d1fae5;
+      border-left: 4px solid #10b981;
+    }
+    .loading {
+      background-color: #e0f2fe;
+      border-left: 4px solid #0ea5e9;
+    }
+    .error {
+      background-color: #fee2e2;
+      border-left: 4px solid #ef4444;
+    }
+    pre {
+      background-color: #f8f8f8;
+      padding: 10px;
+      border-radius: 5px;
+      overflow: auto;
+    }
+    button {
+      background-color: #3b82f6;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    button:hover {
+      background-color: #2563eb;
+    }
+  </style>
+</head>
+<body>
+  <h1>Supabase Database Connection Status</h1>
+  
+  <div id="statusCard" class="status-card loading">
+    <h2>Connection Status: <span id="status">Checking...</span></h2>
+    <p id="message">Testing connection to Supabase...</p>
+  </div>
+  
+  <div>
+    <h3>Tables Available:</h3>
+    <div>
+      <button onclick="testPlayers()">Test Players Table</button>
+      <button onclick="testReasons()">Test Reasons Table</button>
+      <button onclick="testFines()">Test Fines Table</button>
+    </div>
+    <div id="tableResults"></div>
+  </div>
+  
+  <script>
+    // Supabase configuration
+    const SUPABASE_URL = 'https://jvhgdidaoasgxqqixywl.supabase.co/rest/v1';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp2aGdkaWRhb2FzZ3hxcWl4eXdsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI1MDA3OTYsImV4cCI6MjA1ODA3Njc5Nn0.2qrrNC2bKichC63SvUhNgXlcG0ElViRsqM5CYU3QSfg';
+    
+    const statusEl = document.getElementById('status');
+    const messageEl = document.getElementById('message');
+    const statusCardEl = document.getElementById('statusCard');
+    const tableResultsEl = document.getElementById('tableResults');
+    
+    // Test the Supabase connection
+    async function checkConnection() {
+      try {
+        const response = await fetch(`${SUPABASE_URL}/players?select=count`, {
+          headers: {
+            'apikey': SUPABASE_KEY,
+            'Authorization': `Bearer ${SUPABASE_KEY}`
+          }
+        });
+        
+        if (!response.ok) {
+          throw new Error(`API request failed with status ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        // Update UI to show success
+        statusEl.textContent = 'Connected';
+        messageEl.textContent = 'Successfully connected to the Supabase database!';
+        statusCardEl.className = 'status-card success';
+        
+        return true;
+      } catch (error) {
+        // Update UI to show error
+        statusEl.textContent = 'Failed';
+        messageEl.textContent = `Connection error: ${error.message}`;
+        statusCardEl.className = 'status-card error';
+        
+        return false;
+      }
+    }
+    
+    // Test players table
+    async function testPlayers() {
+      try {
+        const response = await fetch(`${SUPABASE_URL}/players?select=*&limit=5`, {
+          headers: {
+            'apikey': SUPABASE_KEY,
+            'Authorization': `Bearer ${SUPABASE_KEY}`
+          }
+        });
+        
+        if (!response.ok) {
+          throw new Error(`API request failed with status ${response.status}`);
+        }
+        
+        const data = await response.json();
+        displayResults('Players Table', data);
+      } catch (error) {
+        displayError('Players Table', error.message);
+      }
+    }
+    
+    // Test reasons table
+    async function testReasons() {
+      try {
+        const response = await fetch(`${SUPABASE_URL}/reasons?select=*&limit=5`, {
+          headers: {
+            'apikey': SUPABASE_KEY,
+            'Authorization': `Bearer ${SUPABASE_KEY}`
+          }
+        });
+        
+        if (!response.ok) {
+          throw new Error(`API request failed with status ${response.status}`);
+        }
+        
+        const data = await response.json();
+        displayResults('Reasons Table', data);
+      } catch (error) {
+        displayError('Reasons Table', error.message);
+      }
+    }
+    
+    // Test fines table
+    async function testFines() {
+      try {
+        const response = await fetch(`${SUPABASE_URL}/fines?select=*&limit=5`, {
+          headers: {
+            'apikey': SUPABASE_KEY,
+            'Authorization': `Bearer ${SUPABASE_KEY}`
+          }
+        });
+        
+        if (!response.ok) {
+          throw new Error(`API request failed with status ${response.status}`);
+        }
+        
+        const data = await response.json();
+        displayResults('Fines Table', data);
+      } catch (error) {
+        displayError('Fines Table', error.message);
+      }
+    }
+    
+    // Display results
+    function displayResults(title, data) {
+      const resultDiv = document.createElement('div');
+      resultDiv.innerHTML = `
+        <h4>${title} - Success</h4>
+        <pre>${JSON.stringify(data, null, 2)}</pre>
+      `;
+      tableResultsEl.innerHTML = '';
+      tableResultsEl.appendChild(resultDiv);
+    }
+    
+    // Display error
+    function displayError(title, message) {
+      const resultDiv = document.createElement('div');
+      resultDiv.innerHTML = `
+        <h4>${title} - Error</h4>
+        <div class="status-card error">
+          <p>${message}</p>
+        </div>
+      `;
+      tableResultsEl.innerHTML = '';
+      tableResultsEl.appendChild(resultDiv);
+    }
+    
+    // Run the connection test when the page loads
+    window.onload = checkConnection;
+  </script>
+</body>
+</html> 
