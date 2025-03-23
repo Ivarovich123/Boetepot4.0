@@ -439,7 +439,7 @@ function formatDate(dateString) {
     // UI Rendering Functions
     function populatePlayerSelect(players) {
         debug('Populating player select dropdown with ' + players.length + ' players');
-        const playerSelect = $('#player-select');
+        const playerSelect = $('#playerSelect');
         
         // Clear any existing options
         playerSelect.empty();
@@ -458,7 +458,7 @@ function formatDate(dateString) {
             width: '100%',
             allowClear: true,
             multiple: true,
-            dropdownParent: $('#add-fine-form'), // Attach to form for better mobile positioning
+            dropdownParent: $('#addFineForm'), // Attach to form for better mobile positioning
             tags: false, // Disable creating new tags
             tokenSeparators: [], // Disable automatic tokenization
             language: {
