@@ -82,12 +82,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 <span>${message}</span>
             </div>
             <button class="ml-4 text-white focus:outline-none">
-                    <i class="fas fa-times"></i>
-                </button>
-            `;
-        
+                <i class="fas fa-times"></i>
+            </button>
+        `;
+    
         toastContainer.appendChild(toast);
-        
+    
         // Animation
         setTimeout(() => {
             toast.classList.remove('translate-x-full', 'opacity-0');
@@ -162,295 +162,127 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // API & Data Functions - Direct API connection to Supabase
-    async function apiRequest(endpoint, method = 'GET', data = null) {
+    async function apiRequest(endpoint, options = {}) {
         try {
-            let url;
+            const url = addCacheBuster(`${API_BASE_URL}${endpoint}`);
             
-            // Handle different endpoints for GET requests
-            if (method === 'GET') {
-                if (endpoint === '/players') {
-                    url = `${API_BASE_URL}/players?select=*`;
-                } else if (endpoint === '/reasons') {
-                    url = `${API_BASE_URL}/reasons?select=*`;
-                } else if (endpoint === '/fines') {
-                    url = `${API_BASE_URL}/fines?select=id,amount,date,player_id,reason_id&order=date.desc`;
-                } else {
-                    url = `${API_BASE_URL}${endpoint}`;
-                }
-            } else {
-                url = `${API_BASE_URL}${endpoint}`;
-            }
+            if (DEBUG) console.log('API Request to:', url);
             
-            const options = {
-                method,
+            const defaultOptions = {
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
                     'apikey': API_KEY,
                     'Authorization': `Bearer ${API_KEY}`,
-                    'Cache-Control': 'no-cache, no-store, must-revalidate',
-                    'Pragma': 'no-cache',
-                    'Expires': '0',
-                    'X-Cache-Bust': VERSION.toString() // Use a header for cache busting
-                }
+                    'Content-Type': 'application/json',
+                    'Prefer': 'return=representation'
+                },
+                mode: 'cors'
             };
             
-            if (data && (method === 'POST' || method === 'PUT')) {
-                options.headers['Prefer'] = 'return=representation';
-                options.body = JSON.stringify(data);
-            }
+            const requestOptions = { ...defaultOptions, ...options };
             
-            debug(`Making ${method} request to ${url}`);
-            showLoading(true);
-            
-            const response = await fetch(url, options);
+            const response = await fetch(url, requestOptions);
             
             if (!response.ok) {
-                let errorMessage = `API error: ${response.status}`;
-                try {
-                    const errorText = await response.text();
-                    debug(`Error response body: ${errorText}`);
-                    errorMessage = errorText;
-                } catch (e) {
-                    // Ignore JSON parsing errors
-                }
-                throw new Error(errorMessage);
+                const errorText = await response.text();
+                console.error('API Response Error:', response.status, errorText);
+                throw new Error(`API Error (${response.status}): ${errorText}`);
             }
             
-            return await response.json();
+            // If response is 204 No Content, return null
+            if (response.status === 204) {
+                return null;
+            }
+            
+            // Otherwise parse JSON
+            const data = await response.json();
+            if (DEBUG) console.log('API Response Data:', data);
+            return data;
         } catch (error) {
-            debug(`API Error: ${error.message}`);
-            showToast(`API Error: ${error.message}`, 'error');
+            console.error('API Request Error:', error);
+            
+            // More detailed error message to help with debugging
+            let errorMessage = 'Fout bij verbinden met de database. ';
+            
+            if (error.message.includes('Failed to fetch')) {
+                errorMessage += 'Controleer uw internetverbinding of Supabase server kan niet worden bereikt.';
+            } else {
+                errorMessage += error.message;
+            }
+            
+            showToast(errorMessage, 'error');
             throw error;
-        } finally {
-            showLoading(false);
         }
     }
     
     // Data loading functions
     async function loadPlayers() {
         try {
+            showLoading(true);
             debug('Loading players...');
-            const players = await apiRequest('/players?select=id,name&order=name');
             
-            if (!players || !Array.isArray(players)) {
-                throw new Error('Invalid response from API');
-            }
+            const players = await apiRequest('/players?select=*', { method: 'GET' });
+            renderPlayersList(players);
             
-            // Update player select
-            const playerSelect = document.getElementById('playerSelect');
-            if (playerSelect) {
-                playerSelect.innerHTML = '<option value="">-- Selecteer speler --</option>';
-                
-                players.forEach(player => {
-                    const option = document.createElement('option');
-                    option.value = player.id;
-                    option.textContent = player.name;
-                    playerSelect.appendChild(option);
-                });
-            }
-            
-            // Update players list
-            const playersList = document.getElementById('playersList');
-            if (playersList) {
-                playersList.innerHTML = '';
-                
-                if (players.length === 0) {
-                    playersList.innerHTML = '<div class="text-gray-400 text-center py-4">Geen spelers gevonden</div>';
-                    return;
-                }
-                
-                players.forEach(player => {
-                    const playerItem = document.createElement('div');
-                    playerItem.className = 'flex items-center justify-between p-3 border border-gray-200 rounded-lg';
-                    playerItem.innerHTML = `
-                        <div class="font-medium">${player.name}</div>
-                        <button class="delete-button text-gray-500 hover:text-red-500" data-id="${player.id}" data-name="${player.name}">
-                            <i class="fas fa-trash-alt"></i>
-                        </button>
-                    `;
-                    
-                    // Add event listener to delete button
-                    const deleteButton = playerItem.querySelector('.delete-button');
-                    deleteButton.addEventListener('click', async function() {
-                        const playerId = this.getAttribute('data-id');
-                        const playerName = this.getAttribute('data-name');
-                        
-                        // Show confirmation modal
-                        const confirmModal = document.getElementById('confirmModal');
-                        const confirmTitle = document.getElementById('confirmTitle');
-                        const confirmMessage = document.getElementById('confirmMessage');
-                        const confirmButton = document.getElementById('confirmButton');
-                        const cancelButton = document.getElementById('cancelButton');
-
-                        confirmTitle.textContent = 'Speler Verwijderen';
-                        confirmMessage.textContent = `Weet je zeker dat je "${playerName}" wilt verwijderen? Dit verwijdert ook alle boetes van deze speler.`;
-                        
-                        // Show the modal
-                        confirmModal.classList.remove('hidden');
-                        confirmModal.classList.add('flex');
-                        
-                        // Handle cancel
-                        cancelButton.onclick = function() {
-                            confirmModal.classList.remove('flex');
-                            confirmModal.classList.add('hidden');
-                        };
-                        
-                        // Handle confirm
-                        confirmButton.onclick = async function() {
-                            confirmModal.classList.remove('flex');
-                            confirmModal.classList.add('hidden');
-                            
-                            const success = await deletePlayer(playerId);
-                            if (success) {
-                                await loadPlayers();
-                            }
-                        };
-                    });
-                    
-                    playersList.appendChild(playerItem);
-                });
-            }
-            
-            debug(`Loaded ${players.length} players`);
+            return players;
         } catch (error) {
-            debug(`Error loading players: ${error.message}`);
-            showToast('Fout bij laden van spelers', 'error');
+            console.error('Error loading players:', error);
+            showToast('Fout bij het laden van spelers', 'error');
+            return [];
+        } finally {
+            showLoading(false);
         }
     }
     
     async function loadReasons() {
         try {
+            showLoading(true);
             debug('Loading reasons...');
-            const reasons = await apiRequest('/reasons?select=id,description,amount&order=description');
             
-            if (!reasons || !Array.isArray(reasons)) {
-                throw new Error('Invalid response from API');
-            }
+            const reasons = await apiRequest('/reasons?select=*', { method: 'GET' });
+            renderReasonsList(reasons);
             
-            // Update reason select
-            const reasonSelect = document.getElementById('reasonSelect');
-            if (reasonSelect) {
-                reasonSelect.innerHTML = '<option value="">-- Selecteer reden --</option>';
-                
-                reasons.forEach(reason => {
-                    const option = document.createElement('option');
-                    option.value = reason.id;
-                    option.textContent = `${reason.description} (${formatCurrency(reason.amount)})`;
-                    reasonSelect.appendChild(option);
-                });
-            }
-            
-            // Update reasons list
-            const reasonsList = document.getElementById('reasonsList');
-            if (reasonsList) {
-                reasonsList.innerHTML = '';
-                
-                if (reasons.length === 0) {
-                    reasonsList.innerHTML = '<div class="text-gray-400 text-center py-4">Geen redenen gevonden</div>';
-                    return;
-                }
-                
-                reasons.forEach(reason => {
-                    const reasonItem = document.createElement('div');
-                    reasonItem.className = 'flex items-center justify-between p-3 border border-gray-200 rounded-lg';
-                    reasonItem.innerHTML = `
-                        <div>
-                            <div class="font-medium">${reason.description}</div>
-                            <div class="text-sm text-gray-500">${formatCurrency(reason.amount)}</div>
-                        </div>
-                        <button class="delete-button text-gray-500 hover:text-red-500" data-id="${reason.id}" data-name="${reason.description}">
-                            <i class="fas fa-trash-alt"></i>
-                        </button>
-                    `;
-                    
-                    // Add event listener to delete button
-                    const deleteButton = reasonItem.querySelector('.delete-button');
-                    deleteButton.addEventListener('click', async function() {
-                        const reasonId = this.getAttribute('data-id');
-                        const reasonName = this.getAttribute('data-name');
-                        
-                        // Show confirmation modal
-                        const confirmModal = document.getElementById('confirmModal');
-                        const confirmTitle = document.getElementById('confirmTitle');
-                        const confirmMessage = document.getElementById('confirmMessage');
-                        const confirmButton = document.getElementById('confirmButton');
-                        const cancelButton = document.getElementById('cancelButton');
-
-                        confirmTitle.textContent = 'Reden Verwijderen';
-                        confirmMessage.textContent = `Weet je zeker dat je "${reasonName}" wilt verwijderen? Dit verwijdert ook alle boetes met deze reden.`;
-                        
-                        // Show the modal
-                        confirmModal.classList.remove('hidden');
-                        confirmModal.classList.add('flex');
-                        
-                        // Handle cancel
-                        cancelButton.onclick = function() {
-                            confirmModal.classList.remove('flex');
-                            confirmModal.classList.add('hidden');
-                        };
-                        
-                        // Handle confirm
-                        confirmButton.onclick = async function() {
-                            confirmModal.classList.remove('flex');
-                            confirmModal.classList.add('hidden');
-                            
-                            const success = await deleteReason(reasonId);
-                            if (success) {
-                                await loadReasons();
-                            }
-                        };
-                    });
-                    
-                    reasonsList.appendChild(reasonItem);
-                });
-            }
-            
-            debug(`Loaded ${reasons.length} reasons`);
+            return reasons;
         } catch (error) {
-            debug(`Error loading reasons: ${error.message}`);
-            showToast('Fout bij laden van redenen', 'error');
+            console.error('Error loading reasons:', error);
+            showToast('Fout bij het laden van redenen', 'error');
+            return [];
+        } finally {
+            showLoading(false);
         }
     }
     
     async function loadFines() {
         try {
-            const fines = await apiRequest('/fines');
+            showLoading(true);
+            debug('Loading fines...');
             
-            // Get players and reasons to add names to fines
-            const players = await apiRequest('/players');
-            const reasons = await apiRequest('/reasons');
+            const fines = await apiRequest('/fines?select=id,amount,date,player_id,reason_id&order=date.desc', { method: 'GET' });
             
-            // Enrich fines with player and reason information
+            // Load player and reason data to enrich the fines
+            const players = await loadPlayers();
+            const reasons = await loadReasons();
+            
+            // Combine fines with player and reason info
             const enrichedFines = fines.map(fine => {
-                // Add player name
-                if (fine.player_id) {
-                    const player = players.find(p => p.id == fine.player_id);
-                    if (player) {
-                        fine.player_name = player.name;
-                    } else {
-                        fine.player_name = 'Onbekende speler';
-                    }
-                }
+                const player = players.find(p => p.id === fine.player_id) || { name: 'Unknown' };
+                const reason = reasons.find(r => r.id === fine.reason_id) || { description: 'Unknown' };
                 
-                // Add reason description
-                if (fine.reason_id) {
-                    const reason = reasons.find(r => r.id == fine.reason_id);
-                    if (reason) {
-                        fine.reason_description = reason.description;
-                    } else {
-                        fine.reason_description = 'Onbekende reden';
-                    }
-                }
-                
-                return fine;
+                return {
+                    ...fine,
+                    playerName: player.name,
+                    reasonDescription: reason.description
+                };
             });
             
             renderFinesList(enrichedFines);
+            
             return enrichedFines;
         } catch (error) {
-            debug(`Failed to load fines: ${error.message}`);
+            console.error('Error loading fines:', error);
+            showToast('Fout bij het laden van boetes', 'error');
             return [];
+        } finally {
+            showLoading(false);
         }
     }
     
@@ -625,9 +457,9 @@ document.addEventListener('DOMContentLoaded', function() {
         card.innerHTML = `
             <div class="flex justify-between items-start">
                 <div>
-                    <h3 class="font-semibold">${fine.player_name || 'Onbekende speler'}</h3>
-                    <p class="text-gray-600">${fine.reason_description}</p>
-                    <p class="text-gray-500 text-sm mt-1">${formatDate(fine.created_at || fine.date)}</p>
+                    <h3 class="font-semibold">${fine.playerName || 'Onbekende speler'}</h3>
+                    <p class="text-gray-600">${fine.reasonDescription}</p>
+                    <p class="text-gray-500 text-sm mt-1">${formatDate(fine.date)}</p>
                 </div>
                 <div class="flex items-center">
                     <span class="font-bold text-lg mr-4">€${formatCurrency(fine.amount)}</span>
@@ -1184,7 +1016,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!fines || !Array.isArray(fines)) {
                 throw new Error('Invalid response from API');
             }
-            
+        
             // Calculate total
             let total = 0;
             fines.forEach(fine => {

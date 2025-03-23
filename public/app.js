@@ -21,13 +21,14 @@ const noLeaderboardEl = document.getElementById('noLeaderboardData');
 const toastContainer = document.getElementById('toastContainer');
 
 // Show loading spinner
-function showLoading() {
-    loadingSpinner.classList.remove('hidden');
-}
-
-// Hide loading spinner
-function hideLoading() {
-    loadingSpinner.classList.add('hidden');
+function showLoading(isLoading) {
+    if (loadingSpinner) {
+        if (isLoading) {
+            loadingSpinner.classList.remove('hidden');
+        } else {
+            loadingSpinner.classList.add('hidden');
+        }
+    }
 }
 
 // Show toast message
@@ -98,14 +99,8 @@ function formatCurrency(amount) {
 
 // Format date
 function formatDate(dateString) {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('nl-NL', {
-        weekday: 'short',
-        day: 'numeric',
-        month: 'short',
-        hour: '2-digit',
-        minute: '2-digit'
-    });
+    const options = { year: 'numeric', month: 'numeric', day: 'numeric' };
+    return new Date(dateString).toLocaleDateString('nl-NL', options);
 }
 
 // Add cache busting parameter to URL - Fixed to use a simple timestamp approach
@@ -117,26 +112,29 @@ function addCacheBust(url) {
 
 // Make API request
 async function apiRequest(endpoint, options = {}) {
-    const url = addCacheBust(`${API_BASE_URL}${endpoint}`);
-    
-    if (DEBUG) console.log('API Request to:', url);
-    
-    const defaultOptions = {
-        headers: {
-            'apikey': API_KEY,
-            'Authorization': `Bearer ${API_KEY}`,
-            'Content-Type': 'application/json',
-            'Prefer': 'return=representation'
-        }
-    };
-    
-    const requestOptions = { ...defaultOptions, ...options };
-    
+    showLoading(true);
     try {
+        const url = addCacheBust(`${API_BASE_URL}${endpoint}`);
+        
+        if (DEBUG) console.log('API Request to:', url);
+        
+        const defaultOptions = {
+            headers: {
+                'apikey': API_KEY,
+                'Authorization': `Bearer ${API_KEY}`,
+                'Content-Type': 'application/json',
+                'Prefer': 'return=representation'
+            },
+            mode: 'cors'
+        };
+        
+        const requestOptions = { ...defaultOptions, ...options };
+        
         const response = await fetch(url, requestOptions);
         
         if (!response.ok) {
             const errorText = await response.text();
+            console.error('API Response Error:', response.status, errorText);
             throw new Error(`API Error (${response.status}): ${errorText}`);
         }
         
@@ -146,11 +144,25 @@ async function apiRequest(endpoint, options = {}) {
         }
         
         // Otherwise parse JSON
-        return await response.json();
+        const data = await response.json();
+        if (DEBUG) console.log('API Response Data:', data);
+        return data;
     } catch (error) {
         console.error('API Request Error:', error);
-        showToast(`API Fout: ${error.message}`, 'error');
+        
+        // More detailed error message to help with debugging
+        let errorMessage = 'Fout bij verbinden met de database. ';
+        
+        if (error.message.includes('Failed to fetch')) {
+            errorMessage += 'Controleer uw internetverbinding of Supabase server kan niet worden bereikt.';
+        } else {
+            errorMessage += error.message;
+        }
+        
+        showToast(errorMessage, 'error');
         throw error;
+    } finally {
+        showLoading(false);
     }
 }
 
@@ -167,7 +179,7 @@ async function loadTotalAmount() {
         totalAmountEl.textContent = formatCurrency(total);
         
         if (DEBUG) console.log('Total amount loaded:', total);
-    } catch (error) {
+  } catch (error) {
         console.error('Error loading total amount:', error);
         totalAmountEl.textContent = '€0,00';
     }
@@ -175,7 +187,7 @@ async function loadTotalAmount() {
 
 // Load recent fines
 async function loadRecentFines() {
-    try {
+  try {
         // Get fines with player and reason details, sort by created_at desc, limit to 5
         const fines = await apiRequest('/fines?select=*,players(name),reasons(description,amount)&order=created_at.desc&limit=5');
         
@@ -189,13 +201,13 @@ async function loadRecentFines() {
                 fineCard.className = 'fine-card bg-white p-4 border border-gray-200 rounded-xl shadow-sm';
                 
                 fineCard.innerHTML = `
-                    <div class="flex justify-between items-center">
+                <div class="flex justify-between items-center">
                         <div class="flex-1">
                             <div class="flex items-center mb-1">
                                 <span class="font-semibold text-blue-800">${fine.players?.name || 'Onbekend'}</span>
                                 <span class="text-gray-400 mx-2">•</span>
                                 <span class="text-gray-500 text-sm">${formatDate(fine.created_at)}</span>
-                            </div>
+                        </div>
                             <div class="text-gray-700">${fine.reasons?.description || 'Onbekende reden'}</div>
                         </div>
                         <div class="font-bold text-blue-700 text-lg">${formatCurrency(fine.reasons?.amount || 0)}</div>
@@ -234,22 +246,22 @@ async function loadPlayersForSelector() {
             
             if (DEBUG) console.log('Players loaded for selector:', players.length);
         }
-    } catch (error) {
+  } catch (error) {
         console.error('Error loading players for selector:', error);
         playerHistorySelectEl.innerHTML = '<option value="">Fout bij laden spelers</option>';
-    }
+  }
 }
 
 // Load player history
 async function loadPlayerHistory(playerId) {
-    try {
+  try {
         if (!playerId) {
             noPlayerHistoryEl.textContent = 'Selecteer een speler om de geschiedenis te zien';
             noPlayerHistoryEl.classList.remove('hidden');
             playerHistoryEl.innerHTML = '';
-            return;
-        }
-        
+      return;
+    }
+    
         // Get fines for the selected player with reason details, sort by created_at desc
         const fines = await apiRequest(`/fines?player_id=eq.${playerId}&select=*,reasons(description,amount)&order=created_at.desc`);
         
@@ -347,7 +359,7 @@ async function loadLeaderboard() {
             if (leaderboardData.length > 0) {
                 renderLeaderboard(leaderboardData);
                 if (DEBUG) console.log('Leaderboard data:', leaderboardData);
-            } else {
+      } else {
                 noLeaderboardEl.classList.remove('hidden');
                 leaderboardEl.innerHTML = '';
                 if (DEBUG) console.log('No players with fines for leaderboard');
@@ -357,7 +369,7 @@ async function loadLeaderboard() {
             leaderboardEl.innerHTML = '';
             if (DEBUG) console.log('No data for leaderboard');
         }
-    } catch (error) {
+  } catch (error) {
         console.error('Error loading leaderboard:', error);
         noLeaderboardEl.textContent = 'Fout bij laden van ranglijst';
         noLeaderboardEl.classList.remove('hidden');
@@ -400,7 +412,7 @@ playerHistorySelectEl.addEventListener('change', function() {
 // Initialize the app
 async function init() {
     try {
-        showLoading();
+        showLoading(true);
         
         // Refresh cache bust parameter
         cacheBustParam = Date.now();
@@ -418,7 +430,7 @@ async function init() {
         console.error('Error initializing app:', error);
         showToast('Er is een fout opgetreden bij het laden van de gegevens', 'error');
     } finally {
-        hideLoading();
+        showLoading(false);
     }
 }
 
