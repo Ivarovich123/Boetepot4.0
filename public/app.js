@@ -1,9 +1,9 @@
 // Cache busting parameter
 let cacheBustParam = Date.now();
 
-// API Base URL - Make sure this URL is correct and the API is accessible
-const API_BASE_URL = 'https://hfjbkhvwstsjbgmepyxg.supabase.co/rest/v1';
-const API_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhmamJraHZ3c3RzamJnbWVweXhnIiwicm9sZSI6ImFub24iLCJpYXQiOjE2ODkwMTAwODcsImV4cCI6MjAwNDU4NjA4N30.thTZjFw9PnLR9KgTkyCKmsKQYd13X6Ab0jCCHr2Dz9s';
+// Supabase configuration
+const SUPABASE_URL = 'https://jvhgdidaoasgxqqixywl.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp2aGdkaWRhb2FzZ3hxcWl4eXdsIiwicm9sZSI6ImFub24iLCJpYXQiOjE2OTc4ODM3ODksImV4cCI6MjAxMzQ1OTc4OX0.h3PwqEe-Tf_YSAK91J_I-0WXyP1MlRWvuKXp5WGxnZQ';
 
 // Debug mode (set to true during development to see console logs)
 const DEBUG = true;
@@ -119,23 +119,26 @@ async function apiRequest(endpoint, options = {}) {
             endpoint = '/' + endpoint;
         }
         
+        // Fix format for foreign key queries (nested relations)
+        endpoint = endpoint.replace(/\(([^)]+)\)/g, '.select=$1');
+        
         // Make sure query parameters are properly formatted
-        let url = API_BASE_URL + endpoint;
+        let url = SUPABASE_URL + endpoint;
         
         // Apply cache busting
         url = addCacheBust(url);
         
-        if (DEBUG) console.log('API Request to:', url);
+        if (DEBUG) console.log('Attempting API Request to:', url);
         
         const defaultOptions = {
             headers: {
-                'apikey': API_KEY,
-                'Authorization': `Bearer ${API_KEY}`,
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`,
                 'Content-Type': 'application/json',
                 'Prefer': 'return=representation'
             },
             mode: 'cors',
-            credentials: 'omit' // Don't send cookies
+            credentials: 'omit' // Don't send cookies for CORS
         };
         
         const requestOptions = { ...defaultOptions, ...options };
@@ -146,13 +149,17 @@ async function apiRequest(endpoint, options = {}) {
         
         while (retries > 0) {
             try {
+                if (DEBUG) console.log(`API request attempt ${4-retries}/3`);
                 response = await fetch(url, requestOptions);
                 break; // If successful, exit the retry loop
             } catch (fetchError) {
+                console.error(`Fetch attempt ${4-retries} failed:`, fetchError);
                 retries--;
                 if (retries === 0) throw fetchError;
                 // Wait before retrying (exponential backoff)
-                await new Promise(resolve => setTimeout(resolve, (3 - retries) * 1000));
+                const waitTime = (4 - retries) * 1000;
+                console.log(`Retrying in ${waitTime/1000} seconds...`);
+                await new Promise(resolve => setTimeout(resolve, waitTime));
             }
         }
         
@@ -177,7 +184,29 @@ async function apiRequest(endpoint, options = {}) {
         let errorMessage = 'Fout bij verbinden met de database. ';
         
         if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
-            errorMessage += 'Controleer uw internetverbinding of Supabase server kan niet worden bereikt. Mogelijk is er een CORS probleem.';
+            errorMessage += 'Controleer uw internetverbinding en API-instellingen. Mogelijke oorzaken: CORS-restricties, ongeldige API-sleutel, of Supabase-server niet bereikbaar.';
+            
+            // Log detailed debugging information
+            console.log('Debug info:');
+            console.log('API Base URL:', SUPABASE_URL);
+            console.log('API Key (masked):', SUPABASE_KEY.substring(0, 15) + '...');
+            console.log('Headers:', options.headers);
+            
+            // Check if in development mode
+            if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+                console.log('Development environment detected - check for CORS issues');
+                
+                // Attempt a simple ping test to see if Supabase is accessible
+                fetch(`${SUPABASE_URL}/health`, {
+                    method: 'GET',
+                    headers: { 'apikey': SUPABASE_KEY },
+                    mode: 'cors'
+                }).then(r => {
+                    console.log('Health check succeeded');
+                }).catch(e => {
+                    console.log('Health check failed:', e);
+                });
+            }
         } else {
             errorMessage += error.message;
         }
@@ -202,7 +231,7 @@ async function loadTotalAmount() {
         totalAmountEl.textContent = formatCurrency(total);
         
         if (DEBUG) console.log('Total amount loaded:', total);
-  } catch (error) {
+    } catch (error) {
         console.error('Error loading total amount:', error);
         totalAmountEl.textContent = '€0,00';
     }
@@ -210,9 +239,10 @@ async function loadTotalAmount() {
 
 // Load recent fines
 async function loadRecentFines() {
-  try {
+    try {
         // Get fines with player and reason details, sort by created_at desc, limit to 5
-        const fines = await apiRequest('/fines?select=*,players(name),reasons(description,amount)&order=created_at.desc&limit=5');
+        // Updated query syntax for Supabase PostgREST relations
+        const fines = await apiRequest('/fines?select=*,player:player_id(name),reason:reason_id(description,amount)&order=created_at.desc&limit=5');
         
         if (fines && fines.length > 0) {
             noRecentFinesEl.classList.add('hidden');
@@ -227,13 +257,13 @@ async function loadRecentFines() {
                 <div class="flex justify-between items-center">
                         <div class="flex-1">
                             <div class="flex items-center mb-1">
-                                <span class="font-semibold text-blue-800">${fine.players?.name || 'Onbekend'}</span>
+                                <span class="font-semibold text-blue-800">${fine.player?.name || 'Onbekend'}</span>
                                 <span class="text-gray-400 mx-2">•</span>
                                 <span class="text-gray-500 text-sm">${formatDate(fine.created_at)}</span>
                         </div>
-                            <div class="text-gray-700">${fine.reasons?.description || 'Onbekende reden'}</div>
+                            <div class="text-gray-700">${fine.reason?.description || 'Onbekende reden'}</div>
                         </div>
-                        <div class="font-bold text-blue-700 text-lg">${formatCurrency(fine.reasons?.amount || 0)}</div>
+                        <div class="font-bold text-blue-700 text-lg">${formatCurrency(fine.reason?.amount || 0)}</div>
                     </div>
                 `;
                 
@@ -269,24 +299,24 @@ async function loadPlayersForSelector() {
             
             if (DEBUG) console.log('Players loaded for selector:', players.length);
         }
-  } catch (error) {
+    } catch (error) {
         console.error('Error loading players for selector:', error);
         playerHistorySelectEl.innerHTML = '<option value="">Fout bij laden spelers</option>';
-  }
+    }
 }
 
 // Load player history
 async function loadPlayerHistory(playerId) {
-  try {
+    try {
         if (!playerId) {
             noPlayerHistoryEl.textContent = 'Selecteer een speler om de geschiedenis te zien';
             noPlayerHistoryEl.classList.remove('hidden');
             playerHistoryEl.innerHTML = '';
-      return;
-    }
+            return;
+        }
     
         // Get fines for the selected player with reason details, sort by created_at desc
-        const fines = await apiRequest(`/fines?player_id=eq.${playerId}&select=*,reasons(description,amount)&order=created_at.desc`);
+        const fines = await apiRequest(`/fines?player_id=eq.${playerId}&select=*,reason:reason_id(description,amount)&order=created_at.desc`);
         
         if (fines && fines.length > 0) {
             noPlayerHistoryEl.classList.add('hidden');
@@ -301,9 +331,9 @@ async function loadPlayerHistory(playerId) {
                     <div class="flex justify-between items-center">
                         <div class="flex-1">
                             <div class="text-gray-500 text-sm mb-1">${formatDate(fine.created_at)}</div>
-                            <div class="text-gray-700">${fine.reasons?.description || 'Onbekende reden'}</div>
+                            <div class="text-gray-700">${fine.reason?.description || 'Onbekende reden'}</div>
                         </div>
-                        <div class="font-bold text-blue-700">${formatCurrency(fine.reasons?.amount || 0)}</div>
+                        <div class="font-bold text-blue-700">${formatCurrency(fine.reason?.amount || 0)}</div>
                     </div>
                 `;
                 
@@ -311,7 +341,7 @@ async function loadPlayerHistory(playerId) {
             });
             
             // Show total for this player
-            const total = fines.reduce((sum, fine) => sum + parseFloat(fine.reasons?.amount || 0), 0);
+            const total = fines.reduce((sum, fine) => sum + parseFloat(fine.reason?.amount || 0), 0);
             
             const totalItem = document.createElement('div');
             totalItem.className = 'bg-blue-50 p-4 border border-blue-200 rounded-xl mt-4';
@@ -342,8 +372,8 @@ async function loadPlayerHistory(playerId) {
 // Load and render leaderboard
 async function loadLeaderboard() {
     try {
-        // Get all fines with player info and reason amount
-        const fines = await apiRequest('/fines?select=player_id,reasons(amount)');
+        // Get all fines with reason amount and player info using proper Supabase relation syntax
+        const fines = await apiRequest('/fines?select=player_id,reason:reason_id(amount)');
         const players = await apiRequest('/players?select=id,name');
         
         if (DEBUG) console.log('Fines data:', fines);
@@ -366,7 +396,7 @@ async function loadLeaderboard() {
             // Sum up fines
             fines.forEach(fine => {
                 const playerId = fine.player_id;
-                const amount = parseFloat(fine.reasons?.amount || 0);
+                const amount = parseFloat(fine.reason?.amount || 0);
                 
                 if (playerTotals[playerId]) {
                     playerTotals[playerId].total += amount;
@@ -382,7 +412,7 @@ async function loadLeaderboard() {
             if (leaderboardData.length > 0) {
                 renderLeaderboard(leaderboardData);
                 if (DEBUG) console.log('Leaderboard data:', leaderboardData);
-      } else {
+            } else {
                 noLeaderboardEl.classList.remove('hidden');
                 leaderboardEl.innerHTML = '';
                 if (DEBUG) console.log('No players with fines for leaderboard');
@@ -392,7 +422,7 @@ async function loadLeaderboard() {
             leaderboardEl.innerHTML = '';
             if (DEBUG) console.log('No data for leaderboard');
         }
-  } catch (error) {
+    } catch (error) {
         console.error('Error loading leaderboard:', error);
         noLeaderboardEl.textContent = 'Fout bij laden van ranglijst';
         noLeaderboardEl.classList.remove('hidden');
