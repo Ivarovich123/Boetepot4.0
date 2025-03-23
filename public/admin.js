@@ -47,12 +47,12 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     function enableDarkMode() {
-        document.documentElement.classList.add('dark');
+            document.documentElement.classList.add('dark');
         document.body.classList.add('dark');
-        if (themeIcon) {
-            themeIcon.classList.remove('fa-moon');
-            themeIcon.classList.add('fa-sun');
-        }
+            if (themeIcon) {
+                themeIcon.classList.remove('fa-moon');
+                themeIcon.classList.add('fa-sun');
+            }
         updateSelect2Theme(true);
         debug('Dark mode enabled');
     }
@@ -60,10 +60,10 @@ document.addEventListener('DOMContentLoaded', function() {
     function disableDarkMode() {
         document.documentElement.classList.remove('dark');
         document.body.classList.remove('dark');
-        if (themeIcon) {
-            themeIcon.classList.remove('fa-sun');
-            themeIcon.classList.add('fa-moon');
-        }
+            if (themeIcon) {
+                themeIcon.classList.remove('fa-sun');
+                themeIcon.classList.add('fa-moon');
+            }
         updateSelect2Theme(false);
         debug('Dark mode disabled');
     }
@@ -104,48 +104,44 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Function to add cache-busting to API URLs
     function addCacheBuster(url) {
-        // For Supabase, adding parameters that aren't recognized filters can cause issues
-        // Instead, add cache-busting to an existing parameter or path that won't affect the query
+        // Use a parameter that won't be interpreted as a column filter by Supabase
         
-        // If the URL already contains parameters, add timestamp to the select parameter
-        if (url.includes('select=')) {
-            // Add timestamp to the existing select parameter
-            return url.replace('select=', 'select=timestamp.' + VERSION + ',');
-        } else if (url.includes('?')) {
-            // If there are other parameters but no select, add a dummy offset
-            return url + '&offset=0';
+        // If the URL already contains parameters
+        if (url.includes('?')) {
+            // Add a random limit that won't affect typical queries
+            return url + '&limit.cb=' + VERSION;
         } else {
-            // For URLs without parameters, add a limit that won't affect results
-            return url + '?limit=999';
+            // For URLs without parameters
+            return url + '?limit.cb=' + VERSION;
         }
-    }
-    
-    function formatCurrency(amount) {
-        return new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(amount);
     }
 
-    function formatDate(dateString) {
-        if (!dateString) return 'Onbekend';
-        try {
-            const date = new Date(dateString);
-            return new Intl.DateTimeFormat('nl-NL', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-            }).format(date);
-        } catch (error) {
-            console.error('Error formatting date:', error);
-            return 'Ongeldige datum';
-        }
-    }
+function formatCurrency(amount) {
+    return new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(amount);
+}
+
+function formatDate(dateString) {
+  if (!dateString) return 'Onbekend';
+  try {
+    const date = new Date(dateString);
+        return new Intl.DateTimeFormat('nl-NL', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        }).format(date);
+  } catch (error) {
+    console.error('Error formatting date:', error);
+    return 'Ongeldige datum';
+  }
+}
 
     function showLoading(show = true) {
         const spinner = document.getElementById('loadingSpinner');
         if (spinner) {
-            if (show) {
+    if (show) {
                 spinner.classList.remove('hidden');
                 spinner.classList.add('flex');
-            } else {
+    } else {
                 spinner.classList.remove('flex');
                 spinner.classList.add('hidden');
             }
@@ -195,7 +191,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         
         // Auto close after 5 seconds
-        setTimeout(() => {
+  setTimeout(() => {
             toast.classList.add('translate-x-full', 'opacity-0');
             setTimeout(() => {
                 toast.remove();
@@ -278,9 +274,9 @@ document.addEventListener('DOMContentLoaded', function() {
             
             const options = {
                 method,
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
+      headers: {
+        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
                     'apikey': SUPABASE_KEY,
                     'Authorization': `Bearer ${SUPABASE_KEY}`,
                     'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -312,7 +308,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             return await response.json();
-        } catch (error) {
+  } catch (error) {
             debug(`API Error: ${error.message}`);
             showToast(`API Error: ${error.message}`, 'error');
             throw error;
@@ -328,7 +324,7 @@ document.addEventListener('DOMContentLoaded', function() {
             populatePlayerSelect(players);
             renderPlayersList(players);
             return players;
-        } catch (error) {
+    } catch (error) {
             debug(`Failed to load players: ${error.message}`);
             return [];
         }
@@ -381,7 +377,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             renderFinesList(enrichedFines);
             return enrichedFines;
-        } catch (error) {
+  } catch (error) {
             debug(`Failed to load fines: ${error.message}`);
             return [];
         }
@@ -395,9 +391,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 loadReasons(),
                 loadFines()
             ]);
-            debug('All data loaded successfully');
-        } catch (error) {
-            debug(`Error loading data: ${error.message}`);
+        debug('All data loaded successfully');
+  } catch (error) {
+        debug(`Error loading data: ${error.message}`);
             showToast('Er is een fout opgetreden bij het laden van gegevens', 'error');
         }
     }
@@ -431,7 +427,7 @@ document.addEventListener('DOMContentLoaded', function() {
         playerSelect.append($('<option>').val('').text(''));
         
         // Add all players
-        players.forEach(player => {
+            players.forEach(player => {
             playerSelect.append($('<option>').val(player.id).text(player.name));
         });
         
@@ -494,7 +490,7 @@ document.addEventListener('DOMContentLoaded', function() {
         select.appendChild(emptyOption);
         
         // Add reason options
-        reasons.forEach(reason => {
+            reasons.forEach(reason => {
             const option = document.createElement('option');
             option.value = reason.id;
             option.textContent = reason.description;
@@ -511,7 +507,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Update Select2 to match theme
             updateSelect2Theme(document.body.classList.contains('dark'));
-        } catch (error) {
+  } catch (error) {
             debug(`Error initializing Select2: ${error.message}`);
         }
     }
@@ -584,9 +580,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     <p>Geen spelers gevonden.</p>
                 </div>
             `;
-            return;
-        }
-        
+      return;
+    }
+    
         // Sort players by name
         players.sort((a, b) => a.name.localeCompare(b.name));
         
@@ -687,7 +683,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     showToast(`Boete toegevoegd voor ${successCount} ${playerText}!`, 'success');
                     await loadFines();
                     return true;
-                } else {
+        } else {
                     throw new Error('Geen enkele boete kon worden toegevoegd');
                 }
             } else {
@@ -703,12 +699,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 showToast('Boete toegevoegd!', 'success');
                 await loadFines();
                 return true;
-            }
-        } catch (error) {
+        }
+  } catch (error) {
             debug(`Failed to add fine: ${error.message}`);
             showToast(`Fout bij toevoegen van boete: ${error.message}`, 'error');
             return false;
-        } finally {
+  } finally {
             showLoading(false);
         }
     }
@@ -740,11 +736,11 @@ document.addEventListener('DOMContentLoaded', function() {
             showToast('Boete succesvol verwijderd!', 'success');
             await loadFines(); // Reload fines
             return true;
-        } catch (error) {
+  } catch (error) {
             debug(`Failed to delete fine: ${error.message}`);
             showToast(`Fout bij verwijderen: ${error.message}`, 'error');
             return false;
-        } finally {
+  } finally {
             showLoading(false);
         }
     }
@@ -857,7 +853,7 @@ document.addEventListener('DOMContentLoaded', function() {
             showToast('Reden succesvol toegevoegd!', 'success');
             await loadReasons(); // Reload reasons
             return true;
-        } catch (error) {
+    } catch (error) {
             debug(`Failed to add reason: ${error.message}`);
             return false;
         } finally {
@@ -907,7 +903,7 @@ document.addEventListener('DOMContentLoaded', function() {
             await apiRequest('/reset', 'POST', {});
             showToast('Alle data succesvol gereset!', 'success');
             await loadAllData(); // Reload all data
-            return true;
+    return true;
         } catch (error) {
             debug(`Failed to reset data: ${error.message}`);
             return false;
@@ -942,9 +938,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 if (!amount || isNaN(amount) || parseFloat(amount) <= 0) {
                     showToast('Voer een geldig bedrag in!', 'error');
-                    return;
-                }
-                
+            return;
+        }
+        
                 const success = await addFine({
                     player_ids: playerIds,
                     reason_id: reasonId,
@@ -960,7 +956,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Reset Select2
                     try {
                         $('#reasonSelect').val('').trigger('change');
-                    } catch (error) {
+  } catch (error) {
                         debug(`Error resetting Select2: ${error.message}`);
                     }
                 }
@@ -1052,7 +1048,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     
                     // Reload players list
                     await loadPlayers();
-                } catch (error) {
+  } catch (error) {
                     debug(`Bulk import error: ${error.message}`);
                     showToast('Er is een fout opgetreden tijdens het importeren', 'error');
                 } finally {
@@ -1078,10 +1074,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 if (!description) {
                     showToast('Voer een beschrijving in', 'error');
-                    return;
-                }
-                
-                try {
+        return;
+    }
+    
+    try {
                     showLoading(true);
                     // Fall back to direct table access since RPC functions don't exist yet
                     const apiUrl = `${API_BASE_URL}/reasons`;
@@ -1111,7 +1107,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     descriptionInput.value = '';
                     // Reload reasons
                     await loadReasons();
-                } catch (error) {
+    } catch (error) {
                     debug(`Failed to add reason: ${error.message}`);
                     showToast(`Fout bij toevoegen: ${error.message}`, 'error');
                 } finally {

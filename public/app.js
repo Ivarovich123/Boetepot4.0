@@ -22,19 +22,15 @@ function debug(message) {
 
 // Function to add cache-busting to API URLs
 function addCacheBuster(url) {
-    // For Supabase, adding parameters that aren't recognized filters can cause issues
-    // Instead, add cachebust to an existing parameter or path that won't affect the query
+    // Use a parameter that won't be interpreted as a column filter by Supabase
     
-    // If the URL already contains parameters, add timestamp to the select parameter
-    if (url.includes('select=')) {
-        // Add timestamp to the existing select parameter
-        return url.replace('select=', 'select=timestamp.' + VERSION + ',');
-    } else if (url.includes('?')) {
-        // If there are other parameters but no select, add a dummy offset
-        return url + '&offset=0';
+    // If the URL already contains parameters
+    if (url.includes('?')) {
+        // Add a random limit that won't affect typical queries
+        return url + '&limit.cb=' + VERSION;
     } else {
-        // For URLs without parameters, add a limit that won't affect results
-        return url + '?limit=999';
+        // For URLs without parameters
+        return url + '?limit.cb=' + VERSION;
     }
 }
 
@@ -639,7 +635,7 @@ $(document).ready(function() {
                 style="position: fixed; bottom: 20px; right: 20px; z-index: 9999; 
                        background-color: var(--btn-primary); color: white; 
                        border: none; border-radius: 50%; width: 50px; height: 50px; 
-                       display: flex; align-items: center; justify-content: center;
+                       display: flex; align-items: center; justify-center;
                        box-shadow: 0 4px 10px rgba(0,0,0,0.2); opacity: 0.8;">
             <i class="fas fa-sync-alt"></i>
         </button>
@@ -1034,7 +1030,7 @@ $(document).ready(function() {
                 style="position: fixed; bottom: 20px; right: 20px; z-index: 9999; 
                        background-color: var(--btn-primary); color: white; 
                        border: none; border-radius: 50%; width: 50px; height: 50px; 
-                       display: flex; align-items: center; justify-content: center;
+                       display: flex; align-items: center; justify-center;
                        box-shadow: 0 4px 10px rgba(0,0,0,0.2); opacity: 0.8;">
             <i class="fas fa-sync-alt"></i>
         </button>
