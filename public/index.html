@@ -3,304 +3,261 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Boetepot - Digitaal Boetesysteem voor Sportteams</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Boetepot - Digitale Boetepot voor Sportteams</title>
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Tailwind CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    
     <style>
-        :root {
-            --primary-color: #0083cb;
-            --secondary-color: #022c63;
-            --accent-color: #29b6f6;
-            --gradient-start: #0083cb;
-            --gradient-end: #022c63;
-            --text-dark: #1d1d1f;
-            --text-light: #ffffff;
-        }
-        
         body {
-            font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            color: var(--text-dark);
+            font-family: 'Inter', sans-serif;
             overflow-x: hidden;
         }
         
-        .hero-gradient {
-            background: linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-end) 100%);
+        .gradient-bg {
+            background: linear-gradient(135deg, #0083cb, #022c63);
         }
         
-        .btn-primary {
-            background: linear-gradient(to right, var(--gradient-start), var(--gradient-end));
-            transition: all 0.3s ease;
-            box-shadow: 0 10px 30px -5px rgba(0, 131, 203, 0.5);
-        }
-        
-        .btn-primary:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 15px 30px -5px rgba(0, 131, 203, 0.7);
+        .gradient-text {
+            background: linear-gradient(135deg, #0083cb, #022c63);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
         }
         
         .feature-card {
-            transition: all 0.3s ease;
-            border-top: 4px solid transparent;
-            border-image: linear-gradient(to right, var(--gradient-start), var(--gradient-end)) 1;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
         }
         
         .feature-card:hover {
             transform: translateY(-5px);
-            box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.1);
-        }
-        
-        .feature-icon {
-            background: linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-end) 100%);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
         }
         
         .step-card {
-            border-radius: 1rem;
-            overflow: hidden;
             position: relative;
         }
         
         .step-card::before {
             content: '';
             position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 5px;
-            background: linear-gradient(to right, var(--gradient-start), var(--gradient-end));
+            top: 60px;
+            right: -30px;
+            width: 60px;
+            height: 2px;
+            background-color: #0083cb;
+            z-index: 0;
         }
         
-        .step-number {
-            background: linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-end) 100%);
-            color: white;
-            width: 40px;
-            height: 40px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 50%;
-            font-weight: bold;
-            margin-bottom: 1rem;
+        .step-card:last-child::before {
+            display: none;
         }
         
-        .gradient-section {
-            background: linear-gradient(135deg, #f5f7fa 0%, #e4e7eb 100%);
+        @media (max-width: 768px) {
+            .step-card::before {
+                top: auto;
+                right: 50%;
+                bottom: -30px;
+                width: 2px;
+                height: 30px;
+            }
         }
         
-        .app-screenshot {
-            border-radius: 1rem;
-            box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.2);
-            overflow: hidden;
-            position: relative;
+        .screenshot-container {
+            perspective: 1000px;
         }
         
-        /* Animated gradient border */
-        .gradient-border {
-            position: relative;
+        .screenshot {
+            border-radius: 12px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            transform: rotateY(5deg);
+            transition: transform 0.5s ease;
         }
         
-        .gradient-border::before {
-            content: "";
-            position: absolute;
-            top: -2px;
-            left: -2px;
-            right: -2px;
-            bottom: -2px;
-            background: linear-gradient(45deg, 
-                var(--gradient-start), 
-                var(--gradient-end), 
-                var(--gradient-start), 
-                var(--gradient-end));
-            z-index: -1;
-            border-radius: inherit;
-            background-size: 400% 400%;
-            animation: gradientAnimation 5s ease infinite;
+        .screenshot:hover {
+            transform: rotateY(0);
         }
         
-        @keyframes gradientAnimation {
+        .floating-animation {
+            animation: float 3s ease-in-out infinite;
+        }
+        
+        @keyframes float {
             0% {
-                background-position: 0% 50%;
+                transform: translateY(0px);
             }
             50% {
-                background-position: 100% 50%;
+                transform: translateY(-10px);
             }
             100% {
-                background-position: 0% 50%;
-            }
-        }
-
-        /* Mobile optimizations */
-        @media (max-width: 768px) {
-            h1 {
-                font-size: 2.5rem;
-            }
-            
-            .feature-grid {
-                grid-template-columns: 1fr;
+                transform: translateY(0px);
             }
         }
     </style>
 </head>
-<body class="antialiased bg-white">
-    <!-- Hero Section -->
-    <section class="hero-gradient min-h-screen flex items-center px-4 py-20 text-white">
-        <div class="container mx-auto max-w-6xl">
-            <div class="flex flex-col md:flex-row items-center">
-                <div class="md:w-1/2 mb-10 md:mb-0">
-                    <h1 class="text-5xl font-bold leading-tight mb-6">Boetepot</h1>
-                    <p class="text-2xl opacity-90 mb-6">Digitaal boetesysteem voor sportteams</p>
-                    <p class="text-xl opacity-80 mb-8">Eenvoudig teamboetes bijhouden en beheren</p>
-                    <a href="app.html" class="btn-primary text-white px-8 py-4 rounded-full text-lg font-medium inline-block shadow-lg">
-                        Ga naar Team Portal
+<body class="bg-gray-50">
+    <!-- Navigation -->
+    <header class="fixed top-0 left-0 right-0 z-40 bg-white border-b border-gray-200 backdrop-filter backdrop-blur-lg bg-opacity-90">
+        <nav class="container mx-auto px-6 py-4">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center">
+                    <img src="img/piggy-bank.png" alt="Boetepot Logo" class="h-8 w-8 mr-3">
+                    <span class="text-2xl font-bold text-gray-900">Boetepot</span>
+                </div>
+                <div>
+                    <a href="app.html" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-300 flex items-center">
+                        <i class="fas fa-sign-in-alt mr-2"></i>
+                        Inloggen
                     </a>
                 </div>
-                <div class="md:w-1/2 pl-0 md:pl-12 flex justify-center">
-                    <div class="max-w-md rounded-2xl overflow-hidden shadow-2xl bg-white p-4 gradient-border">
-                        <img src="img/asc-logo.png" alt="ASC Dalfsen" class="w-full h-auto">
+            </div>
+        </nav>
+    </header>
+    
+    <!-- Hero Section -->
+    <section class="pt-32 pb-20 md:pt-40 md:pb-28">
+        <div class="container mx-auto px-6">
+            <div class="flex flex-col md:flex-row items-center">
+                <div class="md:w-1/2 md:pr-10 mb-10 md:mb-0">
+                    <h1 class="text-4xl md:text-5xl font-bold leading-tight mb-6">Digitale Boetepot voor jouw Sportteam</h1>
+                    <p class="text-lg text-gray-600 mb-8">Beheer boetes eenvoudig en transparant. Geen gedoe meer met contant geld, Excel-lijstjes of WhatsApp-berichten.</p>
+                    <div class="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
+                        <a href="app.html" class="gradient-bg text-white font-semibold py-3 px-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 text-center">
+                            App Starten
+                        </a>
                     </div>
+                </div>
+                <div class="md:w-1/2 relative">
+                    <div class="bg-blue-50 p-2 rounded-xl shadow-lg relative z-10 transform rotate-3 transition-transform duration-300 hover:rotate-0">
+                        <img src="img/app-screenshot.png" alt="Boetepot App" class="rounded-lg shadow-inner" onerror="this.src='img/piggy-bank.png'">
+                    </div>
+                    <div class="absolute top-0 right-0 -mt-6 -mr-6 bg-yellow-400 text-yellow-800 text-xs font-bold px-3 py-1 rounded-full transform rotate-12 z-20 shadow-md">
+                        Nieuw!
+                    </div>
+                    <div class="absolute -bottom-4 -left-4 w-24 h-24 bg-blue-100 rounded-full z-0"></div>
+                    <div class="absolute -top-4 -right-4 w-16 h-16 bg-yellow-100 rounded-full z-0"></div>
                 </div>
             </div>
         </div>
     </section>
-
-    <!-- What is Boetepot Section -->
-    <section class="py-20 bg-white px-4">
-        <div class="container mx-auto max-w-4xl text-center">
-            <h2 class="text-4xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-blue-800">Wat is Boetepot?</h2>
-            <p class="text-xl text-gray-600 mb-10">
-                Boetepot is een digitaal platform om teamboetes op een eenvoudige en plezierige manier bij te houden. 
-                Gedaan met ingewikkelde Excel sheets of het bijhouden op bierviltjes. Met Boetepot heeft iedereen altijd 
-                inzicht in de teamkas.
-            </p>
-            <div class="inline-block rounded-full px-6 py-3 bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 font-semibold">
-                In gebruik door sportteams in heel Nederland
-            </div>
-        </div>
-    </section>
-
+    
     <!-- Features Section -->
-    <section class="py-20 gradient-section px-4">
-        <div class="container mx-auto max-w-6xl">
-            <h2 class="text-4xl font-bold mb-12 text-center">Belangrijkste Functies</h2>
+    <section class="py-16 bg-gray-100">
+        <div class="container mx-auto px-6">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl font-bold mb-4">Waarom Boetepot?</h2>
+                <p class="text-gray-600 max-w-2xl mx-auto">Onze digitale boetepot maakt het beheren van teamboetes makkelijk, transparant en zelfs leuk!</p>
+            </div>
             
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 feature-grid">
-                <!-- Feature 1 -->
-                <div class="feature-card bg-white p-8 rounded-xl shadow-md relative">
-                    <div class="feature-icon w-16 h-16 rounded-full flex items-center justify-center mb-6 text-white">
-                        <i class="fas fa-euro-sign text-2xl"></i>
+            <div class="grid md:grid-cols-3 gap-8">
+                <div class="bg-white rounded-xl p-6 shadow-md feature-card">
+                    <div class="w-14 h-14 rounded-full bg-blue-100 flex items-center justify-center mb-6">
+                        <i class="fas fa-money-bill-wave text-blue-600 text-2xl"></i>
                     </div>
-                    <h3 class="text-xl font-bold mb-3">Eenvoudig Boetebeheer</h3>
-                    <p class="text-gray-600">Boetes toevoegen en bijhouden was nog nooit zo gemakkelijk</p>
+                    <h3 class="text-xl font-semibold mb-3">Eenvoudig Boetes Bijhouden</h3>
+                    <p class="text-gray-600">Registreer boetes in een paar klikken. Geen rompslomp met contant geld of handmatige lijstjes meer.</p>
                 </div>
                 
-                <!-- Feature 2 -->
-                <div class="feature-card bg-white p-8 rounded-xl shadow-md">
-                    <div class="feature-icon w-16 h-16 rounded-full flex items-center justify-center mb-6 text-white">
-                        <i class="fas fa-users text-2xl"></i>
+                <div class="bg-white rounded-xl p-6 shadow-md feature-card">
+                    <div class="w-14 h-14 rounded-full bg-blue-100 flex items-center justify-center mb-6">
+                        <i class="fas fa-trophy text-blue-600 text-2xl"></i>
                     </div>
-                    <h3 class="text-xl font-bold mb-3">Spelersoverzicht</h3>
-                    <p class="text-gray-600">Direct zien wie wat verschuldigd is aan de teamkas</p>
+                    <h3 class="text-xl font-semibold mb-3">Competitief Leaderboard</h3>
+                    <p class="text-gray-600">Bekijk wie de meeste boetes heeft. Maak het gezellig competitief binnen het team!</p>
                 </div>
                 
-                <!-- Feature 3 -->
-                <div class="feature-card bg-white p-8 rounded-xl shadow-md">
-                    <div class="feature-icon w-16 h-16 rounded-full flex items-center justify-center mb-6 text-white">
-                        <i class="fas fa-mobile-alt text-2xl"></i>
+                <div class="bg-white rounded-xl p-6 shadow-md feature-card">
+                    <div class="w-14 h-14 rounded-full bg-blue-100 flex items-center justify-center mb-6">
+                        <i class="fas fa-lock text-blue-600 text-2xl"></i>
                     </div>
-                    <h3 class="text-xl font-bold mb-3">Mobiel Vriendelijk</h3>
-                    <p class="text-gray-600">Perfect werkend op smartphones tijdens trainingen</p>
-                </div>
-                
-                <!-- Feature 4 -->
-                <div class="feature-card bg-white p-8 rounded-xl shadow-md">
-                    <div class="feature-icon w-16 h-16 rounded-full flex items-center justify-center mb-6 text-white">
-                        <i class="fas fa-trophy text-2xl"></i>
-                    </div>
-                    <h3 class="text-xl font-bold mb-3">Leaderboard</h3>
-                    <p class="text-gray-600">Bekijk wie het meest bijdraagt aan de teamkas</p>
+                    <h3 class="text-xl font-semibold mb-3">Veilig & Privé</h3>
+                    <p class="text-gray-600">Jouw teamgegevens blijven privé en zijn alleen toegankelijk voor jouw team.</p>
                 </div>
             </div>
         </div>
     </section>
-
-    <!-- App Screenshots -->
-    <section class="py-20 bg-white px-4">
-        <div class="container mx-auto max-w-6xl">
-            <h2 class="text-4xl font-bold mb-12 text-center bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-blue-800">Boetepot in Actie</h2>
+    
+    <!-- How It Works Section -->
+    <section class="py-16">
+        <div class="container mx-auto px-6">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl font-bold mb-4">Hoe Werkt Het?</h2>
+                <p class="text-gray-600 max-w-2xl mx-auto">In drie eenvoudige stappen heb je een werkende digitale boetepot voor jouw team!</p>
+            </div>
             
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-12">
-                <div class="app-screenshot">
-                    <div class="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-t-xl">
-                        <h3 class="text-xl font-bold mb-2 text-blue-800">Boete Toevoegen</h3>
-                        <p class="text-gray-600">Jan Jansen heeft weer zijn scheenbeschermers vergeten!</p>
-                    </div>
-                    <div class="bg-blue-800 p-8 flex items-center justify-center">
-                        <i class="fas fa-plus-circle text-5xl text-white opacity-80"></i>
-                    </div>
+            <div class="grid md:grid-cols-3 gap-10">
+                <div class="step-card bg-white rounded-xl p-6 shadow-md relative text-center">
+                    <div class="w-12 h-12 rounded-full gradient-bg text-white text-xl font-bold flex items-center justify-center mx-auto mb-6">1</div>
+                    <h3 class="text-xl font-semibold mb-3">Voeg Boete-redenen Toe</h3>
+                    <p class="text-gray-600">Maak een lijst met alle mogelijke boete-redenen en bedragen voor je team.</p>
+                    <img src="img/icon-list.png" alt="Stap 1" class="w-16 h-16 mx-auto mt-4 opacity-80" onerror="this.src='img/piggy-bank.png'">
                 </div>
                 
-                <div class="app-screenshot">
-                    <div class="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-t-xl">
-                        <h3 class="text-xl font-bold mb-2 text-blue-800">Leaderboard</h3>
-                        <p class="text-gray-600">Piet Parkiet leidt met 5 boetes deze maand!</p>
-                    </div>
-                    <div class="bg-blue-800 p-8 flex items-center justify-center">
-                        <i class="fas fa-list-ol text-5xl text-white opacity-80"></i>
-                    </div>
+                <div class="step-card bg-white rounded-xl p-6 shadow-md relative text-center">
+                    <div class="w-12 h-12 rounded-full gradient-bg text-white text-xl font-bold flex items-center justify-center mx-auto mb-6">2</div>
+                    <h3 class="text-xl font-semibold mb-3">Registreer Boetes</h3>
+                    <p class="text-gray-600">Selecteer een teamlid en een boete-reden wanneer iemand een boete krijgt.</p>
+                    <img src="img/icon-register.png" alt="Stap 2" class="w-16 h-16 mx-auto mt-4 opacity-80" onerror="this.src='img/piggy-bank.png'">
+                </div>
+                
+                <div class="step-card bg-white rounded-xl p-6 shadow-md relative text-center">
+                    <div class="w-12 h-12 rounded-full gradient-bg text-white text-xl font-bold flex items-center justify-center mx-auto mb-6">3</div>
+                    <h3 class="text-xl font-semibold mb-3">Incasseer & Vier</h3>
+                    <p class="text-gray-600">Na het seizoen zie je precies hoeveel iedereen moet betalen. Tijd voor een teamuitje!</p>
+                    <img src="img/icon-celebrate.png" alt="Stap 3" class="w-16 h-16 mx-auto mt-4 opacity-80" onerror="this.src='img/piggy-bank.png'">
                 </div>
             </div>
         </div>
     </section>
-
-    <!-- How It Works -->
-    <section class="py-20 gradient-section px-4">
-        <div class="container mx-auto max-w-6xl">
-            <h2 class="text-4xl font-bold mb-12 text-center">Hoe Werkt Het</h2>
-            
-            <div class="flex flex-col md:flex-row justify-around items-start space-y-10 md:space-y-0 md:space-x-6">
-                <!-- Step 1 -->
-                <div class="step-card bg-white shadow-lg p-8 flex-1">
-                    <div class="step-number">1</div>
-                    <h3 class="text-xl font-bold mb-3">Team Instellen</h3>
-                    <p class="text-gray-600">Voeg je team en alle mogelijke boete-redenen toe aan het systeem</p>
-                </div>
-                
-                <!-- Step 2 -->
-                <div class="step-card bg-white shadow-lg p-8 flex-1">
-                    <div class="step-number">2</div>
-                    <h3 class="text-xl font-bold mb-3">Boetes Registreren</h3>
-                    <p class="text-gray-600">Houd bij wie wat verschuldigd is wanneer teamregels worden overtreden</p>
-                </div>
-                
-                <!-- Step 3 -->
-                <div class="step-card bg-white shadow-lg p-8 flex-1">
-                    <div class="step-number">3</div>
-                    <h3 class="text-xl font-bold mb-3">Innen & Vieren</h3>
-                    <p class="text-gray-600">Innen en samen genieten van wat het boetepotje heeft opgeleverd</p>
-                </div>
-            </div>
+    
+    <!-- CTA Section -->
+    <section class="py-20 gradient-bg">
+        <div class="container mx-auto px-6 text-center">
+            <h2 class="text-3xl font-bold text-white mb-8">Klaar om te beginnen?</h2>
+            <a href="app.html" class="bg-white text-blue-600 font-semibold py-3 px-8 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 inline-block">
+                Start Nu Gratis
+            </a>
         </div>
     </section>
-
+    
     <!-- Footer -->
-    <footer class="py-10 hero-gradient text-white px-4">
-        <div class="container mx-auto max-w-6xl">
+    <footer class="bg-gray-800 text-white py-12">
+        <div class="container mx-auto px-6">
             <div class="flex flex-col md:flex-row justify-between items-center">
                 <div class="mb-6 md:mb-0">
-                    <h3 class="text-2xl font-bold mb-2">Boetepot</h3>
-                    <p class="text-gray-200">Digitaal boetesysteem voor sportteams</p>
+                    <div class="flex items-center">
+                        <img src="img/piggy-bank.png" alt="Boetepot Logo" class="h-8 w-8 mr-3">
+                        <span class="text-2xl font-bold">Boetepot</span>
+                    </div>
+                    <p class="mt-2 text-gray-400 text-sm">Digitale boetepot voor sportteams</p>
                 </div>
                 
-                <div class="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-6 items-center">
-                    <a href="app.html" class="text-white hover:text-blue-200 transition">Team Portal</a>
-                    <a href="mailto:info@boetepot.cloud" class="text-white hover:text-blue-200 transition">Contact</a>
+                <div class="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-8">
+                    <div>
+                        <h3 class="text-lg font-semibold mb-2">Links</h3>
+                        <ul class="space-y-2">
+                            <li><a href="app.html" class="text-gray-400 hover:text-white transition-colors">Heren 8 Portal</a></li>
+                        </ul>
+                    </div>
+                    
+                    <div>
+                        <h3 class="text-lg font-semibold mb-2">Contact</h3>
+                        <p class="text-gray-400">info@boetepot.cloud</p>
+                    </div>
                 </div>
             </div>
             
-            <div class="mt-8 pt-8 border-t border-blue-700 text-center text-gray-300">
-                <p>&copy; 2023 Boetepot. Alle rechten voorbehouden.</p>
+            <div class="border-t border-gray-700 mt-8 pt-8 flex flex-col md:flex-row justify-between items-center">
+                <p class="text-gray-400 text-sm">&copy; 2023 Boetepot. Alle rechten voorbehouden.</p>
             </div>
         </div>
     </footer>
