@@ -2,7 +2,7 @@
 document.addEventListener('DOMContentLoaded', function() {
     // Configuration
     const API_BASE_URL = 'https://jvhgdidaoasgxqqixywl.supabase.co/rest/v1';  // Direct connection to Supabase
-    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp2aGdkaWRhb2FzZ3hxcWl4eXdsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI1MDA3OTYsImV4cCI6MjA1ODA3Njc5Nn0.2qrrNC2bKichC63SvUhNgXlcG0ElViRsqM5CYU3QSfg';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp2aGdkaWRhb2FzZ3hxcWl4eXdsIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTY4MzIyNTU5MywiZXhwIjoxOTk4ODAxNTkzfQ.cxOIWWJx40MO31i3K3Ykr9yZnLi-Nd9dpZWQNrfID1Y';
     
     // Debug flag - set to true for console logs
     const DEBUG = true;
@@ -17,11 +17,25 @@ document.addEventListener('DOMContentLoaded', function() {
         const savedTheme = localStorage.getItem('theme');
         const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
         
+        // Set initial dark mode immediately on page load
         if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
-            enableDarkMode();
+            document.documentElement.classList.add('dark');
+            document.body.classList.add('dark');
+            if (themeIcon) {
+                themeIcon.classList.remove('fa-moon');
+                themeIcon.classList.add('fa-sun');
+            }
         } else {
-            disableDarkMode();
+            document.documentElement.classList.remove('dark');
+            document.body.classList.remove('dark');
+            if (themeIcon) {
+                themeIcon.classList.remove('fa-sun');
+                themeIcon.classList.add('fa-moon');
+            }
         }
+        
+        // Apply dark mode to Select2 elements
+        updateSelect2Theme(document.documentElement.classList.contains('dark'));
         
         // Log theme status
         debug(`Theme initialized: ${document.documentElement.classList.contains('dark') ? 'dark' : 'light'}`);
@@ -279,7 +293,8 @@ function formatDate(dateString) {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json',
                     'apikey': SUPABASE_KEY,
-                    'Authorization': `Bearer ${SUPABASE_KEY}`
+                    'Authorization': `Bearer ${SUPABASE_KEY}`,
+                    'x-client-info': 'boetepot-app'
                 },
                 mode: 'cors',
                 credentials: 'omit'

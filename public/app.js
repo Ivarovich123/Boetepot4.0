@@ -1,6 +1,6 @@
 // API Base URL - make sure this matches your backend setup
 const API_BASE_URL = 'https://jvhgdidaoasgxqqixywl.supabase.co/rest/v1';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp2aGdkaWRhb2FzZ3hxcWl4eXdsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI1MDA3OTYsImV4cCI6MjA1ODA3Njc5Nn0.2qrrNC2bKichC63SvUhNgXlcG0ElViRsqM5CYU3QSfg';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp2aGdkaWRhb2FzZ3hxcWl4eXdsIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTY4MzIyNTU5MywiZXhwIjoxOTk4ODAxNTkzfQ.cxOIWWJx40MO31i3K3Ykr9yZnLi-Nd9dpZWQNrfID1Y';
 const SERVER_URL = 'https://www.boetepot.cloud';
 
 // Debug setting
@@ -672,15 +672,18 @@ async function loadPlayerHistory(playerId) {
             debug('No player selected, hiding player history content');
             $('#playerHistoryContent').addClass('hidden');
             $('#playerHistoryEmpty').removeClass('hidden');
-      return;
-    }
+            return;
+        }
     
         debug(`Fetching player ${playerId} and their fines`);
         
-        const [playerData, finesData] = await Promise.all([
-            fetchAPI(`player?id=${playerId}`),
-            fetchAPI(`player-fines?id=${playerId}`)
-        ]);
+        // First get the player details from the players endpoint
+        const playersData = await fetchAPI('players');
+        const playerData = playersData.find(p => p.id == playerId);
+        
+        // Then get all fines and filter for this player
+        const allFines = await fetchAPI('fines');
+        const finesData = allFines.filter(f => f.player_id == playerId);
         
         debug(`Player data: ${JSON.stringify(playerData)}`);
         debug(`Fines data: ${JSON.stringify(finesData)}`);
@@ -689,9 +692,9 @@ async function loadPlayerHistory(playerId) {
             debug('No valid player data received');
             $('#playerHistoryContent').addClass('hidden');
             $('#playerHistoryEmpty').removeClass('hidden').html('<div class="text-center py-4 text-red-500">Spelersinformatie kon niet worden geladen</div>');
-      return;
-    }
-    
+            return;
+        }
+        
         $('#playerHistoryName').text(playerData.name || 'Onbekend');
         
         // Calculate total with proper error handling
