@@ -438,65 +438,63 @@ function formatDate(dateString) {
     
     // UI Rendering Functions
     function populatePlayerSelect(players) {
-        const select = document.getElementById('playerSelect');
-        if (!select) return;
+        debug('Populating player select dropdown with ' + players.length + ' players');
+        const playerSelect = $('#player-select');
         
-        select.innerHTML = '';
-        select.multiple = true; // Enable multiple selection
+        // Clear any existing options
+        playerSelect.empty();
         
-        // Add player options
+        // Add default empty option
+        playerSelect.append($('<option>').val('').text(''));
+        
+        // Add all players
         players.forEach(player => {
-            const option = document.createElement('option');
-            option.value = player.id;
-            option.textContent = player.name;
-            select.appendChild(option);
+            playerSelect.append($('<option>').val(player.id).text(player.name));
         });
         
-        // Initialize Select2 with enhanced styling
-        try {
-            $(select).select2({
-                placeholder: "Selecteer speler(s)",
-                allowClear: true,
-                width: '100%',
-                multiple: true,
-                templateResult: formatPlayerOption,
-                templateSelection: formatPlayerSelection,
-                closeOnSelect: false,
-                selectionCssClass: 'select2-selection--multiple-modern',
-                dropdownCssClass: 'select2-dropdown-modern'
-            });
-            
-            // Update Select2 to match theme
-            updateSelect2Theme(document.body.classList.contains('dark'));
-        } catch (error) {
-            debug(`Error initializing Select2: ${error.message}`);
-        }
-    }
-    
-    // Format player option in dropdown
-    function formatPlayerOption(player) {
-        if (!player.id) return player.text;
+        // Initialize Select2 with improved mobile settings
+        playerSelect.select2({
+            placeholder: "Selecteer speler(s)",
+            width: '100%',
+            allowClear: true,
+            multiple: true,
+            dropdownParent: $('#add-fine-form'), // Attach to form for better mobile positioning
+            tags: false, // Disable creating new tags
+            tokenSeparators: [], // Disable automatic tokenization
+            language: {
+                noResults: function() { return "Geen spelers gevonden"; },
+                searching: function() { return "Zoeken..."; }
+            }
+        }).on('select2:opening', function() {
+            // Clear search input when dropdown opens
+            setTimeout(() => {
+                $('.select2-search__field').val('');
+            }, 0);
+        }).on('select2:close', function() {
+            // Clear search input when dropdown closes
+            setTimeout(() => {
+                $('.select2-search__field').val('');
+            }, 0);
+        });
         
-        return $(`
-            <div class="flex items-center p-2 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors rounded-md">
-                <div class="w-8 h-8 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-500 rounded-full flex items-center justify-center font-bold mr-2">
-                    ${player.text.charAt(0).toUpperCase()}
-                </div>
-                <div>
-                    <span class="font-medium">${player.text}</span>
-                </div>
-            </div>
-        `);
-    }
-    
-    // Format selected player pill
-    function formatPlayerSelection(player) {
-        if (!player.id) return player.text;
-        
-        return $(`
-            <span class="select2-selection__choice__display">
-                <span class="font-medium">${player.text}</span>
-            </span>
+        // Increase the height and font size of the search field for mobile
+        $('body').append(`
+            <style>
+                @media (max-width: 767px) {
+                    .select2-search__field {
+                        font-size: 16px !important; /* Prevents iOS zoom on focus */
+                        padding: 12px 8px !important;
+                        height: auto !important;
+                    }
+                    .select2-container--open .select2-dropdown {
+                        min-width: 280px !important;
+                    }
+                    .select2-results__option {
+                        padding: 12px 8px !important;
+                        min-height: 48px;
+                    }
+                }
+            </style>
         `);
     }
     

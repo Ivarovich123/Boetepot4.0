@@ -215,6 +215,98 @@
                 font-size: 1.25rem;
             }
         }
+        
+        /* Mobile-friendly Select2 improvements */
+        @media (max-width: 767px) {
+            /* Fix dropdown positioning on mobile */
+            .select2-container--open .select2-dropdown {
+                position: fixed !important;
+                top: auto !important;
+                left: 5% !important;
+                right: 5% !important;
+                width: 90% !important;
+                max-height: 60vh;
+                overflow-y: auto;
+                margin-top: 5px;
+                z-index: 10000 !important;
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+                border-radius: 12px !important;
+            }
+            
+            /* Larger touch targets */
+            .select2-results__option {
+                padding: 14px 12px !important;
+                min-height: 50px;
+                display: flex !important;
+                align-items: center !important;
+            }
+            
+            /* Prevent autocomplete zoom */
+            .select2-search__field {
+                font-size: 16px !important;
+                padding: 12px 10px !important;
+                height: 50px !important;
+                border-radius: 8px !important;
+            }
+            
+            /* More space between selection pills */
+            .select2-selection__choice {
+                margin: 6px !important;
+                padding: 8px 12px !important;
+                border-radius: 20px !important;
+            }
+            
+            /* Make remove button easier to hit */
+            .select2-selection__choice__remove {
+                margin-right: 8px !important;
+                padding: 0 8px !important;
+                font-size: 16px !important;
+            }
+            
+            /* Fix the search box container */
+            .select2-search--dropdown {
+                padding: 10px !important;
+            }
+            
+            /* Make sure the dropdown parent has proper relative positioning */
+            #addFineForm {
+                position: relative;
+            }
+            
+            /* Improve visibility when selected */
+            .select2-container--default .select2-results__option--highlighted[aria-selected] {
+                background-color: var(--btn-primary) !important;
+                color: white !important;
+                border-radius: 8px !important;
+            }
+            
+            /* Add space between options */
+            .select2-results__option + .select2-results__option {
+                margin-top: 4px !important;
+            }
+        }
+        
+        /* Improve Select2 appearance and usability */
+        .select2-selection--multiple {
+            overflow: hidden;
+        }
+        
+        .select2-search--inline .select2-search__field {
+            margin-top: 6px !important;
+            padding-left: 5px !important;
+        }
+        
+        .select2-container--default .select2-selection--multiple .select2-selection__clear {
+            margin-top: 5px;
+            margin-right: 8px;
+            font-size: 16px;
+        }
+        
+        /* More visible focus states */
+        .select2-container--default.select2-container--focus .select2-selection--multiple {
+            border-width: 2px;
+            border-color: var(--btn-primary);
+        }
     </style>
 </head>
 <body class="min-h-screen pb-20">
