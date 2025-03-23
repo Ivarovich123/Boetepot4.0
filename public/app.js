@@ -322,10 +322,10 @@ async function fetchAPI(endpoint, options = {}) {
         debug(`Fetching API: ${endpoint}`);
         toggleLoading(true);
         
-        // Ensure endpoint starts with slash
+        // Ensure endpoint does not start with slash when appending to API path
         const path = endpoint.startsWith('/') ? endpoint.substring(1) : endpoint;
         
-        // Only use the local API endpoint
+        // Use the API path through our serverless function
         const url = `/api/${path}`;
         
         debug(`Trying URL: ${url}`);
@@ -342,16 +342,10 @@ async function fetchAPI(endpoint, options = {}) {
         
         const response = await fetch(url, fetchOptions);
         
+        // Check for API errors
         if (!response.ok) {
-            debug(`URL ${url} failed with ${response.status}`);
+            debug(`API request failed with status ${response.status}`);
             throw new Error(`API Error: ${response.status} ${response.statusText}`);
-        }
-        
-        // Check content type
-        const contentType = response.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) {
-            debug(`Response from ${url} is not JSON: ${contentType}`);
-            throw new Error('Response is not JSON');
         }
         
         // Try to parse as JSON
@@ -369,7 +363,7 @@ async function fetchAPI(endpoint, options = {}) {
             showToast(`API fout: ${error.message}`, 'error');
         }
         
-        // Return empty data instead of mock data
+        // Return empty data
         if (endpoint.includes('total-amount')) {
             return { total: 0 };
         } else if (endpoint.includes('players')) {
@@ -559,8 +553,8 @@ async function loadPlayerHistory(playerId) {
         debug(`Fetching player ${playerId} and their fines`);
         
         const [playerData, finesData] = await Promise.all([
-            fetchAPI(`/player/${playerId}`),
-            fetchAPI(`/player-fines/${playerId}`)
+            fetchAPI(`player?id=${playerId}`),
+            fetchAPI(`player-fines?id=${playerId}`)
         ]);
         
         debug(`Player data: ${JSON.stringify(playerData)}`);

@@ -226,12 +226,15 @@ function formatDate(dateString) {
     // API & Data Functions - Direct API connection without mock data
     async function apiRequest(endpoint, method = 'GET', data = null) {
         try {
+            // Ensure endpoint does not start with slash when appending to API path
             const path = endpoint.startsWith('/') ? endpoint.substring(1) : endpoint;
             const url = `/api/${path}`;
+            
             const options = {
                 method,
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
                 }
             };
             
@@ -251,6 +254,8 @@ function formatDate(dateString) {
                     const errorData = await response.json();
                     if (errorData && errorData.message) {
                         errorMessage = errorData.message;
+                    } else if (errorData && errorData.error) {
+                        errorMessage = errorData.error;
                     }
                 } catch (e) {
                     // Ignore JSON parsing errors
@@ -562,11 +567,11 @@ function formatDate(dateString) {
     
     async function deleteFine(id) {
         try {
-            await apiRequest(`/fines/${id}`, 'DELETE');
+            await apiRequest(`fines-delete?id=${id}`, 'DELETE');
             showToast('Boete succesvol verwijderd!', 'success');
             await loadFines(); // Reload fines
             return true;
-    } catch (error) {
+        } catch (error) {
             debug(`Failed to delete fine: ${error.message}`);
             return false;
         }
