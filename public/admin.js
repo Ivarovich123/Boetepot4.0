@@ -868,7 +868,7 @@ function formatDate(dateString) {
                 
                 const playerSelect = document.getElementById('playerSelect');
                 const reasonSelect = document.getElementById('reasonSelect');
-                const amountInput = document.getElementById('fineAmount');
+                const amountInput = document.getElementById('amount');
                 
                 if (!playerSelect || !reasonSelect || !amountInput) {
                     showToast('Formulier elementen ontbreken!', 'error');

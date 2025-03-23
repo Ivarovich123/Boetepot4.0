@@ -219,9 +219,11 @@ function toggleTheme() {
     const isDark = document.documentElement.classList.contains('dark');
     if (isDark) {
         document.documentElement.classList.remove('dark');
+        document.body.classList.remove('dark');
         localStorage.setItem('theme', 'light');
     } else {
         document.documentElement.classList.add('dark');
+        document.body.classList.add('dark');
         localStorage.setItem('theme', 'dark');
     }
 
@@ -746,38 +748,25 @@ $(document).ready(function() {
 // Helper function to fix player data references
 function setupPlayerHistory() {
     try {
-        // Initialize the player history select
-        const players = getLocalData('players') || [];
-        
-        // Clear and populate the select dropdown
-        const playerSelect = $('#playerHistorySelect');
-        playerSelect.empty();
-        
-        // Add a default option
-        playerSelect.append('<option value="">Selecteer een speler</option>');
-        
-        // Add player options
-        players.forEach(player => {
-            playerSelect.append(`<option value="${player.id}">${player.name}</option>`);
-        });
-    
-    // Initialize Select2
-        initializeSelect2();
+        debug('Setting up player history');
         
         // Handle player selection change
-        $('#playerHistorySelect').on('change', function() {
-      const playerId = $(this).val();
-      if (playerId) {
-        loadPlayerHistory(playerId);
-      } else {
-                // Clear the history section
-                $('#playerHistory').empty();
+        $('#playerSelect').on('change', function() {
+            const playerId = $(this).val();
+            debug(`Player selected: ${playerId}`);
+            
+            if (playerId) {
+                loadPlayerHistory(playerId);
+            } else {
+                // Reset the history view when no player is selected
+                $('#playerHistoryContent').addClass('hidden');
+                $('#playerHistoryEmpty').removeClass('hidden');
             }
         });
         
-        console.log('[DEBUG] Player history setup completed');
-  } catch (error) {
-        console.error('[DEBUG] Error setting up player history:', error);
+        debug('Player history setup completed');
+    } catch (error) {
+        debug(`Error setting up player history: ${error.message}`);
     }
 }
 
@@ -972,8 +961,15 @@ function setupTheme() {
     // Get the theme toggle button
     const themeToggle = document.getElementById('theme-toggle');
     if (themeToggle) {
-        // Update the initial icon based on current theme
+        // Make sure body has dark class if document has it
         const isDark = document.documentElement.classList.contains('dark');
+        if (isDark) {
+            document.body.classList.add('dark');
+        } else {
+            document.body.classList.remove('dark');
+        }
+        
+        // Update the initial icon based on current theme
         const themeIcon = document.getElementById('theme-icon');
         if (themeIcon) {
             if (isDark) {
@@ -987,5 +983,6 @@ function setupTheme() {
         
         // Add click event listener to toggle theme
         themeToggle.addEventListener('click', toggleTheme);
+        debug('Theme toggle initialized');
     }
 } 
