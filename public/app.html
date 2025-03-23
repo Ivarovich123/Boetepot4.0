@@ -34,33 +34,23 @@
       --btn-primary-hover: #022c63;
     }
     
-    /* Apply variables */
     body {
       font-family: 'Inter', sans-serif;
       background-color: var(--bg-color);
       color: var(--text-color);
-      transition: background-color 0.3s, color 0.3s;
     }
     
     .card {
       background-color: var(--card-bg);
       border: 1px solid var(--card-border);
-      transition: background-color 0.3s, border-color 0.3s;
+      border-radius: 1rem;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
     
-    /* Card hover effect */
-    .hover-card {
-      transition: all 0.2s ease;
-    }
-    
-    .hover-card:hover {
+    .card:hover {
       transform: translateY(-2px);
-      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-    }
-    
-    /* Text styles for better readability */
-    h1, h2, h3, h4 {
-      color: var(--text-color);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
     }
     
     /* Button styles */
@@ -75,76 +65,6 @@
       transform: translateY(-1px);
     }
     
-    /* Loading animation */
-    @keyframes pulse {
-      0%, 100% {
-        opacity: 1;
-      }
-      50% {
-        opacity: 0.5;
-      }
-    }
-    
-    .animate-pulse {
-      animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-    }
-    
-    /* Fine card */
-    .fine-card {
-      transition: all 0.2s ease;
-      position: relative;
-      overflow: hidden;
-      border-radius: 12px;
-    }
-    
-    .fine-card:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-    }
-    
-    /* Mobile optimizations */
-    @media (max-width: 768px) {
-      .container {
-        padding-left: 1rem;
-        padding-right: 1rem;
-      }
-      
-      .card {
-        padding: 1rem;
-      }
-      
-      h1, h2 {
-        font-size: 1.5rem;
-      }
-    }
-    
-    /* Custom select styling */
-    select {
-      appearance: none;
-      -webkit-appearance: none;
-      padding-right: 2.5rem;
-      background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
-      background-position: right 0.5rem center;
-      background-repeat: no-repeat;
-      background-size: 1.5em 1.5em;
-    }
-    
-    /* Shimmer effect for loading state */
-    .shimmer {
-      background: linear-gradient(90deg, var(--card-bg) 0%, #f0f0f0 50%, var(--card-bg) 100%);
-      background-size: 200% 100%;
-      animation: shimmer 1.5s infinite;
-    }
-    
-    @keyframes shimmer {
-      0% {
-        background-position: -200% 0;
-      }
-      100% {
-        background-position: 200% 0;
-      }
-    }
-
     /* Floating animation for piggy bank */
     @keyframes float {
       0% {
@@ -162,39 +82,109 @@
       animation: float 3s ease-in-out infinite;
     }
     
+    /* Loading spinner */
+    @keyframes spinner {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+    
+    .spinner {
+      display: inline-block;
+      width: 2rem;
+      height: 2rem;
+      border-radius: 50%;
+      border: 0.25rem solid rgba(0, 131, 203, 0.3);
+      border-top-color: var(--btn-primary);
+      animation: spinner 0.8s linear infinite;
+    }
+    
+    /* Fine card */
+    .fine-card {
+      transition: all 0.2s ease;
+      position: relative;
+    }
+    
+    .fine-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+    
+    /* Highlight animation */
+    @keyframes highlight {
+      0% {
+        background-color: rgba(59, 130, 246, 0.2);
+      }
+      100% {
+        background-color: transparent;
+      }
+    }
+    
+    .highlight {
+      animation: highlight 2s ease-out forwards;
+    }
+    
     /* Leaderboard styles */
     .leaderboard-item {
       transition: all 0.2s ease;
     }
     
     .leaderboard-item:hover {
-      transform: translateX(5px);
       background-color: rgba(0, 131, 203, 0.05);
     }
     
-    .rank-1 {
-      background: linear-gradient(90deg, rgba(255,215,0,0.2) 0%, rgba(255,215,0,0) 100%);
+    .leaderboard-rank {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 2rem;
+      height: 2rem;
+      border-radius: 50%;
+      background-color: var(--btn-primary);
+      color: white;
+      font-weight: bold;
     }
     
-    .rank-2 {
-      background: linear-gradient(90deg, rgba(192,192,192,0.2) 0%, rgba(192,192,192,0) 100%);
+    .leaderboard-rank-1 {
+      background-color: #FFD700; /* Gold */
+      color: #1a202c;
     }
     
-    .rank-3 {
-      background: linear-gradient(90deg, rgba(205,127,50,0.2) 0%, rgba(205,127,50,0) 100%);
+    .leaderboard-rank-2 {
+      background-color: #C0C0C0; /* Silver */
+      color: #1a202c;
     }
     
-    /* Medal emojis */
-    .medal-1::before {
-      content: "🥇 ";
+    .leaderboard-rank-3 {
+      background-color: #CD7F32; /* Bronze */
+      color: white;
     }
     
-    .medal-2::before {
-      content: "🥈 ";
+    /* Custom scrollbar */
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
     }
     
-    .medal-3::before {
-      content: "🥉 ";
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #f1f1f1;
+      border-radius: 10px;
+    }
+    
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #c1c1c1;
+      border-radius: 10px;
+    }
+    
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #a8a8a8;
+    }
+    
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+      .container {
+        padding-left: 1rem;
+        padding-right: 1rem;
+      }
     }
   </style>
 </head>
@@ -218,7 +208,7 @@
       <div class="h-full mx-auto flex items-center justify-between">
         <div class="flex items-center">
           <img src="img/club-logo.svg" onerror="this.src='img/club-logo.png'" alt="Logo" class="h-10 w-10 mr-3">
-          <h1 class="text-2xl font-bold text-gray-900">Boetepot Heren 8</h1>
+          <h1 class="text-2xl font-bold text-gray-900">Boetepot</h1>
         </div>
         <div class="flex items-center space-x-3">
           <a href="admin.html" class="bg-blue-500 hover:bg-blue-600 text-white p-2 rounded-lg transition-colors flex items-center btn-primary">
@@ -231,22 +221,21 @@
   </header>
   
   <main class="container mx-auto px-4 pt-20 pb-8">
-    <!-- Total Boete Counter with Piggybank Icon -->
+    <!-- Total Boete Counter with Piggybank -->
     <div class="bg-gradient-to-r from-blue-500 to-blue-700 rounded-2xl shadow-lg p-6 mb-6 flex items-center">
       <div class="flex-1">
         <h2 class="text-white text-xl font-semibold mb-1">Totale Boetepot</h2>
         <div id="totalAmount" class="text-white text-4xl font-bold">€0,00</div>
       </div>
-      <div class="w-24 h-24 relative">
+      <div class="w-20 h-20 relative">
         <img src="img/piggy-bank.svg" onerror="this.src='img/piggy-bank.png'" alt="Spaarpot" class="w-full h-full object-contain floating">
       </div>
     </div>
     
-    <!-- Recent Fines Section -->
+    <!-- Recent Fines (Max 5) -->
     <div class="bg-white rounded-2xl shadow-md p-6 mb-6 card">
       <h2 class="text-xl font-semibold mb-4 flex items-center">
-        <i class="fas fa-history text-blue-600 mr-3"></i>
-        Recente Boetes
+        <i class="fas fa-history text-blue-600 mr-2"></i>Recente Boetes
       </h2>
       <div id="recentFines" class="space-y-3">
         <!-- Recent fines will be loaded here (max 5) -->
@@ -256,35 +245,33 @@
       </div>
     </div>
     
-    <!-- Player History Section -->
+    <!-- Player History -->
     <div class="bg-white rounded-2xl shadow-md p-6 mb-6 card">
       <h2 class="text-xl font-semibold mb-4 flex items-center">
-        <i class="fas fa-user-clock text-blue-600 mr-3"></i>
-        Speler Geschiedenis
+        <i class="fas fa-user-clock text-blue-600 mr-2"></i>Speler Geschiedenis
       </h2>
       <div class="mb-4">
         <label for="playerHistorySelect" class="block text-sm font-medium mb-2">Selecteer een speler</label>
-        <select id="playerHistorySelect" class="w-full py-3 px-4 rounded-xl border-gray-300 shadow-sm">
+        <select id="playerHistorySelect" class="w-full p-3 border border-gray-300 rounded-xl appearance-none bg-white">
           <option value="">-- Selecteer speler --</option>
         </select>
       </div>
-      <div id="playerHistory" class="space-y-3 mt-4">
+      <div id="playerHistory" class="space-y-3">
         <div id="noPlayerHistory" class="text-gray-400 text-center py-4">
-          Selecteer een speler om de geschiedenis te zien
+          Selecteer een speler om geschiedenis te zien
         </div>
       </div>
     </div>
     
-    <!-- Leaderboard Section -->
-    <div class="bg-white rounded-2xl shadow-md p-6 card">
+    <!-- Leaderboard -->
+    <div class="bg-white rounded-2xl shadow-md p-6 mb-6 card">
       <h2 class="text-xl font-semibold mb-4 flex items-center">
-        <i class="fas fa-trophy text-blue-600 mr-3"></i>
-        Boetepot Ranglijst
+        <i class="fas fa-trophy text-blue-600 mr-2"></i>Ranglijst
       </h2>
-      <div id="leaderboard" class="space-y-3">
-        <!-- Leaderboard will be loaded here -->
-        <div id="noLeaderboard" class="text-gray-400 text-center py-4">
-          Geen boetes gevonden voor de ranglijst
+      <div id="leaderboard" class="space-y-2">
+        <!-- Leaderboard data will be loaded here -->
+        <div id="noLeaderboardData" class="text-gray-400 text-center py-4">
+          Geen boetedata beschikbaar voor de ranglijst
         </div>
       </div>
     </div>

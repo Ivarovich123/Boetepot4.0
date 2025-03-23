@@ -1,12 +1,12 @@
 // Cache busting parameter
 let cacheBustParam = Date.now();
 
-// API Base URL
+// API Base URL - Make sure this URL is correct and the API is accessible
 const API_BASE_URL = 'https://hfjbkhvwstsjbgmepyxg.supabase.co/rest/v1';
 const API_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhmamJraHZ3c3RzamJnbWVweXhnIiwicm9sZSI6ImFub24iLCJpYXQiOjE2ODkwMTAwODcsImV4cCI6MjAwNDU4NjA4N30.thTZjFw9PnLR9KgTkyCKmsKQYd13X6Ab0jCCHr2Dz9s';
 
-// Debug mode (set to false in production)
-const DEBUG = false;
+// Debug mode (set to true during development to see console logs)
+const DEBUG = true;
 
 // Dom elements
 const loadingSpinner = document.getElementById('loadingSpinner');
@@ -17,7 +17,7 @@ const playerHistorySelectEl = document.getElementById('playerHistorySelect');
 const playerHistoryEl = document.getElementById('playerHistory');
 const noPlayerHistoryEl = document.getElementById('noPlayerHistory');
 const leaderboardEl = document.getElementById('leaderboard');
-const noLeaderboardEl = document.getElementById('noLeaderboard');
+const noLeaderboardEl = document.getElementById('noLeaderboardData');
 const toastContainer = document.getElementById('toastContainer');
 
 // Show loading spinner
@@ -108,19 +108,23 @@ function formatDate(dateString) {
     });
 }
 
-// Add cache busting parameter to URL
+// Add cache busting parameter to URL - Fixed to use a simple timestamp approach
 function addCacheBust(url) {
+    const timestamp = new Date().getTime();
     const separator = url.includes('?') ? '&' : '?';
-    return `${url}${separator}cachebust=${cacheBustParam}`;
+    return `${url}${separator}t=${timestamp}`;
 }
 
 // Make API request
 async function apiRequest(endpoint, options = {}) {
     const url = addCacheBust(`${API_BASE_URL}${endpoint}`);
     
+    if (DEBUG) console.log('API Request to:', url);
+    
     const defaultOptions = {
         headers: {
             'apikey': API_KEY,
+            'Authorization': `Bearer ${API_KEY}`,
             'Content-Type': 'application/json',
             'Prefer': 'return=representation'
         }
@@ -307,6 +311,9 @@ async function loadLeaderboard() {
         const fines = await apiRequest('/fines?select=player_id,players(name),reasons(amount)');
         const players = await apiRequest('/players?select=id,name');
         
+        if (DEBUG) console.log('Fines data:', fines);
+        if (DEBUG) console.log('Players data:', players);
+        
         if (fines && fines.length > 0 && players && players.length > 0) {
             // Calculate totals per player
             const playerTotals = {};
@@ -367,19 +374,17 @@ function renderLeaderboard(leaderboardData) {
     leaderboardData.forEach((player, index) => {
         const rank = index + 1;
         const leaderboardItem = document.createElement('div');
-        leaderboardItem.className = `leaderboard-item p-4 border border-gray-200 rounded-xl ${rank <= 3 ? `rank-${rank}` : ''}`;
+        leaderboardItem.className = `leaderboard-item flex items-center p-4 border border-gray-200 rounded-xl mb-2 hover:bg-gray-50`;
         
         leaderboardItem.innerHTML = `
-            <div class="flex justify-between items-center">
-                <div class="flex items-center">
-                    <div class="font-bold text-gray-700 w-8 text-center">#${rank}</div>
-                    <div class="ml-3 font-semibold ${rank <= 3 ? `medal-${rank}` : ''}">${player.name}</div>
+            <div class="leaderboard-rank ${rank <= 3 ? `leaderboard-rank-${rank}` : ''} mr-3">${rank}</div>
+            <div class="flex-1">
+                <div class="font-semibold">${player.name}</div>
+                <div class="text-gray-500 text-sm">
+                    ${player.count} boete${player.count !== 1 ? 's' : ''}
                 </div>
-                <div class="font-bold text-blue-700">${formatCurrency(player.total)}</div>
             </div>
-            <div class="text-gray-500 text-sm mt-1 ml-11">
-                ${player.count} boete${player.count !== 1 ? 's' : ''}
-            </div>
+            <div class="font-bold text-blue-700">${formatCurrency(player.total)}</div>
         `;
         
         leaderboardEl.appendChild(leaderboardItem);

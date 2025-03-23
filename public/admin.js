@@ -230,25 +230,186 @@ document.addEventListener('DOMContentLoaded', function() {
     // Data loading functions
     async function loadPlayers() {
         try {
-            const players = await apiRequest('/players');
-            populatePlayerSelect(players);
-            renderPlayersList(players);
-            return players;
+            debug('Loading players...');
+            const players = await apiRequest('/players?select=id,name&order=name');
+            
+            if (!players || !Array.isArray(players)) {
+                throw new Error('Invalid response from API');
+            }
+            
+            // Update player select
+            const playerSelect = document.getElementById('playerSelect');
+            if (playerSelect) {
+                playerSelect.innerHTML = '<option value="">-- Selecteer speler --</option>';
+                
+                players.forEach(player => {
+                    const option = document.createElement('option');
+                    option.value = player.id;
+                    option.textContent = player.name;
+                    playerSelect.appendChild(option);
+                });
+            }
+            
+            // Update players list
+            const playersList = document.getElementById('playersList');
+            if (playersList) {
+                playersList.innerHTML = '';
+                
+                if (players.length === 0) {
+                    playersList.innerHTML = '<div class="text-gray-400 text-center py-4">Geen spelers gevonden</div>';
+                    return;
+                }
+                
+                players.forEach(player => {
+                    const playerItem = document.createElement('div');
+                    playerItem.className = 'flex items-center justify-between p-3 border border-gray-200 rounded-lg';
+                    playerItem.innerHTML = `
+                        <div class="font-medium">${player.name}</div>
+                        <button class="delete-button text-gray-500 hover:text-red-500" data-id="${player.id}" data-name="${player.name}">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    `;
+                    
+                    // Add event listener to delete button
+                    const deleteButton = playerItem.querySelector('.delete-button');
+                    deleteButton.addEventListener('click', async function() {
+                        const playerId = this.getAttribute('data-id');
+                        const playerName = this.getAttribute('data-name');
+                        
+                        // Show confirmation modal
+                        const confirmModal = document.getElementById('confirmModal');
+                        const confirmTitle = document.getElementById('confirmTitle');
+                        const confirmMessage = document.getElementById('confirmMessage');
+                        const confirmButton = document.getElementById('confirmButton');
+                        const cancelButton = document.getElementById('cancelButton');
+
+                        confirmTitle.textContent = 'Speler Verwijderen';
+                        confirmMessage.textContent = `Weet je zeker dat je "${playerName}" wilt verwijderen? Dit verwijdert ook alle boetes van deze speler.`;
+                        
+                        // Show the modal
+                        confirmModal.classList.remove('hidden');
+                        confirmModal.classList.add('flex');
+                        
+                        // Handle cancel
+                        cancelButton.onclick = function() {
+                            confirmModal.classList.remove('flex');
+                            confirmModal.classList.add('hidden');
+                        };
+                        
+                        // Handle confirm
+                        confirmButton.onclick = async function() {
+                            confirmModal.classList.remove('flex');
+                            confirmModal.classList.add('hidden');
+                            
+                            const success = await deletePlayer(playerId);
+                            if (success) {
+                                await loadPlayers();
+                            }
+                        };
+                    });
+                    
+                    playersList.appendChild(playerItem);
+                });
+            }
+            
+            debug(`Loaded ${players.length} players`);
         } catch (error) {
-            debug(`Failed to load players: ${error.message}`);
-            return [];
+            debug(`Error loading players: ${error.message}`);
+            showToast('Fout bij laden van spelers', 'error');
         }
     }
     
     async function loadReasons() {
         try {
-            const reasons = await apiRequest('/reasons');
-            populateReasonSelect(reasons);
-            renderReasonsList(reasons);
-            return reasons;
+            debug('Loading reasons...');
+            const reasons = await apiRequest('/reasons?select=id,description,amount&order=description');
+            
+            if (!reasons || !Array.isArray(reasons)) {
+                throw new Error('Invalid response from API');
+            }
+            
+            // Update reason select
+            const reasonSelect = document.getElementById('reasonSelect');
+            if (reasonSelect) {
+                reasonSelect.innerHTML = '<option value="">-- Selecteer reden --</option>';
+                
+                reasons.forEach(reason => {
+                    const option = document.createElement('option');
+                    option.value = reason.id;
+                    option.textContent = `${reason.description} (${formatCurrency(reason.amount)})`;
+                    reasonSelect.appendChild(option);
+                });
+            }
+            
+            // Update reasons list
+            const reasonsList = document.getElementById('reasonsList');
+            if (reasonsList) {
+                reasonsList.innerHTML = '';
+                
+                if (reasons.length === 0) {
+                    reasonsList.innerHTML = '<div class="text-gray-400 text-center py-4">Geen redenen gevonden</div>';
+                    return;
+                }
+                
+                reasons.forEach(reason => {
+                    const reasonItem = document.createElement('div');
+                    reasonItem.className = 'flex items-center justify-between p-3 border border-gray-200 rounded-lg';
+                    reasonItem.innerHTML = `
+                        <div>
+                            <div class="font-medium">${reason.description}</div>
+                            <div class="text-sm text-gray-500">${formatCurrency(reason.amount)}</div>
+                        </div>
+                        <button class="delete-button text-gray-500 hover:text-red-500" data-id="${reason.id}" data-name="${reason.description}">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    `;
+                    
+                    // Add event listener to delete button
+                    const deleteButton = reasonItem.querySelector('.delete-button');
+                    deleteButton.addEventListener('click', async function() {
+                        const reasonId = this.getAttribute('data-id');
+                        const reasonName = this.getAttribute('data-name');
+                        
+                        // Show confirmation modal
+                        const confirmModal = document.getElementById('confirmModal');
+                        const confirmTitle = document.getElementById('confirmTitle');
+                        const confirmMessage = document.getElementById('confirmMessage');
+                        const confirmButton = document.getElementById('confirmButton');
+                        const cancelButton = document.getElementById('cancelButton');
+
+                        confirmTitle.textContent = 'Reden Verwijderen';
+                        confirmMessage.textContent = `Weet je zeker dat je "${reasonName}" wilt verwijderen? Dit verwijdert ook alle boetes met deze reden.`;
+                        
+                        // Show the modal
+                        confirmModal.classList.remove('hidden');
+                        confirmModal.classList.add('flex');
+                        
+                        // Handle cancel
+                        cancelButton.onclick = function() {
+                            confirmModal.classList.remove('flex');
+                            confirmModal.classList.add('hidden');
+                        };
+                        
+                        // Handle confirm
+                        confirmButton.onclick = async function() {
+                            confirmModal.classList.remove('flex');
+                            confirmModal.classList.add('hidden');
+                            
+                            const success = await deleteReason(reasonId);
+                            if (success) {
+                                await loadReasons();
+                            }
+                        };
+                    });
+                    
+                    reasonsList.appendChild(reasonItem);
+                });
+            }
+            
+            debug(`Loaded ${reasons.length} reasons`);
         } catch (error) {
-            debug(`Failed to load reasons: ${error.message}`);
-            return [];
+            debug(`Error loading reasons: ${error.message}`);
+            showToast('Fout bij laden van redenen', 'error');
         }
     }
     
@@ -571,57 +732,46 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // CRUD Operations
-    async function addFine(data) {
+    async function addFine(player_id, reason_id) {
         try {
-            debug(`Adding fine: ${JSON.stringify(data)}`);
+            if (!player_id) {
+                showToast('Ongeldige speler selectie', 'error');
+                return false;
+            }
             
-            // If multiple players selected, create multiple fines
-            if (Array.isArray(data.player_ids) && data.player_ids.length > 0) {
-                showLoading(true);
-                let successCount = 0;
+            if (!reason_id) {
+                showToast('Ongeldige reden selectie', 'error');
+                return false;
+            }
+            
+            showLoading(true);
+            debug(`Adding fine: player ${player_id}, reason ${reason_id}`);
+            
+            const fine = await apiRequest('/fines', {
+                method: 'POST',
+                body: JSON.stringify({
+                    player_id: player_id,
+                    reason_id: reason_id,
+                    created_at: new Date().toISOString()
+                })
+            });
+            
+            if (fine) {
+                showToast('Boete succesvol toegevoegd!', 'success');
                 
-                // Create a fine for each selected player
-                for (const playerId of data.player_ids) {
-                    try {
-                        const fineData = {
-                            player_id: playerId,
-                            reason_id: data.reason_id,
-                            amount: data.amount,
-                            date: new Date().toISOString()
-                        };
-                        
-                        await apiRequest('/fines', 'POST', fineData);
-                        successCount++;
-                    } catch (error) {
-                        debug(`Error adding fine for player ${playerId}: ${error.message}`);
-                    }
-                }
+                // Reload data
+                await Promise.all([
+                    loadRecentFines(),
+                    loadTotalAmount()
+                ]);
                 
-                if (successCount > 0) {
-                    const playerText = successCount === 1 ? 'speler' : 'spelers';
-                    showToast(`Boete toegevoegd voor ${successCount} ${playerText}!`, 'success');
-                    await loadFines();
-                    return true;
-                } else {
-                    throw new Error('Geen enkele boete kon worden toegevoegd');
-                }
-            } else {
-                // Single player fine (backwards compatibility)
-                const fineData = {
-                    player_id: data.player_id || data.player_ids[0],
-                    reason_id: data.reason_id,
-                    amount: data.amount,
-                    date: new Date().toISOString()
-                };
-                
-                await apiRequest('/fines', 'POST', fineData);
-                showToast('Boete toegevoegd!', 'success');
-                await loadFines();
                 return true;
+            } else {
+                throw new Error('Geen antwoord van server');
             }
         } catch (error) {
             debug(`Failed to add fine: ${error.message}`);
-            showToast(`Fout bij toevoegen van boete: ${error.message}`, 'error');
+            showToast(`Fout bij toevoegen: ${error.message}`, 'error');
             return false;
         } finally {
             showLoading(false);
@@ -664,43 +814,35 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    async function addPlayer(data) {
+    // Add a new player
+    async function addPlayer(name, showToasts = true) {
         try {
-            showLoading(true);
-            // Fall back to direct table access since RPC functions don't exist yet
-            const apiUrl = `${API_BASE_URL}/players`;
-            
-            debug(`Making POST request to ${apiUrl} with data: ${JSON.stringify(data)}`);
-            
-            const response = await fetch(apiUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'apikey': API_KEY,
-                    'Authorization': `Bearer ${API_KEY}`,
-                    'Prefer': 'return=representation'
-                },
-                body: JSON.stringify(data)
-            });
-            
-            if (!response.ok) {
-                let errorMessage = `API error: ${response.status}`;
-                try {
-                    const errorText = await response.text();
-                    debug(`Error response body: ${errorText}`);
-                    errorMessage = errorText;
-                } catch (e) {
-                    // Ignore JSON parsing errors
-                }
-                throw new Error(errorMessage);
+            if (!name || typeof name !== 'string' || name.trim().length === 0) {
+                if (showToasts) showToast('Ongeldige spelernaam', 'error');
+                return false;
             }
             
-            showToast('Speler succesvol toegevoegd!', 'success');
-            await loadPlayers(); // Reload players
-            return true;
+            showLoading(true);
+            debug(`Adding player: ${name}`);
+            
+            const player = await apiRequest('/players', {
+                method: 'POST',
+                body: JSON.stringify({ name: name.trim() })
+            });
+            
+            if (player) {
+                if (showToasts) showToast(`Speler "${name}" toegevoegd`, 'success');
+                
+                // Update player select elements
+                await loadPlayers();
+                
+                return true;
+            } else {
+                throw new Error('Geen antwoord van server');
+            }
         } catch (error) {
             debug(`Failed to add player: ${error.message}`);
-            showToast(`Fout bij toevoegen: ${error.message}`, 'error');
+            if (showToasts) showToast(`Fout bij toevoegen: ${error.message}`, 'error');
             return false;
         } finally {
             showLoading(false);
@@ -743,37 +885,43 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    async function addReason(data) {
+    // Add a new reason
+    async function addReason(description, amount, showToasts = true) {
         try {
-            showLoading(true);
-            // Fall back to direct table access since RPC functions don't exist yet
-            const apiUrl = `${API_BASE_URL}/reasons`;
-            
-            debug(`Making POST request to ${apiUrl} with data: ${JSON.stringify(data)}`);
-            
-            const response = await fetch(apiUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    'apikey': API_KEY,
-                    'Authorization': `Bearer ${API_KEY}`,
-                    'Prefer': 'return=representation'
-                },
-                body: JSON.stringify(data)
-            });
-            
-            if (!response.ok) {
-                const errorText = await response.text();
-                debug(`Error response body: ${errorText}`);
-                throw new Error(errorText);
+            if (!description || typeof description !== 'string' || description.trim().length === 0) {
+                if (showToasts) showToast('Ongeldige beschrijving', 'error');
+                return false;
             }
             
-            showToast('Reden succesvol toegevoegd!', 'success');
-            await loadReasons(); // Reload reasons
-            return true;
+            if (!amount || isNaN(amount) || parseFloat(amount) <= 0) {
+                if (showToasts) showToast('Ongeldig bedrag', 'error');
+                return false;
+            }
+            
+            showLoading(true);
+            debug(`Adding reason: ${description}, amount: ${amount}`);
+            
+            const reason = await apiRequest('/reasons', {
+                method: 'POST',
+                body: JSON.stringify({ 
+                    description: description.trim(),
+                    amount: parseFloat(amount)
+                })
+            });
+            
+            if (reason) {
+                if (showToasts) showToast(`Reden "${description}" toegevoegd`, 'success');
+                
+                // Update reason select elements
+                await loadReasons();
+                
+                return true;
+            } else {
+                throw new Error('Geen antwoord van server');
+            }
         } catch (error) {
             debug(`Failed to add reason: ${error.message}`);
+            if (showToasts) showToast(`Fout bij toevoegen: ${error.message}`, 'error');
             return false;
         } finally {
             showLoading(false);
@@ -819,84 +967,282 @@ document.addEventListener('DOMContentLoaded', function() {
     // Reset all data
     async function resetAllData() {
         try {
-            // Show confirmation dialog
-            if (!confirm('WAARSCHUWING: Dit zal ALLE boetes, spelers en redenen verwijderen. Deze actie kan niet ongedaan worden gemaakt!')) {
-                return;
-            }
+            // Show confirmation modal
+            const confirmModal = document.getElementById('confirmModal');
+            const confirmTitle = document.getElementById('confirmTitle');
+            const confirmMessage = document.getElementById('confirmMessage');
+            const confirmButton = document.getElementById('confirmButton');
+            const cancelButton = document.getElementById('cancelButton');
+
+            confirmTitle.textContent = 'Alles Resetten';
+            confirmMessage.textContent = 'WAARSCHUWING: Dit zal ALLE boetes, spelers en redenen verwijderen. Deze actie kan niet ongedaan worden gemaakt!';
             
-            // Double-check confirmation
-            if (!confirm('Weet je het zeker? Alle data zal permanent verwijderd worden.')) {
-                return;
-            }
+            // Show the modal
+            confirmModal.classList.remove('hidden');
+            confirmModal.classList.add('flex');
             
-            // Show loading spinner
-            showLoading();
-            debug('Resetting all data...');
-            
-            // First delete all fines (due to foreign key constraints)
-            await apiRequest('/fines', {
-                method: 'DELETE'
+            // Return a new promise that will be resolved when the user confirms or cancels
+            return new Promise((resolve) => {
+                // Handle cancel
+                cancelButton.onclick = function() {
+                    confirmModal.classList.remove('flex');
+                    confirmModal.classList.add('hidden');
+                    resolve(false);
+                };
+                
+                // Handle confirm
+                confirmButton.onclick = async function() {
+                    confirmModal.classList.remove('flex');
+                    confirmModal.classList.add('hidden');
+                    
+                    // Show loading spinner
+                    showLoading(true);
+                    debug('Resetting all data...');
+                    
+                    try {
+                        // First delete all fines (due to foreign key constraints)
+                        await apiRequest('/fines', {
+                            method: 'DELETE'
+                        });
+                        debug('All fines deleted');
+                        
+                        // Then delete all players
+                        await apiRequest('/players', {
+                            method: 'DELETE'
+                        });
+                        debug('All players deleted');
+                        
+                        // Finally delete all reasons
+                        await apiRequest('/reasons', {
+                            method: 'DELETE'
+                        });
+                        debug('All reasons deleted');
+                        
+                        // Clear local storage
+                        localStorage.removeItem('players');
+                        localStorage.removeItem('reasons');
+                        localStorage.removeItem('fines');
+                        debug('Local storage cleared');
+                        
+                        // Reset UI elements - updated for new structure
+                        document.getElementById('totalAmount').textContent = '€0,00';
+                        
+                        // Reset the fines list
+                        const recentFines = document.getElementById('recentFines');
+                        recentFines.innerHTML = '';
+                        const noRecentFines = document.getElementById('noRecentFines');
+                        if (noRecentFines) {
+                            noRecentFines.classList.remove('hidden');
+                        }
+                        
+                        // Reset players list
+                        const playersList = document.getElementById('playersList');
+                        if (playersList) {
+                            playersList.innerHTML = '<div class="text-gray-400 text-center py-4">Geen spelers gevonden</div>';
+                        }
+                        
+                        // Reset reasons list
+                        const reasonsList = document.getElementById('reasonsList');
+                        if (reasonsList) {
+                            reasonsList.innerHTML = '<div class="text-gray-400 text-center py-4">Geen redenen gevonden</div>';
+                        }
+                        
+                        // Reset player and reason selects
+                        const playerSelect = document.getElementById('playerSelect');
+                        if (playerSelect) {
+                            playerSelect.innerHTML = '<option value="">-- Selecteer speler --</option>';
+                        }
+                        
+                        const reasonSelect = document.getElementById('reasonSelect');
+                        if (reasonSelect) {
+                            reasonSelect.innerHTML = '<option value="">-- Selecteer reden --</option>';
+                        }
+                        
+                        // Show success message
+                        showToast('Alle data is succesvol gereset', 'success');
+                        debug('All data reset complete');
+                        
+                        resolve(true);
+                    } catch (error) {
+                        console.error('Error resetting data:', error);
+                        showToast('Fout bij resetten van data: ' + error.message, 'error');
+                        debug('Reset data error: ' + error.message);
+                        resolve(false);
+                    } finally {
+                        showLoading(false);
+                    }
+                };
             });
-            debug('All fines deleted');
-            
-            // Then delete all players
-            await apiRequest('/players', {
-                method: 'DELETE'
-            });
-            debug('All players deleted');
-            
-            // Finally delete all reasons
-            await apiRequest('/reasons', {
-                method: 'DELETE'
-            });
-            debug('All reasons deleted');
-            
-            // Clear local storage
-            localStorage.removeItem('players');
-            localStorage.removeItem('reasons');
-            localStorage.removeItem('fines');
-            debug('Local storage cleared');
-            
-            // Reset UI elements
-            $('#playersList').empty();
-            $('#reasonsList').empty();
-            $('#recentFines').empty();
-            $('#noRecentFines').removeClass('hidden');
-            $('#totalAmount').text('€0,00');
-            
-            // Also reset the leaderboard if it exists
-            if ($('#leaderboard').length) {
-                $('#leaderboard').empty();
-                $('#noLeaderboard').removeClass('hidden');
-            }
-            
-            // Reset player history if it exists
-            if ($('#playerHistory').length) {
-                $('#playerHistory').empty();
-                $('#noPlayerHistory').removeClass('hidden');
-            }
-            
-            // Update player and reason selects
-            $('#playerSelect').empty().append('<option value="">Selecteer speler</option>');
-            $('#reasonSelect').empty().append('<option value="">Selecteer reden</option>');
-            
-            // Show success message
-            showToast('Alle data is succesvol gereset', 'success');
-            debug('All data reset complete');
-            
-            // Reload the data to show empty state
-            loadAllData();
         } catch (error) {
-            console.error('Error resetting data:', error);
-            showToast('Fout bij resetten van data: ' + error.message, 'error');
-            debug('Reset data error: ' + error.message);
-        } finally {
-            hideLoading();
+            console.error('Error in reset confirmation:', error);
+            showToast('Fout bij weergeven van bevestiging: ' + error.message, 'error');
+            return false;
+        }
+    }
+    
+    // Load recent fines and update the UI
+    async function loadRecentFines() {
+        try {
+            debug('Loading recent fines...');
+            const fines = await apiRequest('/fines?select=id,created_at,player_id,reason_id,players(name),reasons(description,amount)&order=created_at.desc&limit=10');
+            
+            if (!fines || !Array.isArray(fines)) {
+                throw new Error('Invalid response from API');
+            }
+            
+            // Update fines list
+            const recentFines = document.getElementById('recentFines');
+            const noRecentFines = document.getElementById('noRecentFines');
+            
+            if (recentFines) {
+                recentFines.innerHTML = '';
+                
+                if (fines.length === 0) {
+                    if (noRecentFines) noRecentFines.classList.remove('hidden');
+                    return;
+                }
+                
+                if (noRecentFines) noRecentFines.classList.add('hidden');
+                
+                fines.forEach(fine => {
+                    const fineItem = document.createElement('div');
+                    fineItem.className = 'fine-card p-4 border border-gray-200 rounded-lg shadow-sm relative';
+                    fineItem.innerHTML = `
+                        <div class="flex justify-between items-center">
+                            <div class="flex-1">
+                                <div class="flex items-center mb-1">
+                                    <span class="font-semibold text-blue-800">${fine.players?.name || 'Onbekend'}</span>
+                                    <span class="text-gray-400 mx-2">•</span>
+                                    <span class="text-gray-500 text-sm">${formatDate(fine.created_at)}</span>
+                                </div>
+                                <div class="text-gray-700">${fine.reasons?.description || 'Onbekende reden'}</div>
+                            </div>
+                            <div class="font-bold text-blue-700 text-lg">${formatCurrency(fine.reasons?.amount || 0)}</div>
+                        </div>
+                        <button class="delete-button absolute top-2 right-2 text-gray-400 hover:text-red-500" data-id="${fine.id}">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    `;
+                    
+                    // Add event listener to delete button
+                    const deleteButton = fineItem.querySelector('.delete-button');
+                    deleteButton.addEventListener('click', async function() {
+                        const fineId = this.getAttribute('data-id');
+                        
+                        // Show confirmation modal
+                        const confirmModal = document.getElementById('confirmModal');
+                        const confirmTitle = document.getElementById('confirmTitle');
+                        const confirmMessage = document.getElementById('confirmMessage');
+                        const confirmButton = document.getElementById('confirmButton');
+                        const cancelButton = document.getElementById('cancelButton');
+
+                        confirmTitle.textContent = 'Boete Verwijderen';
+                        confirmMessage.textContent = 'Weet je zeker dat je deze boete wilt verwijderen?';
+                        
+                        // Show the modal
+                        confirmModal.classList.remove('hidden');
+                        confirmModal.classList.add('flex');
+                        
+                        // Handle cancel
+                        cancelButton.onclick = function() {
+                            confirmModal.classList.remove('flex');
+                            confirmModal.classList.add('hidden');
+                        };
+                        
+                        // Handle confirm
+                        confirmButton.onclick = async function() {
+                            confirmModal.classList.remove('flex');
+                            confirmModal.classList.add('hidden');
+                            
+                            const success = await deleteFine(fineId);
+                            if (success) {
+                                await Promise.all([
+                                    loadRecentFines(),
+                                    loadTotalAmount()
+                                ]);
+                            }
+                        };
+                    });
+                    
+                    recentFines.appendChild(fineItem);
+                });
+            }
+            
+            debug(`Loaded ${fines.length} recent fines`);
+        } catch (error) {
+            debug(`Error loading recent fines: ${error.message}`);
+            showToast('Fout bij laden van recente boetes', 'error');
+        }
+    }
+    
+    // Load total amount
+    async function loadTotalAmount() {
+        try {
+            debug('Loading total amount...');
+            const fines = await apiRequest('/fines?select=reasons(amount)');
+            
+            if (!fines || !Array.isArray(fines)) {
+                throw new Error('Invalid response from API');
+            }
+            
+            // Calculate total
+            let total = 0;
+            fines.forEach(fine => {
+                const amount = parseFloat(fine.reasons?.amount || 0);
+                if (!isNaN(amount)) {
+                    total += amount;
+                }
+            });
+            
+            // Update total element
+            const totalAmountEl = document.getElementById('totalAmount');
+            if (totalAmountEl) {
+                totalAmountEl.textContent = formatCurrency(total);
+            }
+            
+            debug(`Total amount: ${total}`);
+        } catch (error) {
+            debug(`Error loading total amount: ${error.message}`);
+            showToast('Fout bij laden van totaalbedrag', 'error');
         }
     }
     
     // Event Listeners
     function setupEventListeners() {
+        // Tab switching functionality
+        const addFineTab = document.getElementById('addFineTab');
+        const manageTab = document.getElementById('manageTab');
+        const addFineContent = document.getElementById('addFineContent');
+        const manageContent = document.getElementById('manageContent');
+        
+        if (addFineTab && manageTab) {
+            addFineTab.addEventListener('click', function() {
+                // Activate this tab
+                addFineTab.classList.add('active');
+                manageTab.classList.remove('active');
+                
+                // Show/hide content
+                addFineContent.classList.add('active');
+                manageContent.classList.remove('active');
+            });
+            
+            manageTab.addEventListener('click', function() {
+                // Activate this tab
+                manageTab.classList.add('active');
+                addFineTab.classList.remove('active');
+                
+                // Show/hide content
+                manageContent.classList.add('active');
+                addFineContent.classList.remove('active');
+            });
+        }
+        
+        // Reset all data button
+        const resetAllDataBtn = document.getElementById('resetAllDataBtn');
+        if (resetAllDataBtn) {
+            resetAllDataBtn.addEventListener('click', resetAllData);
+        }
+        
         // Add Fine Form
         const addFineForm = document.getElementById('addFineForm');
         if (addFineForm) {
@@ -904,43 +1250,30 @@ document.addEventListener('DOMContentLoaded', function() {
                 e.preventDefault();
                 
                 const playerSelect = document.getElementById('playerSelect');
-                const playerIds = playerSelect ? $(playerSelect).val() : null;
-                const reasonId = document.getElementById('reasonSelect').value;
-                const amount = document.getElementById('amount').value;
+                const reasonSelect = document.getElementById('reasonSelect');
                 
-                if (!playerIds || playerIds.length === 0) {
-                    showToast('Selecteer één of meerdere spelers!', 'error');
+                if (!playerSelect || !reasonSelect) {
+                    showToast('Formulier elementen niet gevonden', 'error');
+                    return;
+                }
+                
+                const playerId = playerSelect.value;
+                const reasonId = reasonSelect.value;
+                
+                if (!playerId) {
+                    showToast('Selecteer een speler', 'error');
                     return;
                 }
                 
                 if (!reasonId) {
-                    showToast('Selecteer een reden!', 'error');
+                    showToast('Selecteer een reden', 'error');
                     return;
                 }
                 
-                if (!amount || isNaN(amount) || parseFloat(amount) <= 0) {
-                    showToast('Voer een geldig bedrag in!', 'error');
-                    return;
-                }
-                
-                const success = await addFine({
-                    player_ids: playerIds,
-                    reason_id: reasonId,
-                    amount: parseFloat(amount)
-                });
-                
+                const success = await addFine(playerId, reasonId);
                 if (success) {
-                    // Reset form
-                    $(playerSelect).val(null).trigger('change');
-                    document.getElementById('reasonSelect').value = '';
-                    document.getElementById('amount').value = '';
-                    
-                    // Reset Select2
-                    try {
-                        $('#reasonSelect').val('').trigger('change');
-                    } catch (error) {
-                        debug(`Error resetting Select2: ${error.message}`);
-                    }
+                    // Optionally reset the form
+                    // addFineForm.reset();
                 }
             });
         }
@@ -950,151 +1283,127 @@ document.addEventListener('DOMContentLoaded', function() {
         if (addPlayerForm) {
             addPlayerForm.addEventListener('submit', async function(e) {
                 e.preventDefault();
-                
                 const playerName = document.getElementById('playerName').value.trim();
                 
                 if (!playerName) {
-                    showToast('Voer een geldige naam in!', 'error');
+                    showToast('Vul een naam in', 'error');
                     return;
                 }
                 
-                const success = await addPlayer({
-                    name: playerName
-                });
-                
+                const success = await addPlayer(playerName);
                 if (success) {
-                    // Reset form
-                    document.getElementById('playerName').value = '';
+                    addPlayerForm.reset();
                 }
             });
         }
         
-        // Bulk Import Players Form
-        const bulkImportForm = document.getElementById('bulkImportForm');
-        if (bulkImportForm) {
-            bulkImportForm.addEventListener('submit', async function(e) {
-                e.preventDefault();
+        // Bulk Add Players Button
+        const addBulkPlayersBtn = document.getElementById('addBulkPlayersBtn');
+        if (addBulkPlayersBtn) {
+            addBulkPlayersBtn.addEventListener('click', async function() {
+                const bulkPlayers = document.getElementById('bulkPlayers').value.trim();
                 
-                const bulkPlayerNamesEl = document.getElementById('bulkPlayerNames');
-                if (!bulkPlayerNamesEl) {
-                    showToast('Formulier veld ontbreekt', 'error');
+                if (!bulkPlayers) {
+                    showToast('Vul ten minste één speler in', 'error');
                     return;
                 }
                 
-                const playerNamesText = bulkPlayerNamesEl.value.trim();
-                if (!playerNamesText) {
-                    showToast('Voer tenminste één naam in', 'error');
-                    return;
-                }
+                // Split by commas or new lines
+                const names = bulkPlayers.split(/[\n,]+/).map(name => name.trim()).filter(name => name);
                 
-                // Split the text by newlines to get individual names
-                const playerNames = playerNamesText.split('\n')
-                    .map(name => name.trim())
-                    .filter(name => name.length > 0);
-                
-                if (playerNames.length === 0) {
+                if (names.length === 0) {
                     showToast('Geen geldige namen gevonden', 'error');
                     return;
                 }
                 
-                if (playerNames.length > 30) {
-                    showToast('Maximaal 30 spelers tegelijk importeren', 'error');
-                    return;
-                }
-                
-                // Show loading
+                let addedCount = 0;
                 showLoading(true);
                 
-                try {
-                    debug(`Bulk importing ${playerNames.length} players`);
-                    
-                    // Create promises for all player adds
-                    const promises = playerNames.map(name => 
-                        addPlayer({ name: name })
-                            .catch(error => {
-                                debug(`Error adding player ${name}: ${error.message}`);
-                                return false;
-                            })
-                    );
-                    
-                    // Wait for all promises to resolve
-                    const results = await Promise.all(promises);
-                    
-                    // Count successes
-                    const successCount = results.filter(result => result === true).length;
-                    
-                    showToast(`${successCount} van ${playerNames.length} spelers succesvol geïmporteerd`, 'success');
-                    
-                    // Reset form
-                    bulkPlayerNamesEl.value = '';
-                    
-                    // Reload players list
-                    await loadPlayers();
-                } catch (error) {
-                    debug(`Bulk import error: ${error.message}`);
-                    showToast('Er is een fout opgetreden tijdens het importeren', 'error');
-                } finally {
-                    showLoading(false);
+                for (const name of names) {
+                    if (name) {
+                        const success = await addPlayer(name, false); // Don't show individual toasts
+                        if (success) addedCount++;
+                    }
                 }
+                
+                document.getElementById('bulkPlayers').value = '';
+                showLoading(false);
+                showToast(`${addedCount} speler(s) toegevoegd`, addedCount > 0 ? 'success' : 'error');
+                
+                // Reload player list
+                loadPlayers();
             });
         }
         
         // Add Reason Form
         const addReasonForm = document.getElementById('addReasonForm');
         if (addReasonForm) {
-            addReasonForm.addEventListener('submit', async (e) => {
+            addReasonForm.addEventListener('submit', async function(e) {
                 e.preventDefault();
-                
-                const descriptionInput = document.getElementById('reasonDescription');
-                
-                if (!descriptionInput) {
-                    showToast('Formulier elementen ontbreken!', 'error');
-                    return;
-                }
-                
-                const description = descriptionInput.value.trim();
+                const description = document.getElementById('reasonDescription').value.trim();
+                const amount = document.getElementById('reasonAmount').value;
                 
                 if (!description) {
-                    showToast('Voer een beschrijving in', 'error');
+                    showToast('Vul een beschrijving in', 'error');
                     return;
                 }
                 
-                try {
-                    showLoading(true);
-                    // Fall back to direct table access since RPC functions don't exist yet
-                    const apiUrl = `${API_BASE_URL}/reasons`;
-                    
-                    debug(`Making POST request to ${apiUrl} with description: ${description}`);
-                    
-                    const response = await fetch(apiUrl, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Accept': 'application/json',
-                            'apikey': API_KEY,
-                            'Authorization': `Bearer ${API_KEY}`,
-                            'Prefer': 'return=representation'
-                        },
-                        body: JSON.stringify({ description })
-                    });
-                    
-                    if (!response.ok) {
-                        const errorText = await response.text();
-                        debug(`Error response body: ${errorText}`);
-                        throw new Error(errorText);
-                    }
-                    
-                    showToast('Reden succesvol toegevoegd!', 'success');
-                    // Reset form
-                    descriptionInput.value = '';
-                    // Reload reasons
-                    await loadReasons();
-                } catch (error) {
-                    debug(`Failed to add reason: ${error.message}`);
-                    showToast(`Fout bij toevoegen: ${error.message}`, 'error');
-                } finally {
-                    showLoading(false);
+                if (!amount || isNaN(amount) || parseFloat(amount) <= 0) {
+                    showToast('Vul een geldig bedrag in', 'error');
+                    return;
                 }
+                
+                const success = await addReason(description, parseFloat(amount));
+                if (success) {
+                    addReasonForm.reset();
+                }
+            });
+        }
+        
+        // Bulk Add Reasons Button
+        const addBulkReasonsBtn = document.getElementById('addBulkReasonsBtn');
+        if (addBulkReasonsBtn) {
+            addBulkReasonsBtn.addEventListener('click', async function() {
+                const bulkReasons = document.getElementById('bulkReasons').value.trim();
+                
+                if (!bulkReasons) {
+                    showToast('Vul ten minste één reden in', 'error');
+                    return;
+                }
+                
+                // Split by new lines
+                const lines = bulkReasons.split('\n').map(line => line.trim()).filter(line => line);
+                
+                if (lines.length === 0) {
+                    showToast('Geen geldige redenen gevonden', 'error');
+                    return;
+                }
+                
+                let addedCount = 0;
+                showLoading(true);
+                
+                for (const line of lines) {
+                    // Parse "description, amount" format
+                    const parts = line.split(',');
+                    if (parts.length >= 2) {
+                        const description = parts[0].trim();
+                        // Extract amount - try to parse the last part as a number
+                        const amountStr = parts[parts.length - 1].trim();
+                        const amount = parseFloat(amountStr);
+                        
+                        if (description && !isNaN(amount) && amount > 0) {
+                            const success = await addReason(description, amount, false); // Don't show individual toasts
+                            if (success) addedCount++;
+                        }
+                    }
+                }
+                
+                document.getElementById('bulkReasons').value = '';
+                showLoading(false);
+                showToast(`${addedCount} reden(en) toegevoegd`, addedCount > 0 ? 'success' : 'error');
+                
+                // Reload reason list
+                loadReasons();
             });
         }
         
@@ -1149,43 +1458,32 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // Initialization
-    function init() {
-        debug('Initializing admin panel...');
-        
-        // Add a reload button in the bottom right corner
-        $('body').append(`
-            <button id="force-reload" 
-                    style="position: fixed; bottom: 20px; right: 20px; z-index: 9999; 
-                           background-color: var(--btn-primary); color: white; 
-                           border: none; border-radius: 50%; width: 50px; height: 50px; 
-                           display: flex; align-items: center; justify-content: center;
-                           box-shadow: 0 4px 10px rgba(0,0,0,0.2); opacity: 0.8;">
-                <i class="fas fa-sync-alt"></i>
-            </button>
-        `);
-        
-        // Add event listener for the reload button
-        $('#force-reload').on('click', function() {
-            debug('Manual reload requested');
-            forceReload();
-        });
-        
-        // Setup tabs
-        setupTabs();
-        
-        // Setup event listeners
-        setupEventListeners();
-        
-        // Update Select2 styling
-        updateSelect2Styling();
-        
-        // Load all data
-        loadAllData();
-        
-        debug('Initialization complete');
+    // Initialize the application
+    async function init() {
+        try {
+            debug('Initializing admin panel...');
+            showLoading(true);
+            
+            // Set up event listeners
+            setupEventListeners();
+            
+            // Load all data in parallel
+            await Promise.all([
+                loadPlayers(),
+                loadReasons(),
+                loadRecentFines(),
+                loadTotalAmount()
+            ]);
+            
+            debug('Admin panel initialized successfully');
+        } catch (error) {
+            debug(`Error initializing admin panel: ${error.message}`);
+            showToast('Fout bij initialiseren van admin panel', 'error');
+        } finally {
+            showLoading(false);
+        }
     }
     
-    // Start the application
+    // Start the app
     init();
 }); 
