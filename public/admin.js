@@ -442,12 +442,7 @@ function formatDate(dateString) {
         if (!select) return;
         
         select.innerHTML = '';
-        
-        // Add empty option
-        const emptyOption = document.createElement('option');
-        emptyOption.value = '';
-        emptyOption.textContent = 'Selecteer een speler';
-        select.appendChild(emptyOption);
+        select.multiple = true; // Enable multiple selection
         
         // Add player options
         players.forEach(player => {
@@ -457,19 +452,52 @@ function formatDate(dateString) {
             select.appendChild(option);
         });
         
-        // Initialize Select2
+        // Initialize Select2 with enhanced styling
         try {
             $(select).select2({
-                placeholder: "Selecteer een speler",
+                placeholder: "Selecteer speler(s)",
                 allowClear: true,
-                width: '100%'
+                width: '100%',
+                multiple: true,
+                templateResult: formatPlayerOption,
+                templateSelection: formatPlayerSelection,
+                closeOnSelect: false,
+                selectionCssClass: 'select2-selection--multiple-modern',
+                dropdownCssClass: 'select2-dropdown-modern'
             });
             
             // Update Select2 to match theme
             updateSelect2Theme(document.body.classList.contains('dark'));
-  } catch (error) {
+        } catch (error) {
             debug(`Error initializing Select2: ${error.message}`);
         }
+    }
+    
+    // Format player option in dropdown
+    function formatPlayerOption(player) {
+        if (!player.id) return player.text;
+        
+        return $(`
+            <div class="flex items-center p-2 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors rounded-md">
+                <div class="w-8 h-8 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-500 rounded-full flex items-center justify-center font-bold mr-2">
+                    ${player.text.charAt(0).toUpperCase()}
+                </div>
+                <div>
+                    <span class="font-medium">${player.text}</span>
+                </div>
+            </div>
+        `);
+    }
+    
+    // Format selected player pill
+    function formatPlayerSelection(player) {
+        if (!player.id) return player.text;
+        
+        return $(`
+            <span class="select2-selection__choice__display">
+                <span class="font-medium">${player.text}</span>
+            </span>
+        `);
     }
     
     function populateReasonSelect(reasons) {
@@ -649,36 +677,55 @@ function formatDate(dateString) {
     // CRUD Operations
     async function addFine(data) {
         try {
-            showLoading(true);
-            // Fall back to direct table access since RPC functions don't exist yet
-            const apiUrl = `${API_BASE_URL}/fines`;
+            debug(`Adding fine: ${JSON.stringify(data)}`);
             
-            debug(`Making POST request to ${apiUrl} with data: ${JSON.stringify(data)}`);
-            
-            const response = await fetch(apiUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    'apikey': SUPABASE_KEY,
-                    'Authorization': `Bearer ${SUPABASE_KEY}`,
-                    'Prefer': 'return=representation'
-                },
-                body: JSON.stringify(data)
-            });
-            
-            if (!response.ok) {
-                const errorText = await response.text();
-                debug(`Error response body: ${errorText}`);
-                throw new Error(errorText);
+            // If multiple players selected, create multiple fines
+            if (Array.isArray(data.player_ids) && data.player_ids.length > 0) {
+                showLoading(true);
+                let successCount = 0;
+                
+                // Create a fine for each selected player
+                for (const playerId of data.player_ids) {
+                    try {
+                        const fineData = {
+                            player_id: playerId,
+                            reason_id: data.reason_id,
+                            amount: data.amount,
+                            date: new Date().toISOString()
+                        };
+                        
+                        await apiRequest('/fines', 'POST', fineData);
+                        successCount++;
+                    } catch (error) {
+                        debug(`Error adding fine for player ${playerId}: ${error.message}`);
+                    }
+                }
+                
+                if (successCount > 0) {
+                    const playerText = successCount === 1 ? 'speler' : 'spelers';
+                    showToast(`Boete toegevoegd voor ${successCount} ${playerText}!`, 'success');
+                    await loadFines();
+                    return true;
+                } else {
+                    throw new Error('Geen enkele boete kon worden toegevoegd');
+                }
+            } else {
+                // Single player fine (backwards compatibility)
+                const fineData = {
+                    player_id: data.player_id || data.player_ids[0],
+                    reason_id: data.reason_id,
+                    amount: data.amount,
+                    date: new Date().toISOString()
+                };
+                
+                await apiRequest('/fines', 'POST', fineData);
+                showToast('Boete toegevoegd!', 'success');
+                await loadFines();
+                return true;
             }
-            
-            showToast('Boete succesvol toegevoegd!', 'success');
-            await loadFines(); // Reload fines
-            return true;
         } catch (error) {
             debug(`Failed to add fine: ${error.message}`);
-            showToast(`Fout bij toevoegen: ${error.message}`, 'error');
+            showToast(`Fout bij toevoegen van boete: ${error.message}`, 'error');
             return false;
         } finally {
             showLoading(false);
@@ -897,12 +944,13 @@ function formatDate(dateString) {
             addFineForm.addEventListener('submit', async function(e) {
                 e.preventDefault();
                 
-                const playerId = document.getElementById('playerSelect').value;
+                const playerSelect = document.getElementById('playerSelect');
+                const playerIds = playerSelect ? $(playerSelect).val() : null;
                 const reasonId = document.getElementById('reasonSelect').value;
                 const amount = document.getElementById('amount').value;
                 
-                if (!playerId) {
-                    showToast('Selecteer een speler!', 'error');
+                if (!playerIds || playerIds.length === 0) {
+                    showToast('Selecteer één of meerdere spelers!', 'error');
                     return;
                 }
                 
@@ -917,22 +965,21 @@ function formatDate(dateString) {
                 }
                 
                 const success = await addFine({
-                    player_id: playerId,
+                    player_ids: playerIds,
                     reason_id: reasonId,
                     amount: parseFloat(amount)
                 });
                 
                 if (success) {
                     // Reset form
-                    document.getElementById('playerSelect').value = '';
+                    $(playerSelect).val(null).trigger('change');
                     document.getElementById('reasonSelect').value = '';
                     document.getElementById('amount').value = '';
                     
                     // Reset Select2
                     try {
-                        $('#playerSelect').val('').trigger('change');
                         $('#reasonSelect').val('').trigger('change');
-  } catch (error) {
+                    } catch (error) {
                         debug(`Error resetting Select2: ${error.message}`);
                     }
                 }
