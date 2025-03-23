@@ -370,18 +370,39 @@ async function fetchAPI(endpoint, options = {}) {
         
         debug(`Fetch options: ${JSON.stringify(fetchOptions)}`);
         
-        // First try
-        let response = await fetch(url, fetchOptions);
+        // First try - with better error handling
+        let response;
+        try {
+            response = await fetch(url, fetchOptions);
+            debug(`Response status: ${response.status} ${response.statusText}`);
+            
+            // Log response headers for debugging
+            const headers = {};
+            response.headers.forEach((value, key) => {
+                headers[key] = value;
+            });
+            debug(`Response headers: ${JSON.stringify(headers)}`);
+        } catch (fetchError) {
+            debug(`Network error: ${fetchError.message}`);
+            throw new Error(`Network Error: ${fetchError.message}`);
+        }
         
         // Check for API errors
         if (!response.ok) {
-            debug(`API request failed with status ${response.status}`);
-            throw new Error(`API Error: ${response.status} ${response.statusText}`);
+            const errorText = await response.text();
+            debug(`API request failed with status ${response.status} - ${errorText}`);
+            throw new Error(`API Error: ${response.status} ${response.statusText} - ${errorText}`);
         }
         
         // Try to parse as JSON
-        const data = await response.json();
-        debug(`API response successful with ${typeof data} from ${url}`);
+        let data;
+        try {
+            data = await response.json();
+            debug(`API response successful with ${typeof data} containing ${Array.isArray(data) ? data.length : 'non-array'} items from ${url}`);
+        } catch (jsonError) {
+            debug(`JSON parse error: ${jsonError.message}`);
+            throw new Error(`Invalid JSON response: ${jsonError.message}`);
+        }
         
         // Post-process the data if needed
         if (path === 'total-amount') {
@@ -456,6 +477,9 @@ async function fetchAPI(endpoint, options = {}) {
             debug(`General API error: ${error.message}`);
             showToast(`API fout: ${error.message}`, 'error');
         }
+        
+        // Since API connection is failing, try the test-api.html diagnostics page to help debug
+        showToast('Voor hulp bij het oplossen van problemen, gebruik de test-api.html pagina', 'info');
         
         // Return empty data
         if (endpoint.includes('total-amount')) {

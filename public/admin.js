@@ -285,20 +285,45 @@ function formatDate(dateString) {
                 options.body = JSON.stringify(data);
             }
             
-            // Attempt the API request
-            const response = await fetch(url, options);
+            // Log request details
+            debug(`Request options: ${JSON.stringify(options)}`);
+            
+            // Attempt the API request with enhanced error capturing
+            let response;
+            try {
+                response = await fetch(url, options);
+                debug(`Response status: ${response.status} ${response.statusText}`);
+                
+                // Log response headers for debugging
+                const headers = {};
+                response.headers.forEach((value, key) => {
+                    headers[key] = value;
+                });
+                debug(`Response headers: ${JSON.stringify(headers)}`);
+            } catch (fetchError) {
+                debug(`Network error: ${fetchError.message}`);
+                throw new Error(`Network Error: ${fetchError.message}`);
+            }
             
             if (!response.ok) {
                 let errorMessage = `API error: ${response.status}`;
                 try {
-                    const errorData = await response.json();
-                    if (errorData && errorData.message) {
-                        errorMessage = errorData.message;
-                    } else if (errorData && errorData.error) {
-                        errorMessage = errorData.error;
+                    const errorText = await response.text();
+                    debug(`Error response body: ${errorText}`);
+                    try {
+                        const errorData = JSON.parse(errorText);
+                        if (errorData && errorData.message) {
+                            errorMessage = errorData.message;
+                        } else if (errorData && errorData.error) {
+                            errorMessage = errorData.error;
+                        }
+                    } catch (e) {
+                        // Not JSON, use the raw text
+                        errorMessage = `API error: ${response.status} - ${errorText}`;
                     }
                 } catch (e) {
                     // Ignore JSON parsing errors
+                    debug(`Could not read error response: ${e.message}`);
                 }
                 throw new Error(errorMessage);
             }
@@ -306,7 +331,14 @@ function formatDate(dateString) {
             // For GET requests, return the JSON data
             // For DELETE, often there's no content returned
             if (method === 'GET' || method === 'POST') {
-                const responseData = await response.json();
+                let responseData;
+                try {
+                    responseData = await response.json();
+                    debug(`Response data: ${JSON.stringify(responseData).substring(0, 100)}...`);
+                } catch (jsonError) {
+                    debug(`JSON parse error: ${jsonError.message}`);
+                    throw new Error(`Invalid JSON response: ${jsonError.message}`);
+                }
                 
                 // For fines endpoint, join with player and reason data
                 if (path === 'fines' && Array.isArray(responseData)) {
@@ -352,6 +384,9 @@ function formatDate(dateString) {
         } catch (error) {
             debug(`API Error: ${error.message}`);
             showToast(`API Error: ${error.message}`, 'error');
+            
+            // Recommend using test-api.html for diagnosis
+            showToast('Voor hulp bij het oplossen van problemen, gebruik de test-api.html pagina', 'info');
             
             // Return empty arrays for GET requests
             if (method === 'GET') {
