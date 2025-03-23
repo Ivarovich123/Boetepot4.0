@@ -104,14 +104,19 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Function to add cache-busting to API URLs
     function addCacheBuster(url) {
-        // Use "cachebust" as parameter name since "_t" might be interpreted as a filter by Supabase
-        // Also, ensure we don't add it to URLs that already have query parameters
-        if (url.includes('?')) {
-            // If the URL contains select=* or other parameters, append with & 
-            return url + '&cachebust=' + VERSION;
+        // For Supabase, adding parameters that aren't recognized filters can cause issues
+        // Instead, add cache-busting to an existing parameter or path that won't affect the query
+        
+        // If the URL already contains parameters, add timestamp to the select parameter
+        if (url.includes('select=')) {
+            // Add timestamp to the existing select parameter
+            return url.replace('select=', 'select=timestamp.' + VERSION + ',');
+        } else if (url.includes('?')) {
+            // If there are other parameters but no select, add a dummy offset
+            return url + '&offset=0';
         } else {
-            // For URLs without parameters, use ?
-            return url + '?cachebust=' + VERSION;
+            // For URLs without parameters, add a limit that won't affect results
+            return url + '?limit=999';
         }
     }
     

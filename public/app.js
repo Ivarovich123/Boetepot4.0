@@ -22,14 +22,19 @@ function debug(message) {
 
 // Function to add cache-busting to API URLs
 function addCacheBuster(url) {
-    // Use "cachebust" as parameter name since "_t" might be interpreted as a filter by Supabase
-    // Also, ensure we don't add it to URLs that already have query parameters
-    if (url.includes('?')) {
-        // If the URL contains select=* or other parameters, append with & 
-        return url + '&cachebust=' + VERSION;
+    // For Supabase, adding parameters that aren't recognized filters can cause issues
+    // Instead, add cachebust to an existing parameter or path that won't affect the query
+    
+    // If the URL already contains parameters, add timestamp to the select parameter
+    if (url.includes('select=')) {
+        // Add timestamp to the existing select parameter
+        return url.replace('select=', 'select=timestamp.' + VERSION + ',');
+    } else if (url.includes('?')) {
+        // If there are other parameters but no select, add a dummy offset
+        return url + '&offset=0';
     } else {
-        // For URLs without parameters, use ?
-        return url + '?cachebust=' + VERSION;
+        // For URLs without parameters, add a limit that won't affect results
+        return url + '?limit=999';
     }
 }
 
@@ -137,7 +142,7 @@ function getFallbackData() {
 }
 
 // Utility functions
-function toggleLoading(isLoading) {
+function showLoading(isLoading) {
     if (isLoading) {
         debug('Show loading spinner');
         $('#loadingSpinner').removeClass('hidden').addClass('flex');
@@ -626,20 +631,31 @@ async function loadPlayerHistory(playerId) {
 
 // Fix the initialization function to use proper theme handling
 $(document).ready(function() {
-    debug('Document ready');
+    debug('Initializing application');
     
-    // Setup theme
+    // Add a reload button in the top right corner
+    $('body').append(`
+        <button id="force-reload" 
+                style="position: fixed; bottom: 20px; right: 20px; z-index: 9999; 
+                       background-color: var(--btn-primary); color: white; 
+                       border: none; border-radius: 50%; width: 50px; height: 50px; 
+                       display: flex; align-items: center; justify-content: center;
+                       box-shadow: 0 4px 10px rgba(0,0,0,0.2); opacity: 0.8;">
+            <i class="fas fa-sync-alt"></i>
+        </button>
+    `);
+    
+    // Add event listener for the reload button
+    $('#force-reload').on('click', function() {
+        debug('Manual reload requested');
+        forceReload();
+    });
+    
+    // Initialize application
+    debug('Starting initialization');
     setupTheme();
-    
-    // Set up data loading
     loadData();
-    
-    // Initialize UI components
     setupPlayerHistory();
-    initializeSelect2();
-    
-    // Setup actions
-    setupActions();
 });
 
 // Helper function to fix player data references
@@ -1031,5 +1047,8 @@ $(document).ready(function() {
     });
     
     // Initialize application
-    init();
+    debug('Starting initialization');
+    setupTheme();
+    loadData();
+    setupPlayerHistory();
 }); 
