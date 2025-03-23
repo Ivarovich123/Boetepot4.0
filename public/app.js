@@ -1,6 +1,6 @@
 // API Base URL - make sure this matches your backend setup
-const API_BASE_URL = 'https://vfsdttmqrzcdokqaoofd.supabase.co/rest/v1';  // Direct connection to Supabase
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZmc2R0dG1xcnpjZG9rcWFvb2ZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE2Nzc1MDA5NTEsImV4cCI6MTk5MzA3Njk1MX0.BYVqeqh-qwox4Os_DCzPXjtEM32U2FvaSU3VetOjTwY';
+const API_BASE_URL = 'https://jvhgdidaoasgxqqixywl.supabase.co/rest/v1';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp2aGdkaWRhb2FzZ3hxcWl4eXdsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI1MDA3OTYsImV4cCI6MjA1ODA3Njc5Nn0.2qrrNC2bKichC63SvUhNgXlcG0ElViRsqM5CYU3QSfg';
 const SERVER_URL = 'https://www.boetepot.cloud';
 
 // Debug setting
@@ -340,7 +340,7 @@ async function fetchAPI(endpoint, options = {}) {
         } else if (path === 'recent-fines') {
             url += 'fines?select=id,amount,created_at,player_id,reason_id&order=created_at.desc&limit=5';
         } else if (path === 'leaderboard') {
-            url += 'players?select=id,name,total_fined:fines(sum)&order=total_fined.desc&limit=5';
+            url += 'players?select=id,name,total_amount:fines(sum,amount)&order=total_amount.desc&limit=5';
         } else if (path.startsWith('player?id=')) {
             const playerId = path.split('=')[1];
             url += `players?id=eq.${playerId}&select=*`;
@@ -449,21 +449,25 @@ async function fetchAPI(endpoint, options = {}) {
             
             return enhancedFines;
         } else if (path === 'leaderboard') {
+            // Format leaderboard data from Supabase
             return data.map(player => {
-                // Calculate total fined amount and count
-                let totalFined = 0;
-                let fineCount = 0;
-                if (player.fines) {
-                    fineCount = player.fines.length;
-                    totalFined = player.fines.reduce((sum, fine) => sum + parseFloat(fine.amount || 0), 0);
+                let totalAmount = 0;
+                // Check if the player has a fines aggregate with a sum
+                if (player.fines && player.fines.sum) {
+                    totalAmount = parseFloat(player.fines.sum.amount || 0);
+                } else if (player.total_amount) {
+                    // Handle the new format if available
+                    totalAmount = parseFloat(player.total_amount || 0);
                 }
+                
                 return {
                     id: player.id,
                     name: player.name,
-                    totalFined,
-                    fineCount
+                    totalFined: totalAmount,
+                    // Count is not directly available in this query, but we could add it
+                    fineCount: 0
                 };
-            });
+            }).sort((a, b) => b.totalFined - a.totalFined);
         }
         
         return data;

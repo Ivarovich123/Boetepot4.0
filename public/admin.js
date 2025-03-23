@@ -1,8 +1,8 @@
 // Simplified admin panel without login
 document.addEventListener('DOMContentLoaded', function() {
     // Configuration
-    const API_BASE_URL = 'https://vfsdttmqrzcdokqaoofd.supabase.co/rest/v1';  // Direct connection to Supabase
-    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZmc2R0dG1xcnpjZG9rcWFvb2ZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE2Nzc1MDA5NTEsImV4cCI6MTk5MzA3Njk1MX0.BYVqeqh-qwox4Os_DCzPXjtEM32U2FvaSU3VetOjTwY';
+    const API_BASE_URL = 'https://jvhgdidaoasgxqqixywl.supabase.co/rest/v1';  // Direct connection to Supabase
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp2aGdkaWRhb2FzZ3hxcWl4eXdsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI1MDA3OTYsImV4cCI6MjA1ODA3Njc5Nn0.2qrrNC2bKichC63SvUhNgXlcG0ElViRsqM5CYU3QSfg';
     
     // Debug flag - set to true for console logs
     const DEBUG = true;
@@ -244,7 +244,16 @@ function formatDate(dateString) {
                     url += path;
                 }
             } else if (method === 'POST') {
-                url += path;
+                // For POST requests, we just need the base table name
+                if (path === 'players') {
+                    url += 'players';
+                } else if (path === 'reasons') {
+                    url += 'reasons';
+                } else if (path === 'fines') {
+                    url += 'fines';
+                } else {
+                    url += path;
+                }
             } else if (method === 'DELETE') {
                 // Handle DELETE requests
                 if (path.startsWith('players/')) {
