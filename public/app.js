@@ -343,19 +343,19 @@ async function fetchAPI(endpoint, options = {}) {
         } else if (path === 'reasons') {
             url += 'reasons?select=*';
         } else if (path === 'fines') {
-            url += 'fines?select=*';
+            url += 'fines?select=id,amount,date,player_id,reason_id&order=date.desc';
         } else if (path === 'total-amount') {
             url += 'fines?select=amount';
         } else if (path === 'recent-fines') {
             url += 'fines?select=id,amount,date,player_id,reason_id&order=date.desc&limit=5';
         } else if (path === 'leaderboard') {
-            url += 'players?select=id,name,fines(amount)&order=name.asc&limit=5';
+            url += 'players?select=id,name';
         } else if (path.startsWith('player?id=')) {
             const playerId = path.split('=')[1];
             url += `players?id=eq.${playerId}&select=*`;
         } else if (path.startsWith('player-fines?id=')) {
             const playerId = path.split('=')[1];
-            url += `fines?player_id=eq.${playerId}&select=*&order=date.desc`;
+            url += `fines?player_id=eq.${playerId}&select=id,amount,date,player_id,reason_id&order=date.desc`;
         } else {
             url += path;
         }
@@ -377,7 +377,7 @@ async function fetchAPI(endpoint, options = {}) {
             signal: abortController.signal
         };
         
-        debug(`Fetch options: ${JSON.stringify(fetchOptions)}`);
+        debug(`Fetch options: ${JSON.stringify({...fetchOptions, headers: {...fetchOptions.headers, apikey: '***', Authorization: '***'}})}`);
         
         // First try - with better error handling
         let response;
@@ -391,118 +391,42 @@ async function fetchAPI(endpoint, options = {}) {
                 headers[key] = value;
             });
             debug(`Response headers: ${JSON.stringify(headers)}`);
-        } catch (fetchError) {
-            debug(`Network error: ${fetchError.message}`);
-            throw new Error(`Network Error: ${fetchError.message}`);
-        }
-        
-        // Check for API errors
-        if (!response.ok) {
-            const errorText = await response.text();
-            debug(`API request failed with status ${response.status} - ${errorText}`);
-            throw new Error(`API Error: ${response.status} ${response.statusText} - ${errorText}`);
-        }
-        
-        // Try to parse as JSON
-        let data;
-        try {
-            data = await response.json();
-            debug(`API response successful with ${typeof data} containing ${Array.isArray(data) ? data.length : 'non-array'} items from ${url}`);
-        } catch (jsonError) {
-            debug(`JSON parse error: ${jsonError.message}`);
-            throw new Error(`Invalid JSON response: ${jsonError.message}`);
-        }
-        
-        // Post-process the data if needed
-        if (path === 'total-amount') {
-            // Calculate total from the amounts
-            const total = data.reduce((sum, item) => sum + parseFloat(item.amount || 0), 0);
-            return { total };
-        } else if (path === 'recent-fines') {
-            // Fetch player and reason details for each fine
-            const enhancedFines = await Promise.all(data.map(async fine => {
-                // Get player details
-                if (fine.player_id) {
-                    const playerResponse = await fetch(`${API_BASE_URL}/players?id=eq.${fine.player_id}&select=name`, {
-                        headers: {
-                            'apikey': SUPABASE_KEY,
-                            'Authorization': `Bearer ${SUPABASE_KEY}`
-                        }
-                    });
-                    if (playerResponse.ok) {
-                        const players = await playerResponse.json();
-                        if (players.length > 0) {
-                            fine.player_name = players[0].name;
-                        }
-                    }
-                }
-                
-                // Get reason details
-                if (fine.reason_id) {
-                    const reasonResponse = await fetch(`${API_BASE_URL}/reasons?id=eq.${fine.reason_id}&select=description`, {
-                        headers: {
-                            'apikey': SUPABASE_KEY,
-                            'Authorization': `Bearer ${SUPABASE_KEY}`
-                        }
-                    });
-                    if (reasonResponse.ok) {
-                        const reasons = await reasonResponse.json();
-                        if (reasons.length > 0) {
-                            fine.reason_description = reasons[0].description;
-                        }
-                    }
-                }
-                
-                return fine;
-            }));
             
-            return enhancedFines;
-        } else if (path === 'leaderboard') {
-            // Format leaderboard data from Supabase
-            return data.map(player => {
-                let totalAmount = 0;
-                
-                // Calculate sum from the array of fines
-                if (player.fines && Array.isArray(player.fines)) {
-                    player.fines.forEach(fine => {
-                        if (fine.amount) {
-                            totalAmount += parseFloat(fine.amount);
-                        }
-                    });
-                }
-                
-                return {
-                    id: player.id,
-                    name: player.name,
-                    totalFined: totalAmount,
-                    fineCount: player.fines ? player.fines.length : 0
-                };
-            }).sort((a, b) => b.totalFined - a.totalFined);
+            if (!response.ok) {
+                const errorText = await response.text();
+                debug(`API error: ${errorText}`);
+                throw new Error(`API error: ${response.status} ${response.statusText} - ${errorText}`);
+            }
+            
+            // Parse JSON response
+            const data = await response.json();
+            debug(`API response data (truncated): ${JSON.stringify(data).substring(0, 100)}...`);
+            return data;
+        } catch (fetchError) {
+            debug(`Network or parsing error: ${fetchError.message}`);
+            throw fetchError;
         }
-        
-        return data;
     } catch (error) {
         debug(`API Error: ${error.message}`);
         
-        if (error.name === 'AbortError') {
-            debug('Request timed out');
-            showToast('De server reageert niet. Probeer het later opnieuw.', 'error');
-        } else {
-            debug(`General API error: ${error.message}`);
-            showToast(`API fout: ${error.message}`, 'error');
+        // For total-amount, leaderboard and recent-fines, try to get fallback data
+        if (endpoint === 'total-amount' || endpoint === 'leaderboard' || endpoint === 'recent-fines') {
+            debug(`Using fallback data for ${endpoint}`);
+            const fallbackData = getFallbackData();
+            
+            if (endpoint === 'total-amount') {
+                // Calculate total from the amounts of fines in localStorage
+                const total = fallbackData.fines.reduce((sum, item) => sum + parseFloat(item.amount || 0), 0);
+                return { total };
+            } else if (endpoint === 'recent-fines') {
+                return fallbackData.recentFines;
+            } else if (endpoint === 'leaderboard') {
+                return fallbackData.leaderboard;
+            }
         }
         
-        // Since API connection is failing, try the test-api.html diagnostics page to help debug
-        showToast('Voor hulp bij het oplossen van problemen, gebruik de test-api.html pagina', 'info');
-        
-        // Return empty data
-        if (endpoint.includes('total-amount')) {
-            return { total: 0 };
-        } else if (endpoint.includes('players')) {
-            return [];
-        } else {
-            return [];
-        }
+        // If we got this far, rethrow the error
+        throw error;
     } finally {
         clearTimeout(timeoutId);
         toggleLoading(false);
@@ -584,63 +508,83 @@ async function loadTotalAmount() {
 
 // Load recent fines - improved error handling
 async function loadRecentFines() {
-  try {
-        debug('Loading recent fines');
-        const data = await fetchAPI('/recent-fines');
-        if (!$('#recentFines').length) {
-            debug('Error: Recent fines element not found');
-      return;
+    try {
+        const fines = await fetchAPI('recent-fines');
+        // Process fines to add player and reason information
+        const processedFines = await processRecentFines(fines);
+        if (processedFines && processedFines.length > 0) {
+            renderRecentFines(processedFines);
+        } else {
+            renderRecentFines([]);
+        }
+    } catch (error) {
+        console.error('Error loading recent fines:', error);
+        renderRecentFines([]);
     }
-    
-        if (!data || data.length === 0) {
-            $('#recentFines').html('<div class="text-center py-4 text-gray-500 dark:text-gray-400">Geen recente boetes gevonden</div>');
-      return;
-    }
-    
-        const finesHtml = data.map(fine => createFineCard(fine)).join('');
-        $('#recentFines').html(finesHtml);
-  } catch (error) {
-        debug(`Error loading recent fines: ${error.message}`);
-        $('#recentFines').html('<div class="text-center py-4 text-red-500">Er is een fout opgetreden bij het laden van recente boetes</div>');
-  }
 }
 
 // Load leaderboard - improved error handling
 async function loadLeaderboard() {
-  try {
-        debug('Loading leaderboard');
-        const data = await fetchAPI('/leaderboard');
-        if (!$('#leaderboard').length) {
-            debug('Error: Leaderboard element not found');
-      return;
-    }
+    const leaderboardContainer = document.getElementById('leaderboard');
+    if (!leaderboardContainer) return;
     
-        if (!data || data.length === 0) {
-            $('#leaderboard').html('<div class="text-center py-4 text-gray-500 dark:text-gray-400">Geen spelers gevonden</div>');
-      return;
-    }
-    
-        const leaderboardHtml = data.map((player, index) => `
-            <div class="bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
-                <div class="flex justify-between items-center">
-                    <div class="flex items-center">
-                        <div class="flex-shrink-0 w-8 h-8 bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 rounded-full flex items-center justify-center font-bold mr-3">
-                            ${index + 1}
-                        </div>
-                        <div>
-                            <h3 class="font-semibold text-gray-800 dark:text-gray-200">${player.name || 'Onbekend'}</h3>
-                            <p class="text-xs text-gray-500 dark:text-gray-400">${player.fineCount || 0} boetes</p>
-                        </div>
-                    </div>
-                    <div class="text-lg font-bold text-gray-800 dark:text-gray-100">${formatCurrency(player.totalFined || 0)}</div>
+    try {
+        const players = await fetchAPI('leaderboard');
+        
+        // Process players to calculate their fine totals
+        const leaderboard = await processLeaderboard(players);
+        
+        // Clear container and show data
+        leaderboardContainer.innerHTML = '';
+        
+        if (leaderboard.length === 0) {
+            leaderboardContainer.innerHTML = `
+                <div class="text-center py-8 text-gray-500 dark:text-gray-400">
+                    <i class="fas fa-info-circle text-2xl mb-3"></i>
+                    <p>Geen spelers gevonden.</p>
                 </div>
-            </div>
-    `).join('');
-    
-        $('#leaderboard').html(leaderboardHtml);
+            `;
+            return;
+        }
+        
+        // Top 5 leaderboard items
+        const topLeaderboard = leaderboard.slice(0, 5);
+        
+        topLeaderboard.forEach((item, index) => {
+            const card = document.createElement('div');
+            card.className = 'bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-200 dark:border-gray-700 flex items-center justify-between';
+            
+            // Add medal icon for top 3
+            let medal = '';
+            if (index === 0) {
+                medal = '<span class="text-yellow-500 mr-2"><i class="fas fa-medal"></i></span>';
+            } else if (index === 1) {
+                medal = '<span class="text-gray-400 mr-2"><i class="fas fa-medal"></i></span>';
+            } else if (index === 2) {
+                medal = '<span class="text-amber-600 mr-2"><i class="fas fa-medal"></i></span>';
+            }
+            
+            card.innerHTML = `
+                <div class="flex items-center">
+                    ${medal}
+                    <div>
+                        <span class="font-medium text-base">${item.name}</span>
+                        <p class="text-gray-500 dark:text-gray-400 text-xs">${item.fineCount} boetes</p>
+                    </div>
+                </div>
+                <div class="text-blue-600 dark:text-blue-400 font-bold">${formatCurrency(item.totalFined)}</div>
+            `;
+            
+            leaderboardContainer.appendChild(card);
+        });
     } catch (error) {
-        debug(`Error loading leaderboard: ${error.message}`);
-        $('#leaderboard').html('<div class="text-center py-4 text-red-500 dark:text-red-400">Er is een fout opgetreden bij het laden van het leaderboard</div>');
+        console.error('Error loading leaderboard:', error);
+        leaderboardContainer.innerHTML = `
+            <div class="text-center py-8 text-gray-500 dark:text-gray-400">
+                <i class="fas fa-exclamation-circle text-2xl mb-3"></i>
+                <p>Fout bij het laden van de ranglijst.</p>
+            </div>
+        `;
     }
 }
 
@@ -679,8 +623,8 @@ async function loadPlayerHistory(playerId) {
             debug('No player selected, hiding player history content');
             $('#playerHistoryContent').addClass('hidden');
             $('#playerHistoryEmpty').removeClass('hidden');
-            return;
-        }
+      return;
+    }
     
         debug(`Fetching player ${playerId} and their fines`);
         
@@ -699,9 +643,9 @@ async function loadPlayerHistory(playerId) {
             debug('No valid player data received');
             $('#playerHistoryContent').addClass('hidden');
             $('#playerHistoryEmpty').removeClass('hidden').html('<div class="text-center py-4 text-red-500">Spelersinformatie kon niet worden geladen</div>');
-            return;
-        }
-        
+      return;
+    }
+    
         $('#playerHistoryName').text(playerData.name || 'Onbekend');
         
         // Calculate total with proper error handling
@@ -732,27 +676,20 @@ async function loadPlayerHistory(playerId) {
 
 // Fix the initialization function to use proper theme handling
 $(document).ready(function() {
-    // Initialize the UI
-    try {
-        debug('Document ready');
-        
-        // Setup theme
-        setupTheme();
-        
-        // Setup player history
-        setupPlayerHistory();
-        
-        // Load data
-        loadData();
-        
-        // Setup other actions
-        setupActions();
-        
-        debug('Initialization complete');
-    } catch (error) {
-        debug(`Initialization error: ${error.message}`);
-        showToast('Er is een fout opgetreden bij het initialiseren van de pagina', 'error');
-    }
+    debug('Document ready');
+    
+    // Setup theme
+    setupTheme();
+    
+    // Set up data loading
+    loadData();
+    
+    // Initialize UI components
+    setupPlayerHistory();
+    initializeSelect2();
+    
+    // Setup actions
+    setupActions();
 });
 
 // Helper function to fix player data references
@@ -762,12 +699,12 @@ function setupPlayerHistory() {
         
         // Handle player selection change
         $('#playerSelect').on('change', function() {
-            const playerId = $(this).val();
+      const playerId = $(this).val();
             debug(`Player selected: ${playerId}`);
             
-            if (playerId) {
-                loadPlayerHistory(playerId);
-            } else {
+      if (playerId) {
+        loadPlayerHistory(playerId);
+      } else {
                 // Reset the history view when no player is selected
                 $('#playerHistoryContent').addClass('hidden');
                 $('#playerHistoryEmpty').removeClass('hidden');
@@ -775,7 +712,7 @@ function setupPlayerHistory() {
         });
         
         debug('Player history setup completed');
-    } catch (error) {
+  } catch (error) {
         debug(`Error setting up player history: ${error.message}`);
     }
 }
@@ -968,21 +905,29 @@ function updateTotalAmount(fines) {
 }
 
 function setupTheme() {
+    debug('Setting up theme');
+    
+    // Initialize theme based on saved preference or system preference
+    const savedTheme = localStorage.getItem('theme');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    
+    if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+        document.documentElement.classList.add('dark');
+        document.body.classList.add('dark');
+        debug('Theme initialized to dark mode');
+    } else {
+        document.documentElement.classList.remove('dark');
+        document.body.classList.remove('dark');
+        debug('Theme initialized to light mode');
+    }
+    
     // Get the theme toggle button
     const themeToggle = document.getElementById('theme-toggle');
     if (themeToggle) {
-        // Make sure body has dark class if document has it
-        const isDark = document.documentElement.classList.contains('dark');
-        if (isDark) {
-            document.body.classList.add('dark');
-        } else {
-            document.body.classList.remove('dark');
-        }
-        
-        // Update the initial icon based on current theme
+        // Update the icon based on current theme
         const themeIcon = document.getElementById('theme-icon');
         if (themeIcon) {
-            if (isDark) {
+            if (document.documentElement.classList.contains('dark')) {
                 themeIcon.classList.remove('fa-moon');
                 themeIcon.classList.add('fa-sun');
             } else {
@@ -993,6 +938,104 @@ function setupTheme() {
         
         // Add click event listener to toggle theme
         themeToggle.addEventListener('click', toggleTheme);
-        debug('Theme toggle initialized');
+        debug('Theme toggle listener set up');
+    } else {
+        debug('Theme toggle button not found');
     }
+}
+
+// Add processing functions for API data
+async function processRecentFines(fines) {
+    // Add player and reason details to each fine
+    const enhancedFines = await Promise.all(fines.map(async fine => {
+        // Get player details
+        if (fine.player_id) {
+            try {
+                const playerResponse = await fetch(`${API_BASE_URL}/players?id=eq.${fine.player_id}&select=name`, {
+                    headers: {
+                        'apikey': SUPABASE_KEY,
+                        'Authorization': `Bearer ${SUPABASE_KEY}`
+                    }
+                });
+                if (playerResponse.ok) {
+                    const players = await playerResponse.json();
+                    if (players.length > 0) {
+                        fine.player_name = players[0].name;
+                    }
+                }
+            } catch (error) {
+                debug(`Error fetching player details: ${error.message}`);
+            }
+        }
+        
+        // Get reason details
+        if (fine.reason_id) {
+            try {
+                const reasonResponse = await fetch(`${API_BASE_URL}/reasons?id=eq.${fine.reason_id}&select=description`, {
+                    headers: {
+                        'apikey': SUPABASE_KEY,
+                        'Authorization': `Bearer ${SUPABASE_KEY}`
+                    }
+                });
+                if (reasonResponse.ok) {
+                    const reasons = await reasonResponse.json();
+                    if (reasons.length > 0) {
+                        fine.reason_description = reasons[0].description;
+                    }
+                }
+            } catch (error) {
+                debug(`Error fetching reason details: ${error.message}`);
+            }
+        }
+        
+        return fine;
+    }));
+    
+    return enhancedFines;
+}
+
+async function processLeaderboard(players) {
+    // For each player, fetch their fines to calculate totals
+    const enhancedPlayers = await Promise.all(players.map(async player => {
+        try {
+            const finesResponse = await fetch(`${API_BASE_URL}/fines?player_id=eq.${player.id}&select=amount`, {
+                headers: {
+                    'apikey': SUPABASE_KEY,
+                    'Authorization': `Bearer ${SUPABASE_KEY}`
+                }
+            });
+            
+            if (finesResponse.ok) {
+                const fines = await finesResponse.json();
+                
+                // Calculate total amount and count
+                let totalAmount = 0;
+                fines.forEach(fine => {
+                    if (fine.amount) {
+                        totalAmount += parseFloat(fine.amount);
+                    }
+                });
+                
+                return {
+                    id: player.id,
+                    name: player.name,
+                    totalFined: totalAmount,
+                    fineCount: fines.length
+                };
+            }
+        } catch (error) {
+            debug(`Error calculating player totals: ${error.message}`);
+        }
+        
+        // Return default if fetch failed
+        return {
+            id: player.id,
+            name: player.name,
+            totalFined: 0,
+            fineCount: 0
+        };
+    }));
+    
+    // Sort by total amount (highest first)
+    return enhancedPlayers.sort((a, b) => b.totalFined - a.totalFined);
 } 
