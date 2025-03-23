@@ -1,7 +1,7 @@
 // Simplified admin panel without login
 document.addEventListener('DOMContentLoaded', function() {
     // Configuration
-    const API_BASE_URL = '/api';  // Use relative path to work with API proxy
+    const API_BASE_URL = 'https://vfsdttmqrzcdokqaoofd.supabase.co/rest/v1';  // Direct connection to Supabase
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZmc2R0dG1xcnpjZG9rcWFvb2ZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE2Nzc1MDA5NTEsImV4cCI6MTk5MzA3Njk1MX0.BYVqeqh-qwox4Os_DCzPXjtEM32U2FvaSU3VetOjTwY';
     
     // Debug flag - set to true for console logs
@@ -274,13 +274,13 @@ function formatDate(dateString) {
             debug(`API Error: ${error.message}`);
             showToast(`API Error: ${error.message}`, 'error');
             
-            // Try to use mock data if API fails
+            // Return empty arrays instead of mock data
             if (endpoint.includes('players')) {
-                return getMockDataForAdmin('players');
+                return [];
             } else if (endpoint.includes('reasons')) {
-                return getMockDataForAdmin('reasons');
+                return [];
             } else if (endpoint.includes('fines')) {
-                return getMockDataForAdmin('fines');
+                return [];
             }
             
             throw error;

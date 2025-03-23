@@ -1,5 +1,5 @@
 // API Base URL - make sure this matches your backend setup
-const API_BASE_URL = '/api';  // Use relative path to avoid CORS issues
+const API_BASE_URL = 'https://vfsdttmqrzcdokqaoofd.supabase.co/rest/v1';  // Direct connection to Supabase
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZmc2R0dG1xcnpjZG9rcWFvb2ZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE2Nzc1MDA5NTEsImV4cCI6MTk5MzA3Njk1MX0.BYVqeqh-qwox4Os_DCzPXjtEM32U2FvaSU3VetOjTwY';
 const SERVER_URL = 'https://www.boetepot.cloud';
 
@@ -325,11 +325,12 @@ async function fetchAPI(endpoint, options = {}) {
         // Ensure endpoint does not start with slash when appending to API path
         const path = endpoint.startsWith('/') ? endpoint.substring(1) : endpoint;
         
-        // Use the API path through our serverless function
-        const url = `${API_BASE_URL}/${path}`;
+        // Direct connection to Supabase
+        let url = `${API_BASE_URL}/${path}`;
         
         debug(`Trying URL: ${url}`);
         
+        // Set up headers for Supabase
         const fetchOptions = {
             ...options,
             headers: {
@@ -346,7 +347,9 @@ async function fetchAPI(endpoint, options = {}) {
         };
         
         debug(`Fetch options: ${JSON.stringify(fetchOptions)}`);
-        const response = await fetch(url, fetchOptions);
+        
+        // First try
+        let response = await fetch(url, fetchOptions);
         
         // Check for API errors
         if (!response.ok) {
@@ -366,20 +369,10 @@ async function fetchAPI(endpoint, options = {}) {
             showToast('De server reageert niet. Probeer het later opnieuw.', 'error');
         } else {
             debug(`General API error: ${error.message}`);
-            
-            // Try to load mock data if API fails
-            localStorage.setItem('useMockData', 'true');
-            const mockData = getMockDataForEndpoint(endpoint);
-            if (mockData) {
-                debug(`Using mock data for ${endpoint}`);
-                showToast('Using offline data - database connection failed', 'warning');
-                return mockData;
-            }
-            
             showToast(`API fout: ${error.message}`, 'error');
         }
         
-        // Return empty data
+        // Return empty data instead of mock data
         if (endpoint.includes('total-amount')) {
             return { total: 0 };
         } else if (endpoint.includes('players')) {

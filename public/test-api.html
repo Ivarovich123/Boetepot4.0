@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>API Test</title>
+  <script>
+    // Supabase credentials from app.js
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZmc2R0dG1xcnpjZG9rcWFvb2ZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE2Nzc1MDA5NTEsImV4cCI6MTk5MzA3Njk1MX0.BYVqeqh-qwox4Os_DCzPXjtEM32U2FvaSU3VetOjTwY';
+    const SUPABASE_URL = 'https://vfsdttmqrzcdokqaoofd.supabase.co/rest/v1';
+    
+    async function testPlayers() {
+      try {
+        document.getElementById('status').textContent = 'Testing players API...';
+        const response = await fetch(`${SUPABASE_URL}/players`, {
+          headers: {
+            'apikey': SUPABASE_KEY,
+            'Authorization': `Bearer ${SUPABASE_KEY}`
+          }
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        document.getElementById('players').textContent = JSON.stringify(data, null, 2);
+        document.getElementById('status').textContent = 'Players API success!';
+      } catch (error) {
+        document.getElementById('status').textContent = `Players API error: ${error.message}`;
+      }
+    }
+    
+    async function testReasons() {
+      try {
+        document.getElementById('status').textContent = 'Testing reasons API...';
+        const response = await fetch(`${SUPABASE_URL}/reasons`, {
+          headers: {
+            'apikey': SUPABASE_KEY,
+            'Authorization': `Bearer ${SUPABASE_KEY}`
+          }
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        document.getElementById('reasons').textContent = JSON.stringify(data, null, 2);
+        document.getElementById('status').textContent = 'Reasons API success!';
+      } catch (error) {
+        document.getElementById('status').textContent = `Reasons API error: ${error.message}`;
+      }
+    }
+    
+    async function testFines() {
+      try {
+        document.getElementById('status').textContent = 'Testing fines API...';
+        const response = await fetch(`${SUPABASE_URL}/fines`, {
+          headers: {
+            'apikey': SUPABASE_KEY,
+            'Authorization': `Bearer ${SUPABASE_KEY}`
+          }
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        document.getElementById('fines').textContent = JSON.stringify(data, null, 2);
+        document.getElementById('status').textContent = 'Fines API success!';
+      } catch (error) {
+        document.getElementById('status').textContent = `Fines API error: ${error.message}`;
+      }
+    }
+    
+    function runAllTests() {
+      testPlayers();
+      setTimeout(testReasons, 1000);
+      setTimeout(testFines, 2000);
+    }
+  </script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    pre {
+      background: #f5f5f5;
+      padding: 10px;
+      border-radius: 5px;
+      overflow: auto;
+    }
+    button {
+      padding: 10px 15px;
+      background: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .status {
+      margin: 20px 0;
+      font-weight: bold;
+    }
+    h3 {
+      margin-top: 30px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Supabase API Test</h1>
+  <button onclick="runAllTests()">Test All APIs</button>
+  <div id="status" class="status">Ready to test</div>
+  
+  <h3>Players</h3>
+  <pre id="players">Not tested yet</pre>
+  
+  <h3>Reasons</h3>
+  <pre id="reasons">Not tested yet</pre>
+  
+  <h3>Fines</h3>
+  <pre id="fines">Not tested yet</pre>
+</body>
+</html> 
