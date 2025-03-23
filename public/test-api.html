@@ -3,16 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>API Test</title>
+  <title>Supabase API Test</title>
   <script>
-    // Supabase credentials from app.js
+    // Supabase credentials
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZmc2R0dG1xcnpjZG9rcWFvb2ZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE2Nzc1MDA5NTEsImV4cCI6MTk5MzA3Njk1MX0.BYVqeqh-qwox4Os_DCzPXjtEM32U2FvaSU3VetOjTwY';
     const SUPABASE_URL = 'https://vfsdttmqrzcdokqaoofd.supabase.co/rest/v1';
     
-    async function testPlayers() {
+    // Test Supabase connection
+    async function testConnection() {
       try {
-        document.getElementById('status').textContent = 'Testing players API...';
-        const response = await fetch(`${SUPABASE_URL}/players`, {
+        document.getElementById('status').textContent = 'Testing Supabase connection...';
+        const response = await fetch(`${SUPABASE_URL}/players?select=count`, {
           headers: {
             'apikey': SUPABASE_KEY,
             'Authorization': `Bearer ${SUPABASE_KEY}`
@@ -20,13 +21,46 @@
         });
         
         if (!response.ok) {
-          throw new Error(`Status: ${response.status}`);
+          document.getElementById('status').textContent = `Connection error: ${response.status} ${response.statusText}`;
+          document.getElementById('connection').textContent = `Failed with status: ${response.status}`;
+          return false;
+        }
+        
+        const data = await response.json();
+        document.getElementById('connection').textContent = 'Connection successful!';
+        document.getElementById('status').textContent = 'Supabase connection established';
+        return true;
+      } catch (error) {
+        document.getElementById('connection').textContent = `Error: ${error.message}`;
+        document.getElementById('status').textContent = `Connection error: ${error.message}`;
+        return false;
+      }
+    }
+    
+    async function testPlayers() {
+      try {
+        document.getElementById('status').textContent = 'Testing players API...';
+        const response = await fetch(`${SUPABASE_URL}/players?select=*`, {
+          headers: {
+            'apikey': SUPABASE_KEY,
+            'Authorization': `Bearer ${SUPABASE_KEY}`
+          }
+        });
+        
+        // Add response debugging
+        document.getElementById('players-debug').textContent = 
+          `Status: ${response.status} ${response.statusText}\n` +
+          `Headers: ${JSON.stringify(Object.fromEntries([...response.headers.entries()]))}\n`;
+        
+        if (!response.ok) {
+          throw new Error(`Status: ${response.status} ${response.statusText}`);
         }
         
         const data = await response.json();
         document.getElementById('players').textContent = JSON.stringify(data, null, 2);
         document.getElementById('status').textContent = 'Players API success!';
       } catch (error) {
+        document.getElementById('players').textContent = `Error: ${error.message}`;
         document.getElementById('status').textContent = `Players API error: ${error.message}`;
       }
     }
@@ -34,21 +68,27 @@
     async function testReasons() {
       try {
         document.getElementById('status').textContent = 'Testing reasons API...';
-        const response = await fetch(`${SUPABASE_URL}/reasons`, {
+        const response = await fetch(`${SUPABASE_URL}/reasons?select=*`, {
           headers: {
             'apikey': SUPABASE_KEY,
             'Authorization': `Bearer ${SUPABASE_KEY}`
           }
         });
         
+        // Add response debugging
+        document.getElementById('reasons-debug').textContent = 
+          `Status: ${response.status} ${response.statusText}\n` +
+          `Headers: ${JSON.stringify(Object.fromEntries([...response.headers.entries()]))}\n`;
+        
         if (!response.ok) {
-          throw new Error(`Status: ${response.status}`);
+          throw new Error(`Status: ${response.status} ${response.statusText}`);
         }
         
         const data = await response.json();
         document.getElementById('reasons').textContent = JSON.stringify(data, null, 2);
         document.getElementById('status').textContent = 'Reasons API success!';
       } catch (error) {
+        document.getElementById('reasons').textContent = `Error: ${error.message}`;
         document.getElementById('status').textContent = `Reasons API error: ${error.message}`;
       }
     }
@@ -56,73 +96,236 @@
     async function testFines() {
       try {
         document.getElementById('status').textContent = 'Testing fines API...';
-        const response = await fetch(`${SUPABASE_URL}/fines`, {
+        const response = await fetch(`${SUPABASE_URL}/fines?select=*`, {
           headers: {
             'apikey': SUPABASE_KEY,
             'Authorization': `Bearer ${SUPABASE_KEY}`
           }
         });
         
+        // Add response debugging
+        document.getElementById('fines-debug').textContent = 
+          `Status: ${response.status} ${response.statusText}\n` +
+          `Headers: ${JSON.stringify(Object.fromEntries([...response.headers.entries()]))}\n`;
+        
         if (!response.ok) {
-          throw new Error(`Status: ${response.status}`);
+          throw new Error(`Status: ${response.status} ${response.statusText}`);
         }
         
         const data = await response.json();
         document.getElementById('fines').textContent = JSON.stringify(data, null, 2);
         document.getElementById('status').textContent = 'Fines API success!';
       } catch (error) {
+        document.getElementById('fines').textContent = `Error: ${error.message}`;
         document.getElementById('status').textContent = `Fines API error: ${error.message}`;
       }
     }
     
-    function runAllTests() {
-      testPlayers();
-      setTimeout(testReasons, 1000);
-      setTimeout(testFines, 2000);
+    async function createTestData() {
+      try {
+        document.getElementById('status').textContent = 'Creating test data...';
+        
+        // Create a test player
+        const playerResponse = await fetch(`${SUPABASE_URL}/players`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': SUPABASE_KEY,
+            'Authorization': `Bearer ${SUPABASE_KEY}`,
+            'Prefer': 'return=representation'
+          },
+          body: JSON.stringify({
+            name: 'Test Player ' + new Date().toISOString().substr(0, 16)
+          })
+        });
+        
+        if (!playerResponse.ok) {
+          throw new Error(`Creating player failed with status: ${playerResponse.status}`);
+        }
+        
+        const player = await playerResponse.json();
+        
+        // Create a test reason
+        const reasonResponse = await fetch(`${SUPABASE_URL}/reasons`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': SUPABASE_KEY,
+            'Authorization': `Bearer ${SUPABASE_KEY}`,
+            'Prefer': 'return=representation'
+          },
+          body: JSON.stringify({
+            description: 'Test Reason ' + new Date().toISOString().substr(0, 16)
+          })
+        });
+        
+        if (!reasonResponse.ok) {
+          throw new Error(`Creating reason failed with status: ${reasonResponse.status}`);
+        }
+        
+        const reason = await reasonResponse.json();
+        
+        // Create a test fine
+        const fineResponse = await fetch(`${SUPABASE_URL}/fines`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': SUPABASE_KEY,
+            'Authorization': `Bearer ${SUPABASE_KEY}`,
+            'Prefer': 'return=representation'
+          },
+          body: JSON.stringify({
+            player_id: player[0].id,
+            reason_id: reason[0].id,
+            amount: 5.00,
+            created_at: new Date().toISOString()
+          })
+        });
+        
+        if (!fineResponse.ok) {
+          throw new Error(`Creating fine failed with status: ${fineResponse.status}`);
+        }
+        
+        const fine = await fineResponse.json();
+        
+        document.getElementById('create-result').textContent = JSON.stringify({
+          player: player[0],
+          reason: reason[0],
+          fine: fine[0]
+        }, null, 2);
+        
+        document.getElementById('status').textContent = 'Test data created successfully!';
+        
+        // Refresh test data
+        runAllTests();
+      } catch (error) {
+        document.getElementById('create-result').textContent = `Error: ${error.message}`;
+        document.getElementById('status').textContent = `Creating test data failed: ${error.message}`;
+      }
     }
+    
+    function runAllTests() {
+      testConnection().then(connected => {
+        if (connected) {
+          testPlayers();
+          setTimeout(testReasons, 500);
+          setTimeout(testFines, 1000);
+        }
+      });
+    }
+    
+    window.onload = runAllTests;
   </script>
   <style>
     body {
-      font-family: Arial, sans-serif;
-      max-width: 800px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      max-width: 1000px;
       margin: 0 auto;
       padding: 20px;
+      line-height: 1.5;
     }
+    
+    h1, h2, h3, h4 {
+      color: #333;
+    }
+    
+    .status-bar {
+      background: #f0f0f0;
+      padding: 10px 15px;
+      border-radius: 4px;
+      margin: 20px 0;
+      font-weight: bold;
+      border-left: 4px solid #3498db;
+    }
+    
+    .test-section {
+      margin-bottom: 30px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 20px;
+      background: #f9f9f9;
+    }
+    
+    .debug-info {
+      margin-top: 10px;
+      font-size: 12px;
+      color: #666;
+      background: #eee;
+      padding: 8px;
+      border-radius: 4px;
+      font-family: monospace;
+    }
+    
     pre {
-      background: #f5f5f5;
-      padding: 10px;
+      background: #f0f0f0;
+      padding: 15px;
       border-radius: 5px;
       overflow: auto;
+      font-size: 14px;
     }
+    
     button {
       padding: 10px 15px;
-      background: #4CAF50;
+      background: #3498db;
       color: white;
       border: none;
       border-radius: 4px;
       cursor: pointer;
+      font-size: 16px;
+      margin-right: 10px;
+      margin-bottom: 10px;
     }
-    .status {
-      margin: 20px 0;
-      font-weight: bold;
+    
+    button:hover {
+      background: #2980b9;
     }
-    h3 {
-      margin-top: 30px;
+    
+    .create-button {
+      background: #2ecc71;
+    }
+    
+    .create-button:hover {
+      background: #27ae60;
     }
   </style>
 </head>
 <body>
   <h1>Supabase API Test</h1>
-  <button onclick="runAllTests()">Test All APIs</button>
-  <div id="status" class="status">Ready to test</div>
+  <p>This page tests the connection to the Supabase backend and verifies that the API endpoints are working correctly.</p>
   
-  <h3>Players</h3>
-  <pre id="players">Not tested yet</pre>
+  <div class="status-bar" id="status">Ready to test</div>
   
-  <h3>Reasons</h3>
-  <pre id="reasons">Not tested yet</pre>
+  <div>
+    <button onclick="runAllTests()">Run All Tests</button>
+    <button class="create-button" onclick="createTestData()">Create Test Data</button>
+  </div>
   
-  <h3>Fines</h3>
-  <pre id="fines">Not tested yet</pre>
+  <div class="test-section">
+    <h2>Connection Test</h2>
+    <pre id="connection">Not tested yet</pre>
+  </div>
+  
+  <div class="test-section">
+    <h2>Players</h2>
+    <div class="debug-info" id="players-debug"></div>
+    <pre id="players">Not tested yet</pre>
+  </div>
+  
+  <div class="test-section">
+    <h2>Reasons</h2>
+    <div class="debug-info" id="reasons-debug"></div>
+    <pre id="reasons">Not tested yet</pre>
+  </div>
+  
+  <div class="test-section">
+    <h2>Fines</h2>
+    <div class="debug-info" id="fines-debug"></div>
+    <pre id="fines">Not tested yet</pre>
+  </div>
+  
+  <div class="test-section">
+    <h2>Create Test Data Result</h2>
+    <pre id="create-result">No data created yet</pre>
+  </div>
 </body>
 </html> 

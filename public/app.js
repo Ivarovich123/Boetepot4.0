@@ -325,8 +325,31 @@ async function fetchAPI(endpoint, options = {}) {
         // Ensure endpoint does not start with slash when appending to API path
         const path = endpoint.startsWith('/') ? endpoint.substring(1) : endpoint;
         
-        // Direct connection to Supabase
-        let url = `${API_BASE_URL}/${path}`;
+        // Map endpoint to the appropriate Supabase table and query
+        let url = `${API_BASE_URL}/`;
+        
+        // Handle specific endpoints
+        if (path === 'players') {
+            url += 'players?select=*';
+        } else if (path === 'reasons') {
+            url += 'reasons?select=*';
+        } else if (path === 'fines') {
+            url += 'fines?select=*';
+        } else if (path === 'total-amount') {
+            url += 'fines?select=amount';
+        } else if (path === 'recent-fines') {
+            url += 'fines?select=id,amount,created_at,player_id,reason_id&order=created_at.desc&limit=5';
+        } else if (path === 'leaderboard') {
+            url += 'players?select=id,name,total_fined:fines(sum)&order=total_fined.desc&limit=5';
+        } else if (path.startsWith('player?id=')) {
+            const playerId = path.split('=')[1];
+            url += `players?id=eq.${playerId}&select=*`;
+        } else if (path.startsWith('player-fines?id=')) {
+            const playerId = path.split('=')[1];
+            url += `fines?player_id=eq.${playerId}&select=*&order=created_at.desc`;
+        } else {
+            url += path;
+        }
         
         debug(`Trying URL: ${url}`);
         
@@ -338,7 +361,6 @@ async function fetchAPI(endpoint, options = {}) {
                 'Accept': 'application/json',
                 'apikey': SUPABASE_KEY,
                 'Authorization': `Bearer ${SUPABASE_KEY}`,
-                'Prefer': 'return=representation',
                 ...options.headers
             },
             mode: 'cors',
@@ -360,6 +382,69 @@ async function fetchAPI(endpoint, options = {}) {
         // Try to parse as JSON
         const data = await response.json();
         debug(`API response successful with ${typeof data} from ${url}`);
+        
+        // Post-process the data if needed
+        if (path === 'total-amount') {
+            // Calculate total from the amounts
+            const total = data.reduce((sum, item) => sum + parseFloat(item.amount || 0), 0);
+            return { total };
+        } else if (path === 'recent-fines') {
+            // Fetch player and reason details for each fine
+            const enhancedFines = await Promise.all(data.map(async fine => {
+                // Get player details
+                if (fine.player_id) {
+                    const playerResponse = await fetch(`${API_BASE_URL}/players?id=eq.${fine.player_id}&select=name`, {
+                        headers: {
+                            'apikey': SUPABASE_KEY,
+                            'Authorization': `Bearer ${SUPABASE_KEY}`
+                        }
+                    });
+                    if (playerResponse.ok) {
+                        const players = await playerResponse.json();
+                        if (players.length > 0) {
+                            fine.player_name = players[0].name;
+                        }
+                    }
+                }
+                
+                // Get reason details
+                if (fine.reason_id) {
+                    const reasonResponse = await fetch(`${API_BASE_URL}/reasons?id=eq.${fine.reason_id}&select=description`, {
+                        headers: {
+                            'apikey': SUPABASE_KEY,
+                            'Authorization': `Bearer ${SUPABASE_KEY}`
+                        }
+                    });
+                    if (reasonResponse.ok) {
+                        const reasons = await reasonResponse.json();
+                        if (reasons.length > 0) {
+                            fine.reason_description = reasons[0].description;
+                        }
+                    }
+                }
+                
+                return fine;
+            }));
+            
+            return enhancedFines;
+        } else if (path === 'leaderboard') {
+            return data.map(player => {
+                // Calculate total fined amount and count
+                let totalFined = 0;
+                let fineCount = 0;
+                if (player.fines) {
+                    fineCount = player.fines.length;
+                    totalFined = player.fines.reduce((sum, fine) => sum + parseFloat(fine.amount || 0), 0);
+                }
+                return {
+                    id: player.id,
+                    name: player.name,
+                    totalFined,
+                    fineCount
+                };
+            });
+        }
+        
         return data;
     } catch (error) {
         debug(`API Error: ${error.message}`);
@@ -372,7 +457,7 @@ async function fetchAPI(endpoint, options = {}) {
             showToast(`API fout: ${error.message}`, 'error');
         }
         
-        // Return empty data instead of mock data
+        // Return empty data
         if (endpoint.includes('total-amount')) {
             return { total: 0 };
         } else if (endpoint.includes('players')) {

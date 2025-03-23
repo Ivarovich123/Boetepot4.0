@@ -228,7 +228,41 @@ function formatDate(dateString) {
         try {
             // Ensure endpoint does not start with slash when appending to API path
             const path = endpoint.startsWith('/') ? endpoint.substring(1) : endpoint;
-            const url = `${API_BASE_URL}/${path}`;
+            
+            // Build URL with proper query parameters for Supabase
+            let url = `${API_BASE_URL}/`;
+            
+            // Handle different endpoints based on HTTP method
+            if (method === 'GET') {
+                if (path === 'players') {
+                    url += 'players?select=*';
+                } else if (path === 'reasons') {
+                    url += 'reasons?select=*';
+                } else if (path === 'fines') {
+                    url += 'fines?select=id,amount,created_at,player_id,reason_id&order=created_at.desc';
+                } else {
+                    url += path;
+                }
+            } else if (method === 'POST') {
+                url += path;
+            } else if (method === 'DELETE') {
+                // Handle DELETE requests
+                if (path.startsWith('players/')) {
+                    const id = path.split('/')[1];
+                    url += `players?id=eq.${id}`;
+                } else if (path.startsWith('reasons/')) {
+                    const id = path.split('/')[1];
+                    url += `reasons?id=eq.${id}`;
+                } else if (path.startsWith('fines-delete')) {
+                    const id = path.split('=')[1];
+                    url += `fines?id=eq.${id}`;
+                } else {
+                    url += path;
+                }
+            }
+            
+            debug(`Making ${method} request to ${url}`);
+            showLoading(true);
             
             const options = {
                 method,
@@ -236,19 +270,20 @@ function formatDate(dateString) {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json',
                     'apikey': SUPABASE_KEY,
-                    'Authorization': `Bearer ${SUPABASE_KEY}`,
-                    'Prefer': 'return=representation'
+                    'Authorization': `Bearer ${SUPABASE_KEY}`
                 },
                 mode: 'cors',
                 credentials: 'omit'
             };
             
+            // Add Prefer header for inserts to return the created item
+            if (method === 'POST') {
+                options.headers['Prefer'] = 'return=representation';
+            }
+            
             if (data && (method === 'POST' || method === 'PUT')) {
                 options.body = JSON.stringify(data);
             }
-            
-            debug(`Making ${method} request to ${url}`);
-            showLoading(true);
             
             // Attempt the API request
             const response = await fetch(url, options);
@@ -268,19 +303,65 @@ function formatDate(dateString) {
                 throw new Error(errorMessage);
             }
             
-            const responseData = await response.json();
-            return responseData;
+            // For GET requests, return the JSON data
+            // For DELETE, often there's no content returned
+            if (method === 'GET' || method === 'POST') {
+                const responseData = await response.json();
+                
+                // For fines endpoint, join with player and reason data
+                if (path === 'fines' && Array.isArray(responseData)) {
+                    // Fetch all players and reasons in one request each for efficiency
+                    const [playersResponse, reasonsResponse] = await Promise.all([
+                        fetch(`${API_BASE_URL}/players?select=id,name`, {
+                            headers: {
+                                'apikey': SUPABASE_KEY,
+                                'Authorization': `Bearer ${SUPABASE_KEY}`
+                            }
+                        }),
+                        fetch(`${API_BASE_URL}/reasons?select=id,description`, {
+                            headers: {
+                                'apikey': SUPABASE_KEY,
+                                'Authorization': `Bearer ${SUPABASE_KEY}`
+                            }
+                        })
+                    ]);
+                    
+                    const players = await playersResponse.json();
+                    const reasons = await reasonsResponse.json();
+                    
+                    // Map player and reason data to each fine
+                    const enhancedFines = responseData.map(fine => {
+                        const player = players.find(p => p.id === fine.player_id);
+                        const reason = reasons.find(r => r.id === fine.reason_id);
+                        
+                        return {
+                            ...fine,
+                            player_name: player ? player.name : 'Onbekend',
+                            reason_description: reason ? reason.description : 'Onbekend'
+                        };
+                    });
+                    
+                    return enhancedFines;
+                }
+                
+                return responseData;
+            }
+            
+            // For DELETE, return success
+            return { success: true };
         } catch (error) {
             debug(`API Error: ${error.message}`);
             showToast(`API Error: ${error.message}`, 'error');
             
-            // Return empty arrays instead of mock data
-            if (endpoint.includes('players')) {
-                return [];
-            } else if (endpoint.includes('reasons')) {
-                return [];
-            } else if (endpoint.includes('fines')) {
-                return [];
+            // Return empty arrays for GET requests
+            if (method === 'GET') {
+                if (endpoint.includes('players')) {
+                    return [];
+                } else if (endpoint.includes('reasons')) {
+                    return [];
+                } else if (endpoint.includes('fines')) {
+                    return [];
+                }
             }
             
             throw error;
