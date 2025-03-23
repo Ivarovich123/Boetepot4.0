@@ -239,7 +239,7 @@ function formatDate(dateString) {
                 } else if (path === 'reasons') {
                     url += 'reasons?select=*';
                 } else if (path === 'fines') {
-                    url += 'fines?select=id,amount,created_at,player_id,reason_id&order=created_at.desc';
+                    url += 'fines?select=id,amount,date,player_id,reason_id&order=date.desc';
                 } else {
                     url += path;
                 }
@@ -586,7 +586,7 @@ function formatDate(dateString) {
                 <div>
                     <h3 class="font-semibold text-lg">${fine.player_name}</h3>
                     <p class="text-gray-600 dark:text-gray-300">${fine.reason_description}</p>
-                    <p class="text-gray-500 dark:text-gray-400 text-sm mt-1">${formatDate(fine.created_at || fine.date)}</p>
+                    <p class="text-gray-500 dark:text-gray-400 text-sm mt-1">${formatDate(fine.date)}</p>
                 </div>
                 <div class="flex items-center">
                     <span class="font-bold text-lg mr-4 text-blue-600 dark:text-blue-400">${formatCurrency(fine.amount)}</span>
@@ -898,7 +898,7 @@ function formatDate(dateString) {
                     player_id,
                     reason_id,
                     amount,
-                    created_at: new Date().toISOString()
+                    date: new Date().toISOString()
                 };
                 
                 const success = await addFine(data);

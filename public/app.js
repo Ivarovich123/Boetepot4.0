@@ -338,7 +338,7 @@ async function fetchAPI(endpoint, options = {}) {
         } else if (path === 'total-amount') {
             url += 'fines?select=amount';
         } else if (path === 'recent-fines') {
-            url += 'fines?select=id,amount,created_at,player_id,reason_id&order=created_at.desc&limit=5';
+            url += 'fines?select=id,amount,date,player_id,reason_id&order=date.desc&limit=5';
         } else if (path === 'leaderboard') {
             url += 'players?select=id,name,fines(amount)&order=name.asc&limit=5';
         } else if (path.startsWith('player?id=')) {
@@ -346,7 +346,7 @@ async function fetchAPI(endpoint, options = {}) {
             url += `players?id=eq.${playerId}&select=*`;
         } else if (path.startsWith('player-fines?id=')) {
             const playerId = path.split('=')[1];
-            url += `fines?player_id=eq.${playerId}&select=*&order=created_at.desc`;
+            url += `fines?player_id=eq.${playerId}&select=*&order=date.desc`;
         } else {
             url += path;
         }
