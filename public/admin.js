@@ -114,7 +114,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // For URLs without parameters
             return url + '?limit.cb=' + VERSION;
         }
-    }
+}
 
 function formatCurrency(amount) {
     return new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(amount);
@@ -271,9 +271,9 @@ function formatDate(dateString) {
             
             const options = {
                 method,
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
+      headers: {
+        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
                     'apikey': SUPABASE_KEY,
                     'Authorization': `Bearer ${SUPABASE_KEY}`,
                     'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -306,7 +306,7 @@ function formatDate(dateString) {
             }
             
             return await response.json();
-        } catch (error) {
+  } catch (error) {
             debug(`API Error: ${error.message}`);
             showToast(`API Error: ${error.message}`, 'error');
             throw error;
@@ -897,14 +897,62 @@ function formatDate(dateString) {
     
     async function resetAllData() {
         try {
-            // Send empty object as valid JSON data
-            await apiRequest('/reset', 'POST', {});
+            showLoading(true);
+            debug('Resetting all data...');
+            
+            if (!confirm('WAARSCHUWING: Dit zal ALLE data verwijderen! Weet je zeker dat je door wilt gaan?')) {
+                return false;
+            }
+            
+            if (!confirm('Dit is je laatste kans! Alle boetes, spelers en redenen worden verwijderd. Dit kan niet ongedaan worden gemaakt!')) {
+                return false;
+            }
+            
+            // Delete all fines first (due to foreign key constraints)
+            debug('Deleting all fines...');
+            await fetch(`${API_BASE_URL}/fines`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'apikey': SUPABASE_KEY,
+                    'Authorization': `Bearer ${SUPABASE_KEY}`
+                }
+            });
+            
+            // Delete all players
+            debug('Deleting all players...');
+            await fetch(`${API_BASE_URL}/players`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'apikey': SUPABASE_KEY,
+                    'Authorization': `Bearer ${SUPABASE_KEY}`
+                }
+            });
+            
+            // Delete all reasons
+            debug('Deleting all reasons...');
+            await fetch(`${API_BASE_URL}/reasons`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'apikey': SUPABASE_KEY,
+                    'Authorization': `Bearer ${SUPABASE_KEY}`
+                }
+            });
+            
             showToast('Alle data succesvol gereset!', 'success');
             await loadAllData(); // Reload all data
-    return true;
+            return true;
         } catch (error) {
             debug(`Failed to reset data: ${error.message}`);
+            showToast(`Fout bij resetten van data: ${error.message}`, 'error');
             return false;
+        } finally {
+            showLoading(false);
         }
     }
     

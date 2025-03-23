@@ -477,42 +477,99 @@ async function loadRecentFines() {
 
 // Load leaderboard - improved error handling
 async function loadLeaderboard() {
-    const leaderboardContainer = $('#leaderboard');
-    if (!leaderboardContainer.length) {
-        debug('Error: Leaderboard container not found');
+    try {
+        debug('Loading leaderboard data...');
+        showLoading(true);
+        
+        // First get all fines with player details
+        const fines = await apiRequest('/fines?select=id,amount,date,player_id');
+        const players = await apiRequest('/players?select=id,name');
+        
+        if (!fines || !players) {
+            debug('No fines or players data available');
+            return [];
+        }
+        
+        // Calculate totals per player
+        const playerTotals = {};
+        
+        // Initialize playerTotals with all players
+        players.forEach(player => {
+            playerTotals[player.id] = {
+                id: player.id,
+                name: player.name,
+                fineCount: 0,
+                totalAmount: 0
+            };
+        });
+        
+        // Calculate totals from fines
+        fines.forEach(fine => {
+            if (fine.player_id && playerTotals[fine.player_id]) {
+                playerTotals[fine.player_id].fineCount += 1;
+                playerTotals[fine.player_id].totalAmount += parseFloat(fine.amount || 0);
+            }
+        });
+        
+        // Convert to array and sort by total amount (highest first)
+        const leaderboard = Object.values(playerTotals)
+            .filter(player => player.fineCount > 0) // Only show players with fines
+            .sort((a, b) => b.totalAmount - a.totalAmount)
+            .slice(0, 5); // Top 5 players
+        
+        renderLeaderboard(leaderboard);
+        return leaderboard;
+    } catch (error) {
+        debug(`Error loading leaderboard: ${error.message}`);
+        return [];
+    } finally {
+        showLoading(false);
+    }
+}
+
+// Renders the leaderboard with the top players
+function renderLeaderboard(leaderboardData) {
+    const leaderboardEl = document.getElementById('leaderboard');
+    if (!leaderboardEl) return;
+    
+    // Clear previous content
+    leaderboardEl.innerHTML = '';
+    
+    if (!leaderboardData || leaderboardData.length === 0) {
+        leaderboardEl.innerHTML = `
+            <div class="text-center py-4">
+                <p class="text-gray-500 dark:text-gray-400">Geen data beschikbaar</p>
+            </div>
+        `;
         return;
     }
     
-    try {
-        const players = await apiRequest('/players', 'GET');
+    // Create leaderboard HTML
+    leaderboardData.forEach((player, index) => {
+        const listItem = document.createElement('div');
+        listItem.className = 'flex items-center justify-between p-3 border-b border-gray-100 dark:border-gray-700';
         
-        // Process players to calculate their fine totals
-        const fines = await apiRequest('/fines', 'GET');
+        // Determine badge color based on position
+        let badgeColor = 'bg-gray-200 text-gray-800';
+        if (index === 0) badgeColor = 'bg-yellow-100 text-yellow-800';
+        else if (index === 1) badgeColor = 'bg-gray-100 text-gray-800';
+        else if (index === 2) badgeColor = 'bg-yellow-50 text-yellow-700';
         
-        // Calculate total for each player
-        const playerTotals = [];
+        listItem.innerHTML = `
+            <div class="flex items-center">
+                <span class="flex items-center justify-center ${badgeColor} w-6 h-6 rounded-full mr-3">
+                    ${index + 1}
+                </span>
+                <span class="font-medium">${player.name}</span>
+            </div>
+            <div class="text-right">
+                <span class="font-semibold">${formatCurrency(player.totalAmount)}</span>
+                <span class="text-gray-500 dark:text-gray-400 block text-xs">${player.fineCount} boetes</span>
+            </div>
+        `;
         
-        players.forEach(player => {
-            const playerFines = fines.filter(fine => fine.player_id === player.id);
-            const total = playerFines.reduce((sum, fine) => sum + parseFloat(fine.amount || 0), 0);
-            
-            playerTotals.push({
-                id: player.id,
-                name: player.name,
-                total
-            });
-        });
-        
-        // Sort by total amount (highest first)
-        playerTotals.sort((a, b) => b.total - a.total);
-        
-        // Take top 5
-        const topPlayers = playerTotals.slice(0, 5);
-        
-        renderLeaderboard(topPlayers);
-    } catch (error) {
-        debug(`Error loading leaderboard: ${error.message}`);
-    }
+        leaderboardEl.appendChild(listItem);
+    });
 }
 
 // Load players for history dropdown - improved error handling
@@ -623,7 +680,7 @@ $(document).ready(function() {
                 style="position: fixed; bottom: 20px; right: 20px; z-index: 9999; 
                        background-color: var(--btn-primary); color: white; 
                        border: none; border-radius: 50%; width: 50px; height: 50px; 
-                       display: flex; align-items: center; justify-center;
+                       display: flex; align-items: center; justify-content: center;
                        box-shadow: 0 4px 10px rgba(0,0,0,0.2); opacity: 0.8;">
             <i class="fas fa-sync-alt"></i>
         </button>
@@ -775,12 +832,23 @@ function setupDefaultData() {
     }
 }
 
-// Add function to load all data
-function loadData() {
-    loadTotalAmount();
-    loadRecentFines();
-    loadLeaderboard();
-    loadPlayers();
+// Main data loading function
+async function loadData() {
+    debug('Loading data...');
+    try {
+        // Load recent fines
+        await loadRecentFines();
+        
+        // Load leaderboard
+        await loadLeaderboard();
+        
+        // Load all players for history dropdown
+        await loadPlayers();
+        
+        debug('All data loaded successfully');
+    } catch (error) {
+        debug(`Error loading data: ${error.message}`);
+    }
 }
 
 // Add function to setup UI actions
@@ -1018,7 +1086,7 @@ $(document).ready(function() {
                 style="position: fixed; bottom: 20px; right: 20px; z-index: 9999; 
                        background-color: var(--btn-primary); color: white; 
                        border: none; border-radius: 50%; width: 50px; height: 50px; 
-                       display: flex; align-items: center; justify-center;
+                       display: flex; align-items: center; justify-content: center;
                        box-shadow: 0 4px 10px rgba(0,0,0,0.2); opacity: 0.8;">
             <i class="fas fa-sync-alt"></i>
         </button>
