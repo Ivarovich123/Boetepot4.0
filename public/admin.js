@@ -831,4 +831,149 @@ function formatDate(dateString) {
         
         return [];
     }
+
+    // Initialize the admin panel
+    async function initializeAdminPanel() {
+        debug('Initializing admin panel...');
+        
+        // Initialize theme
+        initTheme();
+        
+        // Setup theme toggle
+        if (themeToggle) {
+            themeToggle.addEventListener('click', toggleTheme);
+            debug('Theme toggle setup completed');
+        } else {
+            debug('Theme toggle button not found');
+        }
+        
+        // Setup tabs
+        setupTabs();
+        
+        // Load data
+        await loadAllData();
+        
+        // Setup form submissions
+        setupFormSubmissions();
+        
+        debug('Admin panel initialization complete');
+    }
+    
+    function setupFormSubmissions() {
+        // Add Fine Form
+        const addFineForm = document.getElementById('addFineForm');
+        if (addFineForm) {
+            addFineForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                const playerSelect = document.getElementById('playerSelect');
+                const reasonSelect = document.getElementById('reasonSelect');
+                const amountInput = document.getElementById('fineAmount');
+                
+                if (!playerSelect || !reasonSelect || !amountInput) {
+                    showToast('Formulier elementen ontbreken!', 'error');
+                    return;
+                }
+                
+                const player_id = playerSelect.value;
+                const reason_id = reasonSelect.value;
+                const amount = parseFloat(amountInput.value);
+                
+                if (!player_id) {
+                    showToast('Selecteer een speler', 'error');
+                    return;
+                }
+                
+                if (!reason_id) {
+                    showToast('Selecteer een reden', 'error');
+                    return;
+                }
+                
+                if (isNaN(amount) || amount <= 0) {
+                    showToast('Voer een geldig bedrag in', 'error');
+                    return;
+                }
+                
+                const data = {
+                    player_id,
+                    reason_id,
+                    amount,
+                    created_at: new Date().toISOString()
+                };
+                
+                const success = await addFine(data);
+                
+                if (success) {
+                    // Reset form
+                    $(playerSelect).val('').trigger('change');
+                    $(reasonSelect).val('').trigger('change');
+                    amountInput.value = '';
+                }
+            });
+        }
+        
+        // Add Player Form
+        const addPlayerForm = document.getElementById('addPlayerForm');
+        if (addPlayerForm) {
+            addPlayerForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                const nameInput = document.getElementById('playerName');
+                
+                if (!nameInput) {
+                    showToast('Formulier elementen ontbreken!', 'error');
+                    return;
+                }
+                
+                const name = nameInput.value.trim();
+                
+                if (!name) {
+                    showToast('Voer een naam in', 'error');
+                    return;
+                }
+                
+                const success = await addPlayer({ name });
+                
+                if (success) {
+                    // Reset form
+                    nameInput.value = '';
+                }
+            });
+        }
+        
+        // Add Reason Form
+        const addReasonForm = document.getElementById('addReasonForm');
+        if (addReasonForm) {
+            addReasonForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                const descriptionInput = document.getElementById('reasonDescription');
+                
+                if (!descriptionInput) {
+                    showToast('Formulier elementen ontbreken!', 'error');
+                    return;
+                }
+                
+                const description = descriptionInput.value.trim();
+                
+                if (!description) {
+                    showToast('Voer een beschrijving in', 'error');
+                    return;
+                }
+                
+                const success = await apiRequest('/reasons', 'POST', { description });
+                
+                if (success) {
+                    showToast('Reden succesvol toegevoegd!', 'success');
+                    // Reset form
+                    descriptionInput.value = '';
+                    // Reload reasons
+                    await loadReasons();
+                }
+            });
+        }
+    }
+    
+    // Start initialization
+    initializeAdminPanel();
 });

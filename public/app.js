@@ -340,7 +340,7 @@ async function fetchAPI(endpoint, options = {}) {
         } else if (path === 'recent-fines') {
             url += 'fines?select=id,amount,created_at,player_id,reason_id&order=created_at.desc&limit=5';
         } else if (path === 'leaderboard') {
-            url += 'players?select=id,name,total_amount:fines(sum,amount)&order=total_amount.desc&limit=5';
+            url += 'players?select=id,name,fines(amount)&order=name.asc&limit=5';
         } else if (path.startsWith('player?id=')) {
             const playerId = path.split('=')[1];
             url += `players?id=eq.${playerId}&select=*`;
@@ -452,20 +452,21 @@ async function fetchAPI(endpoint, options = {}) {
             // Format leaderboard data from Supabase
             return data.map(player => {
                 let totalAmount = 0;
-                // Check if the player has a fines aggregate with a sum
-                if (player.fines && player.fines.sum) {
-                    totalAmount = parseFloat(player.fines.sum.amount || 0);
-                } else if (player.total_amount) {
-                    // Handle the new format if available
-                    totalAmount = parseFloat(player.total_amount || 0);
+                
+                // Calculate sum from the array of fines
+                if (player.fines && Array.isArray(player.fines)) {
+                    player.fines.forEach(fine => {
+                        if (fine.amount) {
+                            totalAmount += parseFloat(fine.amount);
+                        }
+                    });
                 }
                 
                 return {
                     id: player.id,
                     name: player.name,
                     totalFined: totalAmount,
-                    // Count is not directly available in this query, but we could add it
-                    fineCount: 0
+                    fineCount: player.fines ? player.fines.length : 0
                 };
             }).sort((a, b) => b.totalFined - a.totalFined);
         }

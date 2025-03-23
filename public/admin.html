@@ -171,11 +171,17 @@
         <nav class="px-4 h-16">
             <div class="h-full mx-auto flex items-center justify-between">
                 <div class="flex items-center">
-                    <a href="index.html" class="mr-4">
-                        <h1 class="text-xl font-bold text-blue-600 dark:text-blue-500 flex items-center">
-                            <i class="fas fa-arrow-left mr-2 text-gray-500"></i>
-                            Boetepot
-                        </h1>
+                    <a href="index.html" class="flex items-center">
+                        <div class="relative h-10 w-10 overflow-hidden bg-blue-500 dark:bg-blue-600 rounded-lg shadow-md mr-3 flex-shrink-0 transform hover:scale-110 transition-transform duration-300">
+                            <div class="absolute inset-0 flex items-center justify-center overflow-hidden">
+                                <img src="./asc-logo.svg" alt="ASC Logo" class="h-full w-full object-contain p-1">
+                            </div>
+                            <div class="absolute inset-0 bg-gradient-to-br from-transparent to-blue-700 dark:to-blue-900 opacity-30 hover:opacity-0 transition-opacity duration-300"></div>
+                        </div>
+                        <div>
+                            <h1 class="text-xl font-bold text-blue-600 dark:text-blue-500">Boetepot</h1>
+                            <span class="text-xs text-gray-500 dark:text-gray-400">ASC Dalfsen</span>
+                        </div>
                     </a>
                 </div>
                 <div class="flex items-center space-x-4">
