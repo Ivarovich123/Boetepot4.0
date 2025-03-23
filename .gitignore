@@ -1,6 +1,7 @@
 # Dependency directories
 node_modules/
 jspm_packages/
+vendor/
 
 # dotenv environment variables file
 .env
@@ -28,8 +29,9 @@ pids
 .now
 
 # Build artifacts
-dist
-build
+dist/
+build/
+out/
 
 # IDE files
 .vscode/
@@ -39,4 +41,15 @@ build
 
 # OS files
 .DS_Store
-Thumbs.db 
+Thumbs.db
+
+# Sensitive files with credentials
+*credentials*.txt
+*SUPABASE_*.txt
+*secret*.txt
+*apikey*.txt
+*key*.txt
+
+# Local configuration files
+config.local.js
+local.config.js 
