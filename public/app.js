@@ -475,101 +475,136 @@ async function loadRecentFines() {
     }
 }
 
-// Load leaderboard - improved error handling
-async function loadLeaderboard() {
-    try {
-        debug('Loading leaderboard data...');
-        showLoading(true);
-        
-        // First get all fines with player details
-        const fines = await apiRequest('/fines?select=id,amount,date,player_id');
-        const players = await apiRequest('/players?select=id,name');
-        
-        if (!fines || !players) {
-            debug('No fines or players data available');
-            return [];
-        }
-        
-        // Calculate totals per player
-        const playerTotals = {};
-        
-        // Initialize playerTotals with all players
-        players.forEach(player => {
-            playerTotals[player.id] = {
-                id: player.id,
-                name: player.name,
-                fineCount: 0,
-                totalAmount: 0
-            };
-        });
-        
-        // Calculate totals from fines
-        fines.forEach(fine => {
-            if (fine.player_id && playerTotals[fine.player_id]) {
-                playerTotals[fine.player_id].fineCount += 1;
-                playerTotals[fine.player_id].totalAmount += parseFloat(fine.amount || 0);
+// Load leaderboard
+function loadLeaderboard() {
+    debug("Loading leaderboard...");
+    
+    // First get all fines
+    $.ajax({
+        url: API_BASE_URL + "/fines" + addCacheBuster({}),
+        type: "GET",
+        headers: {
+            "apikey": SUPABASE_KEY
+        },
+        success: function(fines) {
+            debug(`Loaded ${fines.length} fines for leaderboard`);
+            
+            // If no fines, show empty state
+            if (!fines || fines.length === 0) {
+                $("#leaderboard").html(`
+                    <div id="noLeaderboardData" class="text-gray-400 text-center py-4">
+                        Geen leaderboard data beschikbaar
+                    </div>
+                `);
+                return;
             }
-        });
-        
-        // Convert to array and sort by total amount (highest first)
-        const leaderboard = Object.values(playerTotals)
-            .filter(player => player.fineCount > 0) // Only show players with fines
-            .sort((a, b) => b.totalAmount - a.totalAmount)
-            .slice(0, 5); // Top 5 players
-        
-        renderLeaderboard(leaderboard);
-        return leaderboard;
-    } catch (error) {
-        debug(`Error loading leaderboard: ${error.message}`);
-        return [];
-    } finally {
-        showLoading(false);
-    }
+            
+            // Get all players
+            $.ajax({
+                url: API_BASE_URL + "/players" + addCacheBuster({}),
+                type: "GET",
+                headers: {
+                    "apikey": SUPABASE_KEY
+                },
+                success: function(players) {
+                    debug(`Loaded ${players.length} players for leaderboard`);
+                    
+                    // Create a map of player IDs to player names
+                    const playerMap = {};
+                    players.forEach(player => {
+                        playerMap[player.id] = player.name;
+                    });
+                    
+                    // Calculate total fine amount per player
+                    const playerTotals = {};
+                    fines.forEach(fine => {
+                        const playerId = fine.player_id;
+                        const amount = parseFloat(fine.amount) || 0;
+                        
+                        if (!playerTotals[playerId]) {
+                            playerTotals[playerId] = 0;
+                        }
+                        
+                        playerTotals[playerId] += amount;
+                    });
+                    
+                    // Convert to array, sort by total amount (descending)
+                    const leaderboardEntries = Object.entries(playerTotals)
+                        .map(([playerId, total]) => ({
+                            playerId,
+                            playerName: playerMap[playerId] || "Onbekend",
+                            total
+                        }))
+                        .sort((a, b) => b.total - a.total);
+                    
+                    // Only show players with fines
+                    if (leaderboardEntries.length === 0) {
+                        $("#leaderboard").html(`
+                            <div id="noLeaderboardData" class="text-gray-400 text-center py-4">
+                                Geen leaderboard data beschikbaar
+                            </div>
+                        `);
+                        return;
+                    }
+                    
+                    // Render the leaderboard
+                    renderLeaderboard(leaderboardEntries);
+                },
+                error: function(error) {
+                    console.error("Error loading players for leaderboard:", error);
+                    debug("Error loading players for leaderboard: " + JSON.stringify(error));
+                    $("#leaderboard").html(`
+                        <div class="text-red-500 text-center py-4">
+                            Fout bij laden van spelers voor leaderboard
+                        </div>
+                    `);
+                }
+            });
+        },
+        error: function(error) {
+            console.error("Error loading fines for leaderboard:", error);
+            debug("Error loading fines for leaderboard: " + JSON.stringify(error));
+            $("#leaderboard").html(`
+                <div class="text-red-500 text-center py-4">
+                    Fout bij laden van boetes voor leaderboard
+                </div>
+            `);
+        }
+    });
 }
 
-// Renders the leaderboard with the top players
-function renderLeaderboard(leaderboardData) {
-    const leaderboardEl = document.getElementById('leaderboard');
-    if (!leaderboardEl) return;
+// Render the leaderboard
+function renderLeaderboard(entries) {
+    debug(`Rendering leaderboard with ${entries.length} entries`);
     
-    // Clear previous content
-    leaderboardEl.innerHTML = '';
+    let html = '';
     
-    if (!leaderboardData || leaderboardData.length === 0) {
-        leaderboardEl.innerHTML = `
-            <div class="text-center py-4">
-                <p class="text-gray-500 dark:text-gray-400">Geen data beschikbaar</p>
+    // Generate HTML for each entry
+    entries.forEach((entry, index) => {
+        const rank = index + 1;
+        const formattedTotal = formatCurrency(entry.total);
+        
+        // Get initials for the avatar
+        const initials = entry.playerName
+            .split(' ')
+            .map(word => word.charAt(0))
+            .join('')
+            .substring(0, 2)
+            .toUpperCase();
+        
+        html += `
+            <div class="leaderboard-item bg-white p-3 shadow-sm border border-gray-100 flex items-center">
+                <div class="leaderboard-rank mr-3">${rank}</div>
+                <div class="flex-1">
+                    <div class="font-medium">${entry.playerName}</div>
+                    <div class="text-blue-600 font-semibold">${formattedTotal}</div>
+                </div>
             </div>
         `;
-        return;
-    }
-    
-    // Create leaderboard HTML
-    leaderboardData.forEach((player, index) => {
-        const listItem = document.createElement('div');
-        listItem.className = 'flex items-center justify-between p-3 border-b border-gray-100 dark:border-gray-700';
-        
-        // Determine badge color based on position
-        let badgeColor = 'bg-gray-200 text-gray-800';
-        if (index === 0) badgeColor = 'bg-yellow-100 text-yellow-800';
-        else if (index === 1) badgeColor = 'bg-gray-100 text-gray-800';
-        else if (index === 2) badgeColor = 'bg-yellow-50 text-yellow-700';
-        
-        listItem.innerHTML = `
-            <div class="flex items-center">
-                <span class="flex items-center justify-center ${badgeColor} w-6 h-6 rounded-full mr-3">
-                    ${index + 1}
-                </span>
-                <span class="font-medium">${player.name}</span>
-            </div>
-            <div class="text-right">
-                <span class="font-semibold">${formatCurrency(player.totalAmount)}</span>
-                <span class="text-gray-500 dark:text-gray-400 block text-xs">${player.fineCount} boetes</span>
-            </div>
-        `;
-        
-        leaderboardEl.appendChild(listItem);
     });
+    
+    // Update the DOM
+    $("#leaderboard").html(html);
 }
 
 // Load players for history dropdown - improved error handling

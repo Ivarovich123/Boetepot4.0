@@ -817,114 +817,91 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Reset all data
-    async function resetAllData() {
-        try {
-            showLoading(true);
-            
-            if (!confirm('WAARSCHUWING: Dit verwijdert ALLE boetes, spelers en redenen! Weet je het zeker?')) {
-                return false;
-            }
-            
-            if (!confirm('Dit is je laatste kans! Alle boetes, spelers en redenen worden verwijderd. Dit kan niet ongedaan worden gemaakt!')) {
-                return false;
-            }
-            
-            // Delete all fines first (due to foreign key constraints)
-            debug('Deleting all fines...');
-            const fineResponse = await fetch(addCacheBuster(`${API_BASE_URL}/fines`), {
-                method: 'DELETE',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    'apikey': SUPABASE_KEY,
-                    'Authorization': `Bearer ${SUPABASE_KEY}`
-                }
-            });
-            
-            if (!fineResponse.ok) {
-                throw new Error(`Failed to delete fines: ${fineResponse.statusText}`);
-            }
-            
-            // Delete all players
-            debug('Deleting all players...');
-            const playerResponse = await fetch(addCacheBuster(`${API_BASE_URL}/players`), {
-                method: 'DELETE',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    'apikey': SUPABASE_KEY,
-                    'Authorization': `Bearer ${SUPABASE_KEY}`
-                }
-            });
-            
-            if (!playerResponse.ok) {
-                throw new Error(`Failed to delete players: ${playerResponse.statusText}`);
-            }
-            
-            // Delete all reasons
-            debug('Deleting all reasons...');
-            const reasonResponse = await fetch(addCacheBuster(`${API_BASE_URL}/reasons`), {
-                method: 'DELETE',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    'apikey': SUPABASE_KEY,
-                    'Authorization': `Bearer ${SUPABASE_KEY}`
-                }
-            });
-            
-            if (!reasonResponse.ok) {
-                throw new Error(`Failed to delete reasons: ${reasonResponse.statusText}`);
-            }
-            
-            // Clear local storage
-            localStorage.removeItem('players');
-            localStorage.removeItem('reasons');
-            localStorage.removeItem('fines');
-            localStorage.removeItem('playerData');
-            localStorage.removeItem('reasonData');
-            localStorage.removeItem('fineData');
-            localStorage.removeItem('cachedPlayers');
-            localStorage.removeItem('cachedReasons');
-            localStorage.removeItem('cachedFines');
-            
-            showToast('Alle data succesvol gereset!', 'success');
-            
-            // Reset all UI elements
-            clearAllData();
-            
-            // Reset Select2 elements
-            $('#playerSelect').val(null).trigger('change');
-            $('#reasonSelect').val(null).trigger('change');
-            
-            // Reset input fields
-            $('#amount').val('');
-            $('#playerName').val('');
-            $('#reasonDescription').val('');
-            $('#bulkPlayerNames').val('');
-            
-            // Clear tables and lists
-            $('#playersList').html('<div class="text-gray-500 text-center py-4">Geen spelers gevonden</div>');
-            $('#reasonsList').html('<div class="text-gray-500 text-center py-4">Geen redenen gevonden</div>');
-            $('#recentFines').html('<div class="text-gray-500 text-center py-4">Geen boetes gevonden</div>');
-            
-            // Reset UI on app.html page elements if navigating back
-            $('#total-amount').text('€0,00');
-            $('#recent-fines').html('<div class="text-gray-500 text-center py-4">Geen recente boetes</div>');
-            $('#player-history').html('<div class="text-gray-500 text-center py-4">Selecteer een speler om diens geschiedenis te bekijken</div>');
-            $('#leaderboard').html('<div class="text-gray-500 text-center py-4">Geen data beschikbaar</div>');
-            
-            // Force reload all data to ensure everything is cleared
-            await loadAllData();
-            
-            return true;
-        } catch (error) {
-            debug(`Failed to reset data: ${error.message}`);
-            showToast(`Fout bij resetten van data: ${error.message}`, 'error');
-            return false;
-        } finally {
-            showLoading(false);
+    function resetAllData() {
+        if (!confirm("Weet je zeker dat je ALLE data wilt resetten? Dit verwijdert alle boetes, spelers en redenen!")) {
+            return;
         }
+        
+        if (!confirm("Dit is een PERMANENTE actie. Bevestig nogmaals dat je doorgaat.")) {
+            return;
+        }
+
+        debug("Resetting all data...");
+        showLoading(true);
+        
+        // First delete all fines (respecting foreign key constraints)
+        $.ajax({
+            url: API_BASE_URL + "/fines" + addCacheBuster({}),
+            type: "DELETE",
+            headers: {
+                "apikey": SUPABASE_KEY
+            },
+            success: function(response) {
+                debug("Successfully deleted all fines");
+                
+                // Then delete all players
+                $.ajax({
+                    url: API_BASE_URL + "/players" + addCacheBuster({}),
+                    type: "DELETE",
+                    headers: {
+                        "apikey": SUPABASE_KEY
+                    },
+                    success: function(response) {
+                        debug("Successfully deleted all players");
+                        
+                        // Finally delete all reasons
+                        $.ajax({
+                            url: API_BASE_URL + "/reasons" + addCacheBuster({}),
+                            type: "DELETE",
+                            headers: {
+                                "apikey": SUPABASE_KEY
+                            },
+                            success: function(response) {
+                                debug("Successfully deleted all reasons");
+                                
+                                // Reset all UI elements
+                                $("#playersList").empty();
+                                $("#reasonsList").empty();
+                                $("#recentFines").empty();
+                                $("#leaderboard").empty();
+                                $("#playerHistory").empty();
+                                
+                                // Reset the counter on the main page
+                                $("#totalAmount").text("€0,00");
+                                
+                                // Clear local storage
+                                localStorage.removeItem("players");
+                                localStorage.removeItem("reasons");
+                                localStorage.removeItem("fines");
+                                localStorage.removeItem("lastUpdate");
+                                
+                                showToast("success", "Alle data is succesvol gereset!");
+                                showLoading(false);
+                                loadAllData(); // Reload empty data to refresh the UI
+                            },
+                            error: function(error) {
+                                console.error("Error deleting reasons:", error);
+                                debug("Error deleting reasons: " + JSON.stringify(error));
+                                showToast("error", "Er ging iets mis bij het verwijderen van redenen");
+                                showLoading(false);
+                            }
+                        });
+                    },
+                    error: function(error) {
+                        console.error("Error deleting players:", error);
+                        debug("Error deleting players: " + JSON.stringify(error));
+                        showToast("error", "Er ging iets mis bij het verwijderen van spelers");
+                        showLoading(false);
+                    }
+                });
+            },
+            error: function(error) {
+                console.error("Error deleting fines:", error);
+                debug("Error deleting fines: " + JSON.stringify(error));
+                showToast("error", "Er ging iets mis bij het verwijderen van boetes");
+                showLoading(false);
+            }
+        });
     }
     
     // Event Listeners
