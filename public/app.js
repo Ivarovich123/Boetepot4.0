@@ -22,16 +22,8 @@ function debug(message) {
 
 // Function to add cache-busting to API URLs
 function addCacheBuster(url) {
-    // Use a parameter that won't be interpreted as a column filter by Supabase
-    
-    // If the URL already contains parameters
-    if (url.includes('?')) {
-        // Add a random limit that won't affect typical queries
-        return url + '&limit.cb=' + VERSION;
-    } else {
-        // For URLs without parameters
-        return url + '?limit.cb=' + VERSION;
-    }
+    // No cache busting in the URL - we'll use headers instead
+    return url;
 }
 
 // Get local data (used for fallback when API is not available)
@@ -351,11 +343,6 @@ async function apiRequest(endpoint, method = 'GET', data = null) {
             url = `${API_BASE_URL}${endpoint}`;
         }
         
-        // Add cache-busting to GET requests
-        if (method === 'GET') {
-            url = addCacheBuster(url);
-        }
-        
         const options = {
             method,
             headers: {
@@ -365,7 +352,8 @@ async function apiRequest(endpoint, method = 'GET', data = null) {
                 'Authorization': `Bearer ${SUPABASE_KEY}`,
                 'Cache-Control': 'no-cache, no-store, must-revalidate',
                 'Pragma': 'no-cache',
-                'Expires': '0'
+                'Expires': '0',
+                'X-Cache-Bust': VERSION.toString() // Use a header for cache busting
             }
         };
         

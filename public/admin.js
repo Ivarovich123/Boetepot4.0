@@ -265,23 +265,21 @@ function formatDate(dateString) {
                 } else {
                     url = `${API_BASE_URL}${endpoint}`;
                 }
-                
-                // Add cache-busting parameter to GET requests
-                url = addCacheBuster(url);
             } else {
                 url = `${API_BASE_URL}${endpoint}`;
             }
             
             const options = {
                 method,
-      headers: {
-        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
                     'apikey': SUPABASE_KEY,
                     'Authorization': `Bearer ${SUPABASE_KEY}`,
                     'Cache-Control': 'no-cache, no-store, must-revalidate',
                     'Pragma': 'no-cache',
-                    'Expires': '0'
+                    'Expires': '0',
+                    'X-Cache-Bust': VERSION.toString() // Use a header for cache busting
                 }
             };
             
@@ -308,7 +306,7 @@ function formatDate(dateString) {
             }
             
             return await response.json();
-  } catch (error) {
+        } catch (error) {
             debug(`API Error: ${error.message}`);
             showToast(`API Error: ${error.message}`, 'error');
             throw error;
