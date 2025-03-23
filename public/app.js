@@ -22,7 +22,15 @@ function debug(message) {
 
 // Function to add cache-busting to API URLs
 function addCacheBuster(url) {
-    return url + (url.includes('?') ? '&' : '?') + '_t=' + VERSION;
+    // Use "cachebust" as parameter name since "_t" might be interpreted as a filter by Supabase
+    // Also, ensure we don't add it to URLs that already have query parameters
+    if (url.includes('?')) {
+        // If the URL contains select=* or other parameters, append with & 
+        return url + '&cachebust=' + VERSION;
+    } else {
+        // For URLs without parameters, use ?
+        return url + '?cachebust=' + VERSION;
+    }
 }
 
 // Get local data (used for fallback when API is not available)
