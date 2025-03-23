@@ -875,11 +875,12 @@ function formatDate(dateString) {
     
     async function resetAllData() {
         try {
-            await apiRequest('/reset', 'POST');
+            // Send empty object as valid JSON data
+            await apiRequest('/reset', 'POST', {});
             showToast('Alle data succesvol gereset!', 'success');
             await loadAllData(); // Reload all data
             return true;
-  } catch (error) {
+        } catch (error) {
             debug(`Failed to reset data: ${error.message}`);
             return false;
         }

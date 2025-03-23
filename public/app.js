@@ -247,26 +247,20 @@ function toggleTheme() {
             themeIcon.classList.add('fa-sun');
         }
     }
+    
+    debug(`Theme toggled, new theme: ${isDark ? 'light' : 'dark'}`);
 }
 
-// Fix the theme toggle setup
+// Fix the theme toggle setup - REPLACE WITH THIS NEW VERSION
 $(document).ready(function() {
-    // Initialize theme based on saved preference or system preference
-    const isDarkSaved = localStorage.theme === 'dark';
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    
-    if (isDarkSaved || (!localStorage.theme && prefersDark)) {
-        document.documentElement.classList.add('dark');
-    } else {
-        document.documentElement.classList.remove('dark');
-    }
+    debug('Setting up theme toggle');
     
     // Add click handler for theme toggle button
     $('#theme-toggle').on('click', function() {
         toggleTheme();
     });
     
-    // Update the theme icon
+    // Update the theme icon to match current theme
     const themeIcon = document.getElementById('theme-icon');
     if (themeIcon) {
         if (document.documentElement.classList.contains('dark')) {
@@ -276,6 +270,7 @@ $(document).ready(function() {
             themeIcon.classList.remove('fa-sun');
             themeIcon.classList.add('fa-moon');
         }
+        debug('Theme icon updated to match current theme');
     }
 });
 
@@ -523,7 +518,10 @@ async function loadRecentFines() {
         // Process fines to add player and reason information
         const processedFines = await processRecentFines(fines);
         if (processedFines && processedFines.length > 0) {
-            renderRecentFines(processedFines);
+            // Ensure we only take the 5 most recent
+            const recentFines = processedFines.slice(0, 5);
+            debug(`Showing ${recentFines.length} recent fines`);
+            renderRecentFines(recentFines);
         } else {
             renderRecentFines([]);
         }
@@ -557,8 +555,10 @@ async function loadLeaderboard() {
             return;
         }
         
-        // Top 5 leaderboard items
+        // Top 5 leaderboard items - ensure we only get 5
         const topLeaderboard = leaderboard.slice(0, 5);
+        
+        debug(`Showing top ${topLeaderboard.length} players in leaderboard`);
         
         topLeaderboard.forEach((item, index) => {
             const card = document.createElement('div');
