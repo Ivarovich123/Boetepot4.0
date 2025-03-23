@@ -100,32 +100,39 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-function formatCurrency(amount) {
-    return new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(amount);
-}
+    const VERSION = new Date().getTime(); // Add cache-busting version
+    
+    // Function to add cache-busting to API URLs
+    function addCacheBuster(url) {
+        return url + (url.includes('?') ? '&' : '?') + '_t=' + VERSION;
+    }
+    
+    function formatCurrency(amount) {
+        return new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(amount);
+    }
 
-function formatDate(dateString) {
-  if (!dateString) return 'Onbekend';
-  try {
-    const date = new Date(dateString);
-        return new Intl.DateTimeFormat('nl-NL', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
-        }).format(date);
-  } catch (error) {
-    console.error('Error formatting date:', error);
-    return 'Ongeldige datum';
-  }
-}
+    function formatDate(dateString) {
+        if (!dateString) return 'Onbekend';
+        try {
+            const date = new Date(dateString);
+            return new Intl.DateTimeFormat('nl-NL', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            }).format(date);
+        } catch (error) {
+            console.error('Error formatting date:', error);
+            return 'Ongeldige datum';
+        }
+    }
 
     function showLoading(show = true) {
         const spinner = document.getElementById('loadingSpinner');
         if (spinner) {
-    if (show) {
+            if (show) {
                 spinner.classList.remove('hidden');
                 spinner.classList.add('flex');
-    } else {
+            } else {
                 spinner.classList.remove('flex');
                 spinner.classList.add('hidden');
             }
@@ -161,7 +168,7 @@ function formatDate(dateString) {
         toastContainer.appendChild(toast);
         
         // Animation
-  setTimeout(() => {
+        setTimeout(() => {
             toast.classList.remove('translate-x-full', 'opacity-0');
         }, 10);
         
@@ -233,49 +240,6 @@ function formatDate(dateString) {
         debug('Tab event listeners attached');
     }
     
-    // API & Data Functions - Simplified approach
-    async function apiRequest(endpoint, method = 'GET', data = null) {
-        try {
-            const url = `${API_BASE_URL}${endpoint}`;
-            const options = {
-                method,
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            };
-            
-            if (data && (method === 'POST' || method === 'PUT')) {
-                options.body = JSON.stringify(data);
-            }
-            
-            debug(`Making ${method} request to ${url}`);
-            showLoading(true);
-            
-            const response = await fetch(url, options);
-            
-            if (!response.ok) {
-                let errorMessage = `API error: ${response.status}`;
-                try {
-                    const errorData = await response.json();
-                    if (errorData && errorData.message) {
-                        errorMessage = errorData.message;
-                    }
-                } catch (e) {
-                    // Ignore JSON parsing errors
-                }
-                throw new Error(errorMessage);
-            }
-            
-            return await response.json();
-        } catch (error) {
-            debug(`API Error: ${error.message}`);
-            showToast(`API Error: ${error.message}`, 'error');
-            throw error;
-        } finally {
-            showLoading(false);
-        }
-    }
-    
     // API & Data Functions - Direct API connection to Supabase
     async function apiRequest(endpoint, method = 'GET', data = null) {
         try {
@@ -292,6 +256,9 @@ function formatDate(dateString) {
                 } else {
                     url = `${API_BASE_URL}${endpoint}`;
                 }
+                
+                // Add cache-busting parameter to GET requests
+                url = addCacheBuster(url);
             } else {
                 url = `${API_BASE_URL}${endpoint}`;
             }
@@ -302,7 +269,10 @@ function formatDate(dateString) {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json',
                     'apikey': SUPABASE_KEY,
-                    'Authorization': `Bearer ${SUPABASE_KEY}`
+                    'Authorization': `Bearer ${SUPABASE_KEY}`,
+                    'Cache-Control': 'no-cache, no-store, must-revalidate',
+                    'Pragma': 'no-cache',
+                    'Expires': '0'
                 }
             };
             
@@ -412,9 +382,9 @@ function formatDate(dateString) {
                 loadReasons(),
                 loadFines()
             ]);
-        debug('All data loaded successfully');
-  } catch (error) {
-        debug(`Error loading data: ${error.message}`);
+            debug('All data loaded successfully');
+        } catch (error) {
+            debug(`Error loading data: ${error.message}`);
             showToast('Er is een fout opgetreden bij het laden van gegevens', 'error');
         }
     }
@@ -511,7 +481,7 @@ function formatDate(dateString) {
         select.appendChild(emptyOption);
         
         // Add reason options
-            reasons.forEach(reason => {
+        reasons.forEach(reason => {
             const option = document.createElement('option');
             option.value = reason.id;
             option.textContent = reason.description;
@@ -528,7 +498,7 @@ function formatDate(dateString) {
             
             // Update Select2 to match theme
             updateSelect2Theme(document.body.classList.contains('dark'));
-    } catch (error) {
+        } catch (error) {
             debug(`Error initializing Select2: ${error.message}`);
         }
     }
@@ -546,9 +516,9 @@ function formatDate(dateString) {
                     <p>Geen boetes gevonden.</p>
                 </div>
             `;
-      return;
-    }
-    
+            return;
+        }
+        
         // Sort fines by date (newest first)
         fines.sort((a, b) => new Date(b.created_at || b.date) - new Date(a.created_at || a.date));
         
@@ -601,9 +571,9 @@ function formatDate(dateString) {
                     <p>Geen spelers gevonden.</p>
                 </div>
             `;
-    return;
-  }
-  
+            return;
+        }
+        
         // Sort players by name
         players.sort((a, b) => a.name.localeCompare(b.name));
         
@@ -643,9 +613,9 @@ function formatDate(dateString) {
                     <p>Geen redenen gevonden.</p>
                 </div>
             `;
-    return;
-  }
-  
+            return;
+        }
+        
         // Sort reasons by description
         reasons.sort((a, b) => a.description.localeCompare(b.description));
         
@@ -874,7 +844,7 @@ function formatDate(dateString) {
             showToast('Reden succesvol toegevoegd!', 'success');
             await loadReasons(); // Reload reasons
             return true;
-  } catch (error) {
+        } catch (error) {
             debug(`Failed to add reason: ${error.message}`);
             return false;
         } finally {
@@ -994,9 +964,9 @@ function formatDate(dateString) {
                 
                 if (!playerName) {
                     showToast('Voer een geldige naam in!', 'error');
-        return;
-    }
-    
+                    return;
+                }
+                
                 const success = await addPlayer({
                     name: playerName
                 });
@@ -1170,9 +1140,45 @@ function formatDate(dateString) {
         }
     }
     
+    // Add a function to force reload the page
+    function forceReload() {
+        // Clear any caches that might be preventing updates
+        if ('caches' in window) {
+            caches.keys().then(function(cacheNames) {
+                cacheNames.forEach(function(cacheName) {
+                    caches.delete(cacheName);
+                    debug(`Deleted cache: ${cacheName}`);
+                });
+                // Force a hard reload from the server
+                window.location.reload(true);
+            });
+        } else {
+            // Fallback for browsers without Cache API support
+            window.location.reload(true);
+        }
+    }
+    
     // Initialization
     function init() {
         debug('Initializing admin panel...');
+        
+        // Add a reload button in the bottom right corner
+        $('body').append(`
+            <button id="force-reload" 
+                    style="position: fixed; bottom: 20px; right: 20px; z-index: 9999; 
+                           background-color: var(--btn-primary); color: white; 
+                           border: none; border-radius: 50%; width: 50px; height: 50px; 
+                           display: flex; align-items: center; justify-content: center;
+                           box-shadow: 0 4px 10px rgba(0,0,0,0.2); opacity: 0.8;">
+                <i class="fas fa-sync-alt"></i>
+            </button>
+        `);
+        
+        // Add event listener for the reload button
+        $('#force-reload').on('click', function() {
+            debug('Manual reload requested');
+            forceReload();
+        });
         
         // Initialize theme
         initTheme();

@@ -3,7 +3,52 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <title>Boetepot</title>
+  
+  <!-- Cache busting for CSS and JS -->
+  <script>
+    // Add cache busting to all script and link tags
+    document.addEventListener('DOMContentLoaded', function() {
+      const version = new Date().getTime();
+      const links = document.querySelectorAll('link[rel="stylesheet"]');
+      const scripts = document.querySelectorAll('script[src]');
+      
+      // Function to add timestamp to URL
+      function addTimestamp(url) {
+        return url + (url.includes('?') ? '&' : '?') + 'v=' + version;
+      }
+      
+      // Update stylesheet links
+      links.forEach(link => {
+        if (link.href && !link.href.includes('fonts.googleapis')) {
+          link.href = addTimestamp(link.href);
+        }
+      });
+      
+      // Update script sources
+      scripts.forEach(script => {
+        if (script.src && !script.src.includes('jquery') && !script.src.includes('select2')) {
+          script.src = addTimestamp(script.src);
+        }
+      });
+      
+      // Force reload if older than 1 hour
+      const lastVisit = localStorage.getItem('lastVisit');
+      const now = Date.now();
+      if (lastVisit && (now - parseInt(lastVisit)) > 3600000) {
+        localStorage.setItem('lastVisit', now.toString());
+        if (!sessionStorage.getItem('reloaded')) {
+          sessionStorage.setItem('reloaded', 'true');
+          location.reload(true);
+        }
+      } else {
+        localStorage.setItem('lastVisit', now.toString());
+      }
+    });
+  </script>
   
   <!-- Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">

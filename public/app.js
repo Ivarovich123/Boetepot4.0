@@ -12,10 +12,17 @@ const SERVER_URL = 'https://www.boetepot.cloud';
 
 // Debug setting
 const DEBUG = true;
+const VERSION = new Date().getTime(); // Add cache-busting version
+
 function debug(message) {
     if (DEBUG) {
         console.log(`[DEBUG] ${message}`);
     }
+}
+
+// Function to add cache-busting to API URLs
+function addCacheBuster(url) {
+    return url + (url.includes('?') ? '&' : '?') + '_t=' + VERSION;
 }
 
 // Get local data (used for fallback when API is not available)
@@ -320,113 +327,61 @@ function formatPlayerOption(player) {
 }
 
 // API Functions
-async function fetchAPI(endpoint, options = {}) {
-    let abortController = new AbortController();
-    const timeoutId = setTimeout(() => abortController.abort(), 15000);
-    
+async function apiRequest(endpoint, method = 'GET', data = null) {
     try {
-        debug(`Fetching API: ${endpoint}`);
-        toggleLoading(true);
+        let url;
         
-        // Ensure endpoint does not start with slash when appending to API path
-        const path = endpoint.startsWith('/') ? endpoint.substring(1) : endpoint;
-        
-        // Map endpoint to the appropriate Supabase table and query
-        let url = `${API_BASE_URL}/`;
-        
-        // Handle specific endpoints
-        if (path === 'players') {
-            url += 'players?select=*';
-        } else if (path === 'reasons') {
-            url += 'reasons?select=*';
-        } else if (path === 'fines') {
-            url += 'fines?select=id,amount,date,player_id,reason_id&order=date.desc';
-        } else if (path === 'total-amount') {
-            url += 'fines?select=amount';
-        } else if (path === 'recent-fines') {
-            url += 'fines?select=id,amount,date,player_id,reason_id&order=date.desc&limit=5';
-        } else if (path === 'leaderboard') {
-            url += 'players?select=id,name';
-        } else if (path.startsWith('player?id=')) {
-            const playerId = path.split('=')[1];
-            url += `players?id=eq.${playerId}&select=*`;
-        } else if (path.startsWith('player-fines?id=')) {
-            const playerId = path.split('=')[1];
-            url += `fines?player_id=eq.${playerId}&select=id,amount,date,player_id,reason_id&order=date.desc`;
+        // Handle different endpoints
+        if (endpoint === '/players') {
+            url = `${API_BASE_URL}/players?select=*`;
+        } else if (endpoint === '/reasons') {
+            url = `${API_BASE_URL}/reasons?select=*`;
+        } else if (endpoint === '/fines') {
+            url = `${API_BASE_URL}/fines?select=id,amount,date,player_id,reason_id&order=date.desc`;
         } else {
-            url += path;
+            url = `${API_BASE_URL}${endpoint}`;
         }
         
-        debug(`Trying URL: ${url}`);
+        // Add cache-busting to GET requests
+        if (method === 'GET') {
+            url = addCacheBuster(url);
+        }
         
-        // Set up headers for Supabase
-        const fetchOptions = {
-            ...options,
+        const options = {
+            method,
             headers: {
                 'Content-Type': 'application/json',
                 'Accept': 'application/json',
                 'apikey': SUPABASE_KEY,
                 'Authorization': `Bearer ${SUPABASE_KEY}`,
-                ...options.headers
-            },
-            mode: 'cors',
-            credentials: 'omit',
-            signal: abortController.signal
+                'Cache-Control': 'no-cache, no-store, must-revalidate',
+                'Pragma': 'no-cache',
+                'Expires': '0'
+            }
         };
         
-        debug(`Fetch options: ${JSON.stringify({...fetchOptions, headers: {...fetchOptions.headers, apikey: '***', Authorization: '***'}})}`);
-        
-        // First try - with better error handling
-        let response;
-        try {
-            response = await fetch(url, fetchOptions);
-            debug(`Response status: ${response.status} ${response.statusText}`);
-            
-            // Log response headers for debugging
-            const headers = {};
-            response.headers.forEach((value, key) => {
-                headers[key] = value;
-            });
-            debug(`Response headers: ${JSON.stringify(headers)}`);
-            
-            if (!response.ok) {
-                const errorText = await response.text();
-                debug(`API error: ${errorText}`);
-                throw new Error(`API error: ${response.status} ${response.statusText} - ${errorText}`);
-            }
-            
-            // Parse JSON response
-            const data = await response.json();
-            debug(`API response data (truncated): ${JSON.stringify(data).substring(0, 100)}...`);
-            return data;
-        } catch (fetchError) {
-            debug(`Network or parsing error: ${fetchError.message}`);
-            throw fetchError;
+        if (data && (method === 'POST' || method === 'PUT')) {
+            options.body = JSON.stringify(data);
         }
+        
+        debug(`Making ${method} request to ${url}`);
+        showLoading(true);
+        
+        const response = await fetch(url, options);
+        
+        if (!response.ok) {
+            let errorText = await response.text();
+            debug(`API Error: ${response.status} - ${errorText}`);
+            throw new Error(`API Error: ${response.status}`);
+        }
+        
+        return await response.json();
     } catch (error) {
         debug(`API Error: ${error.message}`);
-        
-        // For total-amount, leaderboard and recent-fines, try to get fallback data
-        if (endpoint === 'total-amount' || endpoint === 'leaderboard' || endpoint === 'recent-fines') {
-            debug(`Using fallback data for ${endpoint}`);
-            const fallbackData = getFallbackData();
-            
-            if (endpoint === 'total-amount') {
-                // Calculate total from the amounts of fines in localStorage
-                const total = fallbackData.fines.reduce((sum, item) => sum + parseFloat(item.amount || 0), 0);
-                return { total };
-            } else if (endpoint === 'recent-fines') {
-                return fallbackData.recentFines;
-            } else if (endpoint === 'leaderboard') {
-                return fallbackData.leaderboard;
-            }
-        }
-        
-        // If we got this far, rethrow the error
+        showToast(`Error: ${error.message}`, 'error');
         throw error;
     } finally {
-        clearTimeout(timeoutId);
-        toggleLoading(false);
+        showLoading(false);
     }
 }
 
@@ -485,116 +440,81 @@ async function loadTotalAmount() {
     try {
         debug('Loading total amount');
         // Directly fetch all fines and calculate the total manually
-        const fines = await fetchAPI('fines');
+        const fines = await apiRequest('/fines', 'GET');
         
         if (!$('#totalAmount').length) {
-            debug('Error: Total amount element not found');
+            debug('Error: totalAmount element not found');
             return;
         }
         
-        // Calculate the total by summing all fine amounts
-        const total = Array.isArray(fines) ? fines.reduce((sum, fine) => {
-            const amount = parseFloat(fine.amount);
-            return sum + (isNaN(amount) ? 0 : amount);
-        }, 0) : 0;
+        // Calculate total
+        const total = fines.reduce((sum, fine) => sum + parseFloat(fine.amount || 0), 0);
         
-        debug(`Calculated total amount: ${total} from ${fines?.length || 0} fines`);
+        // Format the total with euro sign
+        const formattedTotal = formatCurrency(total);
         
-        $('#totalAmount').html(`
-            <div class="text-5xl font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 rounded-2xl px-8 py-4 mb-2 shadow-md">${formatCurrency(total)}</div>
-        `);
+        // Update the total amount display with animation
+        const amountElement = $('.amount-counter');
+        if (amountElement.length) {
+            amountElement.text(formattedTotal);
+        }
+        
+        debug(`Total amount calculated: ${formattedTotal}`);
     } catch (error) {
         debug(`Error loading total amount: ${error.message}`);
-        $('#totalAmount').html(`
-            <div class="text-5xl font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 rounded-2xl px-8 py-4 mb-2 shadow-md">€0,00</div>
-        `);
+        // Fallback using localStorage (already handled by API error)
     }
 }
 
 // Load recent fines - improved error handling
 async function loadRecentFines() {
     try {
-        const fines = await fetchAPI('recent-fines');
+        const fines = await apiRequest('/fines?select=id,amount,date,player_id,reason_id&order=date.desc&limit=5', 'GET');
         // Process fines to add player and reason information
         const processedFines = await processRecentFines(fines);
-        if (processedFines && processedFines.length > 0) {
-            // Ensure we only take the 5 most recent
-            const recentFines = processedFines.slice(0, 5);
-            debug(`Showing ${recentFines.length} recent fines`);
-            renderRecentFines(recentFines);
-        } else {
-            renderRecentFines([]);
-        }
+        renderRecentFines(processedFines);
     } catch (error) {
-        console.error('Error loading recent fines:', error);
-        renderRecentFines([]);
+        debug(`Error loading recent fines: ${error.message}`);
     }
 }
 
 // Load leaderboard - improved error handling
 async function loadLeaderboard() {
-    const leaderboardContainer = document.getElementById('leaderboard');
-    if (!leaderboardContainer) return;
+    const leaderboardContainer = $('#leaderboard');
+    if (!leaderboardContainer.length) {
+        debug('Error: Leaderboard container not found');
+        return;
+    }
     
     try {
-        const players = await fetchAPI('leaderboard');
+        const players = await apiRequest('/players', 'GET');
         
         // Process players to calculate their fine totals
-        const leaderboard = await processLeaderboard(players);
+        const fines = await apiRequest('/fines', 'GET');
         
-        // Clear container and show data
-        leaderboardContainer.innerHTML = '';
+        // Calculate total for each player
+        const playerTotals = [];
         
-        if (leaderboard.length === 0) {
-            leaderboardContainer.innerHTML = `
-                <div class="text-center py-8 text-gray-500 dark:text-gray-400">
-                    <i class="fas fa-info-circle text-2xl mb-3"></i>
-                    <p>Geen spelers gevonden.</p>
-                </div>
-            `;
-            return;
-        }
-        
-        // Top 5 leaderboard items - ensure we only get 5
-        const topLeaderboard = leaderboard.slice(0, 5);
-        
-        debug(`Showing top ${topLeaderboard.length} players in leaderboard`);
-        
-        topLeaderboard.forEach((item, index) => {
-            const card = document.createElement('div');
-            card.className = 'bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-200 dark:border-gray-700 flex items-center justify-between';
+        players.forEach(player => {
+            const playerFines = fines.filter(fine => fine.player_id === player.id);
+            const total = playerFines.reduce((sum, fine) => sum + parseFloat(fine.amount || 0), 0);
             
-            // Add medal icon for top 3
-            let medal = '';
-            if (index === 0) {
-                medal = '<span class="text-yellow-500 mr-2"><i class="fas fa-medal"></i></span>';
-            } else if (index === 1) {
-                medal = '<span class="text-gray-400 mr-2"><i class="fas fa-medal"></i></span>';
-            } else if (index === 2) {
-                medal = '<span class="text-amber-600 mr-2"><i class="fas fa-medal"></i></span>';
-            }
-            
-            card.innerHTML = `
-                <div class="flex items-center">
-                    ${medal}
-                    <div>
-                        <span class="font-medium text-base">${item.name}</span>
-                        <p class="text-gray-500 dark:text-gray-400 text-xs">${item.fineCount} boetes</p>
-                    </div>
-                </div>
-                <div class="text-blue-600 dark:text-blue-400 font-bold">${formatCurrency(item.totalFined)}</div>
-            `;
-            
-            leaderboardContainer.appendChild(card);
+            playerTotals.push({
+                id: player.id,
+                name: player.name,
+                total
+            });
         });
+        
+        // Sort by total amount (highest first)
+        playerTotals.sort((a, b) => b.total - a.total);
+        
+        // Take top 5
+        const topPlayers = playerTotals.slice(0, 5);
+        
+        renderLeaderboard(topPlayers);
     } catch (error) {
-        console.error('Error loading leaderboard:', error);
-        leaderboardContainer.innerHTML = `
-            <div class="text-center py-8 text-gray-500 dark:text-gray-400">
-                <i class="fas fa-exclamation-circle text-2xl mb-3"></i>
-                <p>Fout bij het laden van de ranglijst.</p>
-            </div>
-        `;
+        debug(`Error loading leaderboard: ${error.message}`);
     }
 }
 
@@ -602,7 +522,7 @@ async function loadLeaderboard() {
 async function loadPlayers() {
     try {
         debug('Loading players for dropdown');
-        const data = await fetchAPI('/players');
+        const data = await apiRequest('/players');
         if (!$('#playerSelect').length) {
             debug('Error: Player select element not found');
             return;
@@ -627,7 +547,7 @@ async function loadPlayers() {
 // Load player history - improved error handling
 async function loadPlayerHistory(playerId) {
   try {
-        debug(`Loading history for player ID: ${playerId}`);
+        debug(`Loading history for player ${playerId}`);
         
         if (!playerId) {
             debug('No player selected, hiding player history content');
@@ -639,25 +559,23 @@ async function loadPlayerHistory(playerId) {
         debug(`Fetching player ${playerId} and their fines`);
         
         // First get the player details from the players endpoint
-        const playersData = await fetchAPI('players');
+        const playersData = await apiRequest('/players', 'GET');
         const playerData = playersData.find(p => p.id == playerId);
         
         // Then get all fines for this player
-        const allFines = await fetchAPI('fines');
+        const allFines = await apiRequest('/fines', 'GET');
         let finesData = allFines.filter(f => f.player_id == playerId);
         
         // Get all reasons to associate with fines
-        const reasons = await fetchAPI('reasons');
+        const reasons = await apiRequest('/reasons', 'GET');
         
         // Add reason description to each fine
         finesData = finesData.map(fine => {
-            if (fine.reason_id) {
-                const reason = reasons.find(r => r.id == fine.reason_id);
-                if (reason) {
-                    fine.reason_description = reason.description;
-                }
-            }
-            return fine;
+            const reason = reasons.find(r => r.id === fine.reason_id);
+            return {
+                ...fine,
+                reason_description: reason ? reason.description : 'Onbekende reden'
+            };
         });
         
         debug(`Player data: ${JSON.stringify(playerData)}`);
@@ -1062,4 +980,48 @@ async function processLeaderboard(players) {
     
     // Sort by total amount (highest first)
     return enhancedPlayers.sort((a, b) => b.totalFined - a.totalFined);
-} 
+}
+
+// Add a function to force reload the page
+function forceReload() {
+    // Clear any caches that might be preventing updates
+    if ('caches' in window) {
+        caches.keys().then(function(cacheNames) {
+            cacheNames.forEach(function(cacheName) {
+                caches.delete(cacheName);
+                debug(`Deleted cache: ${cacheName}`);
+            });
+            // Force a hard reload from the server
+            window.location.reload(true);
+        });
+    } else {
+        // Fallback for browsers without Cache API support
+        window.location.reload(true);
+    }
+}
+
+// Initialize app
+$(document).ready(function() {
+    debug('Initializing application');
+    
+    // Add a reload button in the top right corner
+    $('body').append(`
+        <button id="force-reload" 
+                style="position: fixed; bottom: 20px; right: 20px; z-index: 9999; 
+                       background-color: var(--btn-primary); color: white; 
+                       border: none; border-radius: 50%; width: 50px; height: 50px; 
+                       display: flex; align-items: center; justify-content: center;
+                       box-shadow: 0 4px 10px rgba(0,0,0,0.2); opacity: 0.8;">
+            <i class="fas fa-sync-alt"></i>
+        </button>
+    `);
+    
+    // Add event listener for the reload button
+    $('#force-reload').on('click', function() {
+        debug('Manual reload requested');
+        forceReload();
+    });
+    
+    // Initialize application
+    init();
+}); 
