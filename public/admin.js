@@ -366,9 +366,39 @@ function formatDate(dateString) {
     async function loadFines() {
         try {
             const fines = await apiRequest('/fines');
-            renderFinesList(fines);
-            return fines;
-  } catch (error) {
+            
+            // Get players and reasons to add names to fines
+            const players = await apiRequest('/players');
+            const reasons = await apiRequest('/reasons');
+            
+            // Enrich fines with player and reason information
+            const enrichedFines = fines.map(fine => {
+                // Add player name
+                if (fine.player_id) {
+                    const player = players.find(p => p.id == fine.player_id);
+                    if (player) {
+                        fine.player_name = player.name;
+                    } else {
+                        fine.player_name = 'Onbekende speler';
+                    }
+                }
+                
+                // Add reason description
+                if (fine.reason_id) {
+                    const reason = reasons.find(r => r.id == fine.reason_id);
+                    if (reason) {
+                        fine.reason_description = reason.description;
+                    } else {
+                        fine.reason_description = 'Onbekende reden';
+                    }
+                }
+                
+                return fine;
+            });
+            
+            renderFinesList(enrichedFines);
+            return enrichedFines;
+        } catch (error) {
             debug(`Failed to load fines: ${error.message}`);
             return [];
         }
@@ -928,6 +958,76 @@ function formatDate(dateString) {
                 if (success) {
                     // Reset form
                     document.getElementById('playerName').value = '';
+                }
+            });
+        }
+        
+        // Bulk Import Players Form
+        const bulkImportForm = document.getElementById('bulkImportForm');
+        if (bulkImportForm) {
+            bulkImportForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                const bulkPlayerNamesEl = document.getElementById('bulkPlayerNames');
+                if (!bulkPlayerNamesEl) {
+                    showToast('Formulier veld ontbreekt', 'error');
+                    return;
+                }
+                
+                const playerNamesText = bulkPlayerNamesEl.value.trim();
+                if (!playerNamesText) {
+                    showToast('Voer tenminste één naam in', 'error');
+                    return;
+                }
+                
+                // Split the text by newlines to get individual names
+                const playerNames = playerNamesText.split('\n')
+                    .map(name => name.trim())
+                    .filter(name => name.length > 0);
+                
+                if (playerNames.length === 0) {
+                    showToast('Geen geldige namen gevonden', 'error');
+                    return;
+                }
+                
+                if (playerNames.length > 30) {
+                    showToast('Maximaal 30 spelers tegelijk importeren', 'error');
+                    return;
+                }
+                
+                // Show loading
+                showLoading(true);
+                
+                try {
+                    debug(`Bulk importing ${playerNames.length} players`);
+                    
+                    // Create promises for all player adds
+                    const promises = playerNames.map(name => 
+                        addPlayer({ name: name })
+                            .catch(error => {
+                                debug(`Error adding player ${name}: ${error.message}`);
+                                return false;
+                            })
+                    );
+                    
+                    // Wait for all promises to resolve
+                    const results = await Promise.all(promises);
+                    
+                    // Count successes
+                    const successCount = results.filter(result => result === true).length;
+                    
+                    showToast(`${successCount} van ${playerNames.length} spelers succesvol geïmporteerd`, 'success');
+                    
+                    // Reset form
+                    bulkPlayerNamesEl.value = '';
+                    
+                    // Reload players list
+                    await loadPlayers();
+                } catch (error) {
+                    debug(`Bulk import error: ${error.message}`);
+                    showToast('Er is een fout opgetreden tijdens het importeren', 'error');
+                } finally {
+                    showLoading(false);
                 }
             });
         }

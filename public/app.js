@@ -489,18 +489,26 @@ function createPlayerHistoryCard(fine) {
 async function loadTotalAmount() {
     try {
         debug('Loading total amount');
-        const data = await fetchAPI('/total-amount');
+        // Directly fetch all fines and calculate the total manually
+        const fines = await fetchAPI('fines');
+        
         if (!$('#totalAmount').length) {
             debug('Error: Total amount element not found');
             return;
         }
         
-        const total = data && typeof data.total === 'number' ? data.total : 0;
+        // Calculate the total by summing all fine amounts
+        const total = Array.isArray(fines) ? fines.reduce((sum, fine) => {
+            const amount = parseFloat(fine.amount);
+            return sum + (isNaN(amount) ? 0 : amount);
+        }, 0) : 0;
+        
+        debug(`Calculated total amount: ${total} from ${fines?.length || 0} fines`);
         
         $('#totalAmount').html(`
             <div class="text-5xl font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 rounded-2xl px-8 py-4 mb-2 shadow-md">${formatCurrency(total)}</div>
         `);
-  } catch (error) {
+    } catch (error) {
         debug(`Error loading total amount: ${error.message}`);
         $('#totalAmount').html(`
             <div class="text-5xl font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 rounded-2xl px-8 py-4 mb-2 shadow-md">€0,00</div>
@@ -625,8 +633,8 @@ async function loadPlayerHistory(playerId) {
             debug('No player selected, hiding player history content');
             $('#playerHistoryContent').addClass('hidden');
             $('#playerHistoryEmpty').removeClass('hidden');
-      return;
-    }
+            return;
+        }
     
         debug(`Fetching player ${playerId} and their fines`);
         
@@ -634,19 +642,33 @@ async function loadPlayerHistory(playerId) {
         const playersData = await fetchAPI('players');
         const playerData = playersData.find(p => p.id == playerId);
         
-        // Then get all fines and filter for this player
+        // Then get all fines for this player
         const allFines = await fetchAPI('fines');
-        const finesData = allFines.filter(f => f.player_id == playerId);
+        let finesData = allFines.filter(f => f.player_id == playerId);
+        
+        // Get all reasons to associate with fines
+        const reasons = await fetchAPI('reasons');
+        
+        // Add reason description to each fine
+        finesData = finesData.map(fine => {
+            if (fine.reason_id) {
+                const reason = reasons.find(r => r.id == fine.reason_id);
+                if (reason) {
+                    fine.reason_description = reason.description;
+                }
+            }
+            return fine;
+        });
         
         debug(`Player data: ${JSON.stringify(playerData)}`);
-        debug(`Fines data: ${JSON.stringify(finesData)}`);
+        debug(`Fines data (with reasons): ${JSON.stringify(finesData)}`);
         
         if (!playerData || !playerData.name) {
             debug('No valid player data received');
             $('#playerHistoryContent').addClass('hidden');
             $('#playerHistoryEmpty').removeClass('hidden').html('<div class="text-center py-4 text-red-500">Spelersinformatie kon niet worden geladen</div>');
-      return;
-    }
+            return;
+        }
     
         $('#playerHistoryName').text(playerData.name || 'Onbekend');
         
