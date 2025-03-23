@@ -817,91 +817,82 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Reset all data
-    function resetAllData() {
-        if (!confirm("Weet je zeker dat je ALLE data wilt resetten? Dit verwijdert alle boetes, spelers en redenen!")) {
-            return;
-        }
-        
-        if (!confirm("Dit is een PERMANENTE actie. Bevestig nogmaals dat je doorgaat.")) {
-            return;
-        }
-
-        debug("Resetting all data...");
-        showLoading(true);
-        
-        // First delete all fines (respecting foreign key constraints)
-        $.ajax({
-            url: API_BASE_URL + "/fines" + addCacheBuster({}),
-            type: "DELETE",
-            headers: {
-                "apikey": SUPABASE_KEY
-            },
-            success: function(response) {
-                debug("Successfully deleted all fines");
-                
-                // Then delete all players
-                $.ajax({
-                    url: API_BASE_URL + "/players" + addCacheBuster({}),
-                    type: "DELETE",
-                    headers: {
-                        "apikey": SUPABASE_KEY
-                    },
-                    success: function(response) {
-                        debug("Successfully deleted all players");
-                        
-                        // Finally delete all reasons
-                        $.ajax({
-                            url: API_BASE_URL + "/reasons" + addCacheBuster({}),
-                            type: "DELETE",
-                            headers: {
-                                "apikey": SUPABASE_KEY
-                            },
-                            success: function(response) {
-                                debug("Successfully deleted all reasons");
-                                
-                                // Reset all UI elements
-                                $("#playersList").empty();
-                                $("#reasonsList").empty();
-                                $("#recentFines").empty();
-                                $("#leaderboard").empty();
-                                $("#playerHistory").empty();
-                                
-                                // Reset the counter on the main page
-                                $("#totalAmount").text("€0,00");
-                                
-                                // Clear local storage
-                                localStorage.removeItem("players");
-                                localStorage.removeItem("reasons");
-                                localStorage.removeItem("fines");
-                                localStorage.removeItem("lastUpdate");
-                                
-                                showToast("success", "Alle data is succesvol gereset!");
-                                showLoading(false);
-                                loadAllData(); // Reload empty data to refresh the UI
-                            },
-                            error: function(error) {
-                                console.error("Error deleting reasons:", error);
-                                debug("Error deleting reasons: " + JSON.stringify(error));
-                                showToast("error", "Er ging iets mis bij het verwijderen van redenen");
-                                showLoading(false);
-                            }
-                        });
-                    },
-                    error: function(error) {
-                        console.error("Error deleting players:", error);
-                        debug("Error deleting players: " + JSON.stringify(error));
-                        showToast("error", "Er ging iets mis bij het verwijderen van spelers");
-                        showLoading(false);
-                    }
-                });
-            },
-            error: function(error) {
-                console.error("Error deleting fines:", error);
-                debug("Error deleting fines: " + JSON.stringify(error));
-                showToast("error", "Er ging iets mis bij het verwijderen van boetes");
-                showLoading(false);
+    async function resetAllData() {
+        try {
+            // Show confirmation dialog
+            if (!confirm('WAARSCHUWING: Dit zal ALLE boetes, spelers en redenen verwijderen. Deze actie kan niet ongedaan worden gemaakt!')) {
+                return;
             }
-        });
+            
+            // Double-check confirmation
+            if (!confirm('Weet je het zeker? Alle data zal permanent verwijderd worden.')) {
+                return;
+            }
+            
+            // Show loading spinner
+            showLoading();
+            debug('Resetting all data...');
+            
+            // First delete all fines (due to foreign key constraints)
+            await apiRequest('/fines', {
+                method: 'DELETE'
+            });
+            debug('All fines deleted');
+            
+            // Then delete all players
+            await apiRequest('/players', {
+                method: 'DELETE'
+            });
+            debug('All players deleted');
+            
+            // Finally delete all reasons
+            await apiRequest('/reasons', {
+                method: 'DELETE'
+            });
+            debug('All reasons deleted');
+            
+            // Clear local storage
+            localStorage.removeItem('players');
+            localStorage.removeItem('reasons');
+            localStorage.removeItem('fines');
+            debug('Local storage cleared');
+            
+            // Reset UI elements
+            $('#playersList').empty();
+            $('#reasonsList').empty();
+            $('#recentFines').empty();
+            $('#noRecentFines').removeClass('hidden');
+            $('#totalAmount').text('€0,00');
+            
+            // Also reset the leaderboard if it exists
+            if ($('#leaderboard').length) {
+                $('#leaderboard').empty();
+                $('#noLeaderboard').removeClass('hidden');
+            }
+            
+            // Reset player history if it exists
+            if ($('#playerHistory').length) {
+                $('#playerHistory').empty();
+                $('#noPlayerHistory').removeClass('hidden');
+            }
+            
+            // Update player and reason selects
+            $('#playerSelect').empty().append('<option value="">Selecteer speler</option>');
+            $('#reasonSelect').empty().append('<option value="">Selecteer reden</option>');
+            
+            // Show success message
+            showToast('Alle data is succesvol gereset', 'success');
+            debug('All data reset complete');
+            
+            // Reload the data to show empty state
+            loadAllData();
+        } catch (error) {
+            console.error('Error resetting data:', error);
+            showToast('Fout bij resetten van data: ' + error.message, 'error');
+            debug('Reset data error: ' + error.message);
+        } finally {
+            hideLoading();
+        }
     }
     
     // Event Listeners

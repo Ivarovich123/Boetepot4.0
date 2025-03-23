@@ -145,10 +145,10 @@
             opacity: 0.5;
         }
         
-        /* Active tab styling */
+        /* Tab styling */
         .tab-active {
-            color: #2563eb !important;
-            border-color: #2563eb !important;
+            background-color: var(--btn-primary) !important;
+            color: white !important;
         }
         
         /* Button styles */
@@ -180,6 +180,14 @@
         /* Fix for fine cards */
         .fine-card {
             background-color: var(--card-bg);
+            border-radius: 0.75rem;
+            transition: all 0.2s ease;
+            overflow: hidden;
+        }
+        
+        .fine-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         }
         
         /* Mobile optimizations */
@@ -189,7 +197,7 @@
                 padding-right: 1rem;
             }
             
-            .tab-item {
+            .tab-btn {
                 font-size: 0.875rem;
                 padding: 0.5rem;
             }
@@ -271,6 +279,16 @@
             }
         }
         
+        /* Delete button styling */
+        .delete-btn {
+            transition: all 0.2s ease;
+        }
+        
+        .delete-btn:hover {
+            background-color: var(--btn-danger);
+            color: white;
+        }
+        
         /* Custom avatars for player select */
         .player-option {
             display: flex;
@@ -288,6 +306,22 @@
             align-items: center;
             justify-content: center;
             font-weight: bold;
+        }
+        
+        /* List item styling */
+        .list-item {
+            transition: all 0.2s ease;
+            border-radius: 0.5rem;
+        }
+        
+        .list-item:hover {
+            background-color: rgba(0, 131, 203, 0.05);
+        }
+        
+        /* Collapsible sections */
+        .collapse-section {
+            overflow: hidden;
+            transition: max-height 0.3s ease;
         }
     </style>
 </head>
@@ -330,135 +364,249 @@
         </div>
 
         <!-- Tabs -->
-        <div class="tabs flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4">
-            <button id="tab-players" class="tab-btn px-4 py-2 bg-white hover:bg-gray-100 rounded-lg text-gray-600 flex items-center active">
-                <i class="fas fa-users mr-2"></i>
-                <span>Spelers</span>
+        <div class="tabs flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4 mb-6">
+            <button id="tab-boeteToevoegen" class="tab-btn px-6 py-3 bg-white hover:bg-gray-100 rounded-lg text-gray-700 flex items-center font-medium tab-active">
+                <i class="fas fa-plus-circle mr-2"></i>
+                <span>Boete Toevoegen</span>
             </button>
-            <button id="tab-reasons" class="tab-btn px-4 py-2 bg-white hover:bg-gray-100 rounded-lg text-gray-600 flex items-center">
-                <i class="fas fa-list mr-2"></i>
-                <span>Redenen</span>
-            </button>
-            <button id="tab-settings" class="tab-btn px-4 py-2 bg-white hover:bg-gray-100 rounded-lg text-gray-600 flex items-center">
-                <i class="fas fa-cog mr-2"></i>
-                <span>Instellingen</span>
+            <button id="tab-beheer" class="tab-btn px-6 py-3 bg-white hover:bg-gray-100 rounded-lg text-gray-700 flex items-center font-medium">
+                <i class="fas fa-cogs mr-2"></i>
+                <span>Beheer</span>
             </button>
         </div>
         
-        <!-- Player Management Tab -->
-        <div id="playersTab" class="tab-content my-6">
-            <!-- Add Player Form -->
-            <div class="bg-white rounded-2xl shadow-md p-6 mb-6 card">
-                <h2 class="text-xl font-semibold mb-4 flex items-center">
-                    <i class="fas fa-user-plus text-blue-600 mr-3"></i>
-                    Speler Toevoegen
-                </h2>
-                <form id="addPlayerForm" class="space-y-4">
-                    <div class="mb-4">
-                        <label for="playerName" class="block text-sm font-medium mb-2">Naam</label>
-                        <input type="text" id="playerName" class="w-full py-3 px-4 rounded-xl border-gray-300 shadow-sm" placeholder="Naam van de speler" required>
+        <!-- Boete Toevoegen Tab -->
+        <div id="boeteToevoegenTab" class="tab-content">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Add Fine Form -->
+                <div class="bg-white rounded-2xl shadow-md p-6 card">
+                    <h2 class="text-xl font-semibold mb-4 flex items-center">
+                        <i class="fas fa-plus-circle text-blue-600 mr-3"></i>
+                        Boete Toevoegen
+                    </h2>
+                    <form id="addFineForm" class="space-y-4">
+                        <div class="mb-4">
+                            <label for="playerSelect" class="block text-sm font-medium mb-2">Speler</label>
+                            <select id="playerSelect" class="w-full rounded-xl border-gray-300 shadow-sm" required>
+                                <option value="">Selecteer speler</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label for="reasonSelect" class="block text-sm font-medium mb-2">Reden</label>
+                            <select id="reasonSelect" class="w-full rounded-xl border-gray-300 shadow-sm" required>
+                                <option value="">Selecteer reden</option>
+                            </select>
+                        </div>
+                        
+                        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-xl transition-colors shadow-md flex justify-center items-center btn-primary">
+                            <i class="fas fa-save mr-2"></i>
+                            Boete Toevoegen
+                        </button>
+                    </form>
+                </div>
+                
+                <!-- Total Amount Counter -->
+                <div class="bg-gradient-to-r from-blue-500 to-blue-700 rounded-2xl shadow-lg p-6 flex items-center h-40">
+                    <div class="flex-1">
+                        <h2 class="text-white text-xl font-semibold mb-1">Totale Boetepot</h2>
+                        <div id="totalAmount" class="text-white text-4xl font-bold">€0,00</div>
                     </div>
-                    
-                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-xl transition-colors shadow-md flex justify-center items-center btn-primary">
-                        <i class="fas fa-save mr-2"></i>
-                        Speler Toevoegen
-                    </button>
-                </form>
-            </div>
-
-            <!-- Bulk Import Players -->
-            <div class="bg-white rounded-2xl shadow-md p-6 mb-6 card">
-                <h2 class="text-xl font-semibold mb-4 flex items-center">
-                    <i class="fas fa-users text-blue-600 mr-3"></i>
-                    Bulk Import Spelers
-                </h2>
-                <form id="bulkImportForm" class="space-y-4">
-                    <div class="mb-4">
-                        <label for="bulkPlayerNames" class="block text-sm font-medium mb-2">Namen (één per regel, max 30)</label>
-                        <textarea id="bulkPlayerNames" 
-                            class="w-full py-3 px-4 rounded-xl border-gray-300 shadow-sm" 
-                            placeholder="Jan&#10;Peter&#10;Yan"
-                            rows="6"
-                            required></textarea>
+                    <div class="w-20 h-20 relative">
+                        <img src="img/piggy-bank.png" alt="Spaarpot" class="w-full h-full object-contain floating">
                     </div>
-
-                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-xl transition-colors shadow-md flex justify-center items-center btn-primary">
-                        <i class="fas fa-file-import mr-2"></i>
-                        Importeer Spelers
-                    </button>
-                </form>
+                </div>
             </div>
             
-            <!-- Players List -->
-            <div id="playersList" class="bg-white rounded-2xl shadow-md p-6 card space-y-2 mb-6"></div>
-        </div>
-        
-        <!-- Reasons Management Tab -->
-        <div id="reasonsTab" class="tab-content my-6 hidden">
-            <!-- Add Reason Form -->
-            <div class="bg-white rounded-2xl shadow-md p-6 mb-6 card">
+            <!-- Recent Fines -->
+            <div class="bg-white rounded-2xl shadow-md p-6 mt-6 card">
                 <h2 class="text-xl font-semibold mb-4 flex items-center">
-                    <i class="fas fa-plus-circle text-blue-600 mr-3"></i>
-                    Reden Toevoegen
+                    <i class="fas fa-history text-blue-600 mr-3"></i>
+                    Recente Boetes
                 </h2>
-                <form id="addReasonForm" class="space-y-4">
-                    <div class="mb-4">
-                        <label for="reasonDescription" class="block text-sm font-medium mb-2">Beschrijving</label>
-                        <input type="text" id="reasonDescription" class="w-full py-3 px-4 rounded-xl border-gray-300 shadow-sm" placeholder="Beschrijving van de reden" required>
+                <div id="recentFines" class="space-y-3">
+                    <!-- Fines will be loaded here -->
+                    <div id="noRecentFines" class="text-gray-400 text-center py-4">
+                        Geen recente boetes gevonden
                     </div>
-                    
-                    <div class="mb-4">
-                        <label for="reasonAmount" class="block text-sm font-medium mb-2">Bedrag (€)</label>
-                        <input type="number" id="reasonAmount" class="w-full py-3 px-4 rounded-xl border-gray-300 shadow-sm" placeholder="0.00" step="0.50" min="0" required>
-                    </div>
-                    
-                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-xl transition-colors shadow-md flex justify-center items-center btn-primary">
-                        <i class="fas fa-save mr-2"></i>
-                        Reden Toevoegen
-                    </button>
-                </form>
+                </div>
             </div>
-            
-            <!-- Reasons List -->
-            <div id="reasonsList" class="bg-white rounded-2xl shadow-md p-6 card space-y-2 mb-6"></div>
         </div>
         
-        <!-- Settings Tab -->
-        <div id="settingsTab" class="tab-content my-6 hidden">
-            <!-- Debug and Reset Section -->
-            <div class="bg-white rounded-2xl shadow-md p-6 mb-8 card">
-                <!-- Debug Panel -->
-                <h2 class="text-xl font-semibold mb-4 flex items-center">
-                    <i class="fas fa-bug text-blue-600 mr-3"></i>
-                    Debug Panel
-                </h2>
-                <div id="debugPanel" class="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-6">
-                    <div class="mb-3">
-                        <div class="font-semibold mb-1">Debug Status:</div>
-                        <div id="debugStatus" class="text-gray-600 text-sm bg-white p-2 rounded border border-gray-200 overflow-auto max-h-40">Waiting for page to load...</div>
+        <!-- Beheer Tab -->
+        <div id="beheerTab" class="tab-content hidden">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Player Management Section -->
+                <div class="space-y-6">
+                    <!-- Add Player Form -->
+                    <div class="bg-white rounded-2xl shadow-md p-6 card">
+                        <h2 class="text-xl font-semibold mb-4 flex items-center">
+                            <i class="fas fa-user-plus text-blue-600 mr-3"></i>
+                            Speler Toevoegen
+                        </h2>
+                        <form id="addPlayerForm" class="space-y-4">
+                            <div class="mb-4">
+                                <label for="playerName" class="block text-sm font-medium mb-2">Naam</label>
+                                <input type="text" id="playerName" class="w-full py-3 px-4 rounded-xl border-gray-300 shadow-sm" placeholder="Naam van de speler" required>
+                            </div>
+                            
+                            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-xl transition-colors shadow-md flex justify-center items-center btn-primary">
+                                <i class="fas fa-save mr-2"></i>
+                                Speler Toevoegen
+                            </button>
+                        </form>
                     </div>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <button id="manualLoadButton" class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg text-sm flex items-center justify-center btn-primary">
-                            <i class="fas fa-sync-alt mr-2"></i>
-                            Manually Load Data
-                        </button>
-                        <button id="clearStorageButton" class="bg-yellow-600 hover:bg-yellow-700 text-white py-2 px-4 rounded-lg text-sm flex items-center justify-center">
-                            <i class="fas fa-trash-alt mr-2"></i>
-                            Clear Storage
-                        </button>
+
+                    <!-- Bulk Import Players -->
+                    <div class="bg-white rounded-2xl shadow-md p-6 card">
+                        <h2 class="text-xl font-semibold mb-4 flex items-center">
+                            <i class="fas fa-users text-blue-600 mr-3"></i>
+                            Bulk Import Spelers
+                        </h2>
+                        <form id="bulkImportForm" class="space-y-4">
+                            <div class="mb-4">
+                                <label for="bulkPlayerNames" class="block text-sm font-medium mb-2">Namen (één per regel of gescheiden door komma's)</label>
+                                <textarea id="bulkPlayerNames" 
+                                    class="w-full py-3 px-4 rounded-xl border-gray-300 shadow-sm" 
+                                    placeholder="Jan&#10;Peter&#10;Yan"
+                                    rows="4"
+                                    required></textarea>
+                            </div>
+
+                            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-xl transition-colors shadow-md flex justify-center items-center btn-primary">
+                                <i class="fas fa-file-import mr-2"></i>
+                                Importeer Spelers
+                            </button>
+                        </form>
+                    </div>
+                    
+                    <!-- Players List -->
+                    <div class="bg-white rounded-2xl shadow-md p-6 card">
+                        <h2 class="text-xl font-semibold mb-4 flex items-center justify-between">
+                            <div class="flex items-center">
+                                <i class="fas fa-users text-blue-600 mr-3"></i>
+                                Spelers
+                            </div>
+                            <button id="togglePlayersList" class="text-gray-500 hover:text-gray-700">
+                                <i class="fas fa-chevron-down"></i>
+                            </button>
+                        </h2>
+                        <div id="playersList" class="space-y-2 collapse-section">
+                            <!-- Players will be loaded here -->
+                        </div>
                     </div>
                 </div>
                 
-                <!-- Reset Data Button -->
-                <h2 class="text-xl font-semibold mb-4 flex items-center">
-                    <i class="fas fa-exclamation-triangle text-red-600 mr-3"></i>
-                    Data Reset
-                </h2>
-                <p class="text-gray-600 mb-4">WAARSCHUWING: Dit zal ALLE boetes verwijderen. Deze actie kan niet ongedaan worden gemaakt!</p>
-                <button id="resetButton" class="w-full bg-red-600 hover:bg-red-700 text-white font-medium py-3 px-4 rounded-xl transition-colors shadow-md flex justify-center items-center btn-danger">
-                    <i class="fas fa-trash-alt mr-2"></i>
-                    Reset Alle Data
-                </button>
+                <!-- Reason Management and Settings Section -->
+                <div class="space-y-6">
+                    <!-- Add Reason Form -->
+                    <div class="bg-white rounded-2xl shadow-md p-6 card">
+                        <h2 class="text-xl font-semibold mb-4 flex items-center">
+                            <i class="fas fa-plus-circle text-blue-600 mr-3"></i>
+                            Reden Toevoegen
+                        </h2>
+                        <form id="addReasonForm" class="space-y-4">
+                            <div class="mb-4">
+                                <label for="reasonDescription" class="block text-sm font-medium mb-2">Beschrijving</label>
+                                <input type="text" id="reasonDescription" class="w-full py-3 px-4 rounded-xl border-gray-300 shadow-sm" placeholder="Beschrijving van de reden" required>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <label for="reasonAmount" class="block text-sm font-medium mb-2">Bedrag (€)</label>
+                                <input type="number" id="reasonAmount" class="w-full py-3 px-4 rounded-xl border-gray-300 shadow-sm" placeholder="0.00" step="0.50" min="0" required>
+                            </div>
+                            
+                            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-xl transition-colors shadow-md flex justify-center items-center btn-primary">
+                                <i class="fas fa-save mr-2"></i>
+                                Reden Toevoegen
+                            </button>
+                        </form>
+                    </div>
+                    
+                    <!-- Bulk Import Reasons -->
+                    <div class="bg-white rounded-2xl shadow-md p-6 card">
+                        <h2 class="text-xl font-semibold mb-4 flex items-center">
+                            <i class="fas fa-list text-blue-600 mr-3"></i>
+                            Bulk Import Redenen
+                        </h2>
+                        <form id="bulkImportReasonsForm" class="space-y-4">
+                            <div class="mb-4">
+                                <label for="bulkReasons" class="block text-sm font-medium mb-2">Redenen (beschrijving,bedrag per regel of komma)</label>
+                                <textarea id="bulkReasons" 
+                                    class="w-full py-3 px-4 rounded-xl border-gray-300 shadow-sm" 
+                                    placeholder="Te laat komen,2.50&#10;Telefoon tijdens training,5.00"
+                                    rows="4"
+                                    required></textarea>
+                            </div>
+
+                            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-xl transition-colors shadow-md flex justify-center items-center btn-primary">
+                                <i class="fas fa-file-import mr-2"></i>
+                                Importeer Redenen
+                            </button>
+                        </form>
+                    </div>
+                    
+                    <!-- Reasons List -->
+                    <div class="bg-white rounded-2xl shadow-md p-6 card">
+                        <h2 class="text-xl font-semibold mb-4 flex items-center justify-between">
+                            <div class="flex items-center">
+                                <i class="fas fa-list text-blue-600 mr-3"></i>
+                                Redenen
+                            </div>
+                            <button id="toggleReasonsList" class="text-gray-500 hover:text-gray-700">
+                                <i class="fas fa-chevron-down"></i>
+                            </button>
+                        </h2>
+                        <div id="reasonsList" class="space-y-2 collapse-section">
+                            <!-- Reasons will be loaded here -->
+                        </div>
+                    </div>
+                    
+                    <!-- Debug and Reset Section -->
+                    <div class="bg-white rounded-2xl shadow-md p-6 card">
+                        <h2 class="text-xl font-semibold mb-4 flex items-center justify-between">
+                            <div class="flex items-center">
+                                <i class="fas fa-bug text-blue-600 mr-3"></i>
+                                Debug & Reset
+                            </div>
+                            <button id="toggleDebugPanel" class="text-gray-500 hover:text-gray-700">
+                                <i class="fas fa-chevron-down"></i>
+                            </button>
+                        </h2>
+                        <div id="debugPanel" class="space-y-4 collapse-section">
+                            <!-- Debug Status -->
+                            <div class="mb-3">
+                                <div class="font-semibold mb-1">Debug Status:</div>
+                                <div id="debugStatus" class="text-gray-600 text-sm bg-gray-50 p-2 rounded border border-gray-200 overflow-auto max-h-40">Waiting for page to load...</div>
+                            </div>
+                            
+                            <!-- Debug Controls -->
+                            <div class="grid grid-cols-2 gap-3">
+                                <button id="manualLoadButton" class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg text-sm flex items-center justify-center btn-primary">
+                                    <i class="fas fa-sync-alt mr-2"></i>
+                                    Reload Data
+                                </button>
+                                <button id="clearStorageButton" class="bg-yellow-600 hover:bg-yellow-700 text-white py-2 px-4 rounded-lg text-sm flex items-center justify-center">
+                                    <i class="fas fa-trash-alt mr-2"></i>
+                                    Clear Storage
+                                </button>
+                            </div>
+                            
+                            <!-- Reset All Data -->
+                            <div class="pt-4 border-t border-gray-200 mt-4">
+                                <h3 class="text-lg font-semibold mb-2 text-red-600 flex items-center">
+                                    <i class="fas fa-exclamation-triangle mr-2"></i>
+                                    Gegevens Resetten
+                                </h3>
+                                <p class="text-gray-600 text-sm mb-3">WAARSCHUWING: Dit zal ALLE boetes, spelers en redenen verwijderen. Deze actie kan niet ongedaan worden gemaakt!</p>
+                                <button id="resetButton" class="w-full bg-red-600 hover:bg-red-700 text-white font-medium py-3 px-4 rounded-xl transition-colors shadow-md flex justify-center items-center btn-danger">
+                                    <i class="fas fa-trash-alt mr-2"></i>
+                                    Reset Alle Data
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
