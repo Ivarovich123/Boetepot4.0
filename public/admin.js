@@ -1,365 +1,384 @@
-// Simplified admin panel without login
-document.addEventListener('DOMContentLoaded', function() {
-    // Global variables and config
-    const SUPABASE_URL = 'https://jvhgdidaoasgxqqixywl.supabase.co';
-    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp2aGdkaWRhb2FzZ3hxcWl4eXdsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI1MDA3OTYsImV4cCI6MjA1ODA3Njc5Nn0.2qrrNC2bKichC63SvUhNgXlcG0ElViRsqM5CYU3QSfg';
-    
-    // Debug flag - set to true for console logs
-    const DEBUG = true;
-    
-    // DOM Elements
-    const loadingSpinner = document.getElementById('loadingSpinner');
-    const toastContainer = document.getElementById('toastContainer');
-    
-    // Utility Functions
-    function debug(message) {
-        if (DEBUG) {
-            console.log(message);
+// Cache busting parameter for API requests
+let cacheBustParam = Date.now();
+
+// Supabase configuration
+const SUPABASE_URL = 'https://jvhgdidaoasgxqqixywl.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp2aGdkaWRhb2FzZ3hxcWl4eXdsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI1MDA3OTYsImV4cCI6MjA1ODA3Njc5Nn0.2qrrNC2bKichC63SvUhNgXlcG0ElViRsqM5CYU3QSfg';
+
+// Debug mode
+const DEBUG = true;
+
+// DOM elements
+const loadingSpinner = document.getElementById('loadingSpinner');
+const toastContainer = document.getElementById('toastContainer');
+
+// Form elements
+const addFineForm = document.getElementById('addFineForm');
+const playerSelect = document.getElementById('playerSelect');
+const reasonSelect = document.getElementById('reasonSelect');
+const dateInput = document.getElementById('dateInput');
+
+// Player elements
+const playerNameInput = document.getElementById('playerName');
+const addPlayerBtn = document.getElementById('addPlayerBtn');
+const bulkPlayerNamesInput = document.getElementById('bulkPlayerNames');
+const addBulkPlayersBtn = document.getElementById('addBulkPlayersBtn');
+const playersListEl = document.getElementById('playersList');
+const noPlayersFoundEl = document.getElementById('noPlayersFound');
+
+// Reason elements
+const reasonDescriptionInput = document.getElementById('reasonDescription');
+const reasonAmountInput = document.getElementById('reasonAmount');
+const addReasonBtn = document.getElementById('addReasonBtn');
+const bulkReasonsInput = document.getElementById('bulkReasons');
+const addBulkReasonsBtn = document.getElementById('addBulkReasonsBtn');
+const reasonsListEl = document.getElementById('reasonsList');
+const noReasonsFoundEl = document.getElementById('noReasonsFound');
+
+// Recent fines elements
+const recentFinesEl = document.getElementById('recentFines');
+const noRecentFinesEl = document.getElementById('noRecentFines');
+
+// Debug & reset elements
+const checkConnectionBtn = document.getElementById('checkConnectionBtn');
+const exportDataBtn = document.getElementById('exportDataBtn');
+const resetEverythingBtn = document.getElementById('resetEverythingBtn');
+
+// Confirmation modal elements
+const confirmModal = document.getElementById('confirmModal');
+const confirmTitle = document.getElementById('confirmTitle');
+const confirmMessage = document.getElementById('confirmMessage');
+const confirmButton = document.getElementById('confirmButton');
+const cancelButton = document.getElementById('cancelButton');
+
+// Debug function for logging
+function debug(message, data = null) {
+    if (DEBUG) {
+        if (data) {
+            console.log(`[DEBUG] ${message}:`, data);
+        } else {
+            console.log(`[DEBUG] ${message}`);
         }
     }
-    
-    const VERSION = new Date().getTime(); // Add cache-busting version
-    
-    // Function to add cache-busting to API URLs
-    function addCacheBuster(url) {
-        const separator = url.includes('?') ? '&' : '?';
-        return `${url}${separator}cachebust=${Date.now()}`;
-    }
+}
 
-    function formatCurrency(amount) {
-        return '€' + parseFloat(amount).toFixed(2).replace('.', ',');
-    }
+// Format currency
+function formatCurrency(amount) {
+    return '€' + parseFloat(amount).toFixed(2).replace('.', ',');
+}
 
-    function formatDate(dateString) {
-        if (!dateString) return 'Onbekend';
-        try {
-            const date = new Date(dateString);
-            const options = { year: 'numeric', month: 'numeric', day: 'numeric' };
-            return date.toLocaleDateString('nl-NL', options);
-        } catch (error) {
-            console.error('Error formatting date:', error);
-            return 'Ongeldige datum';
+// Format date
+function formatDate(dateString) {
+    const options = { year: 'numeric', month: 'numeric', day: 'numeric' };
+    return new Date(dateString).toLocaleDateString('nl-NL', options);
+}
+
+// Show/hide loading spinner
+function showLoading(show = true) {
+    if (loadingSpinner) {
+        if (show) {
+            loadingSpinner.classList.remove('hidden');
+        } else {
+            loadingSpinner.classList.add('hidden');
         }
     }
+}
 
-    function showLoading(show = true) {
-        if (loadingSpinner) {
-            if (show) {
-                loadingSpinner.classList.remove('hidden');
-            } else {
-                loadingSpinner.classList.add('hidden');
-            }
-        }
+// Show toast message
+function showToast(message, type = 'info') {
+    const toast = document.createElement('div');
+    toast.className = `rounded-lg p-4 mb-3 text-white text-sm flex items-center justify-between shadow-lg transform transition-all duration-300 ease-in-out opacity-0 translate-x-full`;
+    
+    // Set color based on type
+    switch (type) {
+        case 'success':
+            toast.classList.add('bg-green-600');
+            break;
+        case 'error':
+            toast.classList.add('bg-red-600');
+            break;
+        case 'warning':
+            toast.classList.add('bg-yellow-600');
+            break;
+        default:
+            toast.classList.add('bg-primary-600');
     }
     
-    function showToast(message, type = 'info') {
-        if (!toastContainer) return;
-
-        const toast = document.createElement('div');
-        toast.className = `rounded-lg p-4 mb-3 text-white text-sm flex items-center justify-between shadow-lg transform transition-all duration-300 ease-in-out opacity-0 translate-x-full`;
-        
-        // Set color based on type
-        switch (type) {
-            case 'success':
-                toast.classList.add('bg-green-600');
-                break;
-            case 'error':
-                toast.classList.add('bg-red-600');
-                break;
-            case 'warning':
-                toast.classList.add('bg-yellow-600');
-                break;
-            default:
-                toast.classList.add('bg-primary-600');
-        }
-        
-        // Add message and close button
-        toast.innerHTML = `
-            <div class="flex items-center">
-                <i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : type === 'warning' ? 'fa-exclamation-triangle' : 'fa-info-circle'} mr-3"></i>
-                <span>${message}</span>
-            </div>
-            <button class="ml-4 text-white hover:text-gray-200">
-                <i class="fas fa-times"></i>
-            </button>
-        `;
-        
-        // Add to DOM
-        toastContainer.appendChild(toast);
-        
-        // Animate in
+    // Add message and close button
+    toast.innerHTML = `
+        <div class="flex items-center">
+            <i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : type === 'warning' ? 'fa-exclamation-triangle' : 'fa-info-circle'} mr-3"></i>
+            <span>${message}</span>
+        </div>
+        <button class="ml-4 text-white hover:text-gray-200">
+            <i class="fas fa-times"></i>
+        </button>
+    `;
+    
+    // Add to DOM
+    toastContainer.appendChild(toast);
+    
+    // Animate in
+    setTimeout(() => {
+        toast.classList.remove('translate-x-full', 'opacity-0');
+    }, 10);
+    
+    // Setup close button
+    const closeBtn = toast.querySelector('button');
+    closeBtn.addEventListener('click', () => {
+        toast.classList.add('translate-x-full', 'opacity-0');
         setTimeout(() => {
-            toast.classList.remove('translate-x-full', 'opacity-0');
-        }, 10);
-        
-        // Setup close button
-        const closeBtn = toast.querySelector('button');
-        closeBtn.addEventListener('click', () => {
+            toast.remove();
+        }, 300);
+    });
+    
+    // Auto close after 3 seconds
+    setTimeout(() => {
+        if (toast.parentElement) {
             toast.classList.add('translate-x-full', 'opacity-0');
             setTimeout(() => {
-                toast.remove();
+                if (toast.parentElement) {
+                    toast.remove();
+                }
             }, 300);
-        });
-        
-        // Auto close after 3 seconds
-        setTimeout(() => {
-            if (toast.parentElement) {
-                toast.classList.add('translate-x-full', 'opacity-0');
-                setTimeout(() => {
-                    if (toast.parentElement) {
-                        toast.remove();
-                    }
-                }, 300);
-            }
-        }, 3000);
-    }
-    
-    // Tab functionality
-    function setupTabs() {
-        const tabBoetes = document.getElementById('tab-boetes');
-        const tabBeheer = document.getElementById('tab-beheer');
-        const finesTab = document.getElementById('finesTab');
-        const beheerTab = document.getElementById('beheerTab');
-        
-        debug('Setting up tabs');
-        
-        if (!tabBoetes || !tabBeheer || !finesTab || !beheerTab) {
-            debug('Tab elements missing!');
-            return;
         }
-        
-        function activateTab(tabId) {
-            // Reset all tabs
-            [tabBoetes, tabBeheer].forEach(tab => {
-                tab.classList.remove('active');
-            });
-            
-            [finesTab, beheerTab].forEach(content => {
-                content.classList.remove('active');
-            });
-            
-            // Activate selected tab
-            if (tabId === 'beheer') {
-                tabBeheer.classList.add('active');
-                beheerTab.classList.add('active');
-                localStorage.setItem('activeTab', 'beheer');
-            } else {
-                // Default to fines tab
-                tabBoetes.classList.add('active');
-                finesTab.classList.add('active');
-                localStorage.setItem('activeTab', 'boetes');
-            }
-            
-            debug(`Activated tab: ${tabId}`);
-        }
-        
-        // Set default active tab from localStorage or default to fines
-        const activeTab = localStorage.getItem('activeTab') || 'boetes';
-        activateTab(activeTab);
-        
-        // Add event listeners to tabs
-        tabBoetes.addEventListener('click', () => activateTab('boetes'));
-        tabBeheer.addEventListener('click', () => activateTab('beheer'));
-        
-        debug('Tab event listeners attached');
-    }
-    
-    // API & Data Functions - Direct API connection to Supabase
-    async function apiRequest(endpoint, options = {}) {
-        try {
-            showLoading(true);
-            
-            // Ensure endpoint starts with '/' if not already
-            if (!endpoint.startsWith('/')) {
-                endpoint = '/' + endpoint;
-            }
-            
-            // Fix the endpoint format - CRITICAL CHANGE
-            // Supabase REST API expects: /rest/v1/tablename
-            let finalEndpoint = endpoint;
-            
-            // Extract the table name from the endpoint
-            const pathParts = endpoint.split('?')[0].split('/');
-            const tableName = pathParts[pathParts.length - 1];
-            
-            if (!endpoint.includes('/rest/v1/')) {
-                finalEndpoint = `/rest/v1/${tableName}`;
-                
-                // Append query parameters if they exist
-                if (endpoint.includes('?')) {
-                    finalEndpoint += endpoint.substring(endpoint.indexOf('?'));
-                }
-            }
-            
-            // Build the full URL
-            let url = SUPABASE_URL + finalEndpoint;
-            
-            // Add cache busting
-            const timestamp = Date.now();
-            url += (url.includes('?') ? '&' : '?') + `_=${timestamp}`;
-            
-            if (DEBUG) console.log('API Request to:', url);
-            
-            // Headers are CRITICAL for Supabase
-            const headers = {
-                'apikey': SUPABASE_KEY,
-                'Authorization': `Bearer ${SUPABASE_KEY}`,
-                'Content-Type': 'application/json',
-                'Prefer': 'return=representation'
-            };
-            
-            const requestOptions = {
-                ...options,
-                headers: headers,
-                mode: 'cors'
-            };
-            
-            if (DEBUG) console.log('Request options:', JSON.stringify({
-                method: requestOptions.method || 'GET',
-                headers: Object.keys(requestOptions.headers),
-                mode: requestOptions.mode
-            }));
-            
-            // Simplified fetch with no retries to diagnose the issue
-            const response = await fetch(url, requestOptions);
-            
-            if (!response.ok) {
-                const errorText = await response.text();
-                console.error('API Response Error:', response.status, errorText);
-                throw new Error(`API Error (${response.status}): ${errorText}`);
-            }
-            
-            // If response is 204 No Content or a DELETE request, return empty success object
-            if (response.status === 204 || options.method === 'DELETE') {
-                return { success: true };
-            }
-            
-            // Parse JSON response
-            const data = await response.json();
-            if (DEBUG) console.log('API Response Data:', data);
-            return data;
-        } catch (error) {
-            console.error('API Request Error:', error);
-            
-            // More detailed error message and logging
-            let errorMessage = 'Database connection error: ';
-            
-            if (error.message.includes('Failed to fetch')) {
-                errorMessage += 'Cannot reach the database server. This might be due to CORS issues, network problems, or an incorrect API URL.';
-                
-                console.log('Diagnostic info:');
-                console.log('- API URL:', SUPABASE_URL);
-                console.log('- API Key (first 10 chars):', SUPABASE_KEY.substring(0, 10) + '...');
-                console.log('- Browser:', navigator.userAgent);
-                
-                // Try a direct fetch to Supabase health endpoint
-                try {
-                    const healthCheck = await fetch(`${SUPABASE_URL}/rest/v1/?apikey=${SUPABASE_KEY}`);
-                    console.log('Health check response:', healthCheck.status, healthCheck.statusText);
-                } catch (e) {
-                    console.log('Health check failed completely:', e.message);
-                }
-            } else {
-                errorMessage += error.message;
-            }
-            
-            showToast(errorMessage, 'error');
-            throw error;
-        } finally {
-            showLoading(false);
-        }
-    }
-    
-    // Data loading functions
-    async function loadPlayers() {
-        try {
-            showLoading(true);
-            debug('Loading players...');
-            
-            const players = await apiRequest('/players?select=*', { method: 'GET' });
-            renderPlayersList(players);
-            
-            return players;
-        } catch (error) {
-            console.error('Error loading players:', error);
-            showToast('Fout bij het laden van spelers', 'error');
-            return [];
-        } finally {
-            showLoading(false);
-        }
-    }
+    }, 3000);
+}
 
-    async function loadReasons() {
-        try {
-            showLoading(true);
-            debug('Loading reasons...');
-            
-            const reasons = await apiRequest('/reasons?select=*', { method: 'GET' });
-            renderReasonsList(reasons);
-            
-            return reasons;
-        } catch (error) {
-            console.error('Error loading reasons:', error);
-            showToast('Fout bij het laden van redenen', 'error');
-            return [];
-        } finally {
-            showLoading(false);
-        }
-    }
-    
-    async function loadFines() {
-        try {
-            showLoading(true);
-            debug('Loading fines...');
-            
-            const fines = await apiRequest('/fines?select=*,player:player_id(name),reason:reason_id(description,amount)&order=created_at.desc', { method: 'GET' });
-            renderFinesList(fines);
-            
-            return fines;
-        } catch (error) {
-            console.error('Error loading fines:', error);
-            showToast('Fout bij het laden van boetes', 'error');
-            return [];
-        } finally {
-            showLoading(false);
-        }
-    }
-    
-    async function loadAllData() {
-        debug('Loading all data...');
-        try {
-            await Promise.all([
-                loadPlayers(),
-                loadReasons(),
-                loadFines()
-            ]);
-            debug('All data loaded successfully');
-        } catch (error) {
-            debug(`Error loading data: ${error.message}`);
-            showToast('Er is een fout opgetreden bij het laden van gegevens', 'error');
-        }
-    }
-    
-    // UI Rendering Functions
-    function renderFinesList(fines) {
-        const container = document.getElementById('recentFines');
-        if (!container) return;
-        
-        container.innerHTML = '';
-        
-        if (!fines || fines.length === 0) {
-            container.innerHTML = `
-                <div class="text-center py-8 text-gray-500">
-                    <i class="fas fa-info-circle text-2xl mb-3"></i>
-                    <p>Geen boetes gevonden</p>
-                </div>
-            `;
-            return;
+// Make API request
+async function apiRequest(endpoint, options = {}) {
+    showLoading(true);
+    try {
+        // Ensure endpoint starts with '/' if not already
+        if (!endpoint.startsWith('/')) {
+            endpoint = '/' + endpoint;
         }
         
-        fines.slice(0, 10).forEach(fine => {
+        // Fix the endpoint format - CRITICAL CHANGE
+        // Supabase REST API expects: /rest/v1/tablename
+        let finalEndpoint = endpoint;
+        
+        // Extract the table name from the endpoint
+        const pathParts = endpoint.split('?')[0].split('/');
+        const tableName = pathParts[pathParts.length - 1];
+        
+        if (!endpoint.includes('/rest/v1/')) {
+            finalEndpoint = `/rest/v1/${tableName}`;
+            
+            // Append query parameters if they exist
+            if (endpoint.includes('?')) {
+                finalEndpoint += endpoint.substring(endpoint.indexOf('?'));
+            }
+        }
+        
+        // Build the full URL
+        let url = SUPABASE_URL + finalEndpoint;
+        
+        // Add cache busting
+        const timestamp = Date.now();
+        url += (url.includes('?') ? '&' : '?') + `_=${timestamp}`;
+        
+        debug('Attempting API Request to:', url);
+        
+        // Headers are CRITICAL for Supabase
+        const headers = {
+            'apikey': SUPABASE_KEY,
+            'Authorization': `Bearer ${SUPABASE_KEY}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=representation'
+        };
+        
+        const requestOptions = {
+            ...options,
+            headers: headers,
+            mode: 'cors'
+        };
+        
+        debug('Request options:', JSON.stringify({
+            method: requestOptions.method || 'GET',
+            headers: Object.keys(requestOptions.headers),
+            mode: requestOptions.mode
+        }));
+        
+        // Make the request with fetch
+        const response = await fetch(url, requestOptions);
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('API Response Error:', response.status, errorText);
+            throw new Error(`API Error (${response.status}): ${errorText}`);
+        }
+        
+        // Parse JSON response
+        const data = await response.json();
+        debug('API Response Data:', data);
+        return data;
+    } catch (error) {
+        console.error('API Request Error:', error);
+        
+        // More detailed error message and logging
+        let errorMessage = 'Database connection error: ';
+        
+        if (error.message.includes('Failed to fetch')) {
+            errorMessage += 'Cannot reach the database server. This might be due to CORS issues, network problems, or an incorrect API URL.';
+            
+            console.log('Diagnostic info:');
+            console.log('- API URL:', SUPABASE_URL);
+            console.log('- API Key (first 10 chars):', SUPABASE_KEY.substring(0, 10) + '...');
+            console.log('- Browser:', navigator.userAgent);
+            
+            // Try a direct fetch to Supabase health endpoint
+            try {
+                const healthCheck = await fetch(`${SUPABASE_URL}/rest/v1/?apikey=${SUPABASE_KEY}`);
+                console.log('Health check response:', healthCheck.status, healthCheck.statusText);
+            } catch (e) {
+                console.log('Health check failed completely:', e.message);
+            }
+        } else {
+            errorMessage += error.message;
+        }
+        
+        showToast(errorMessage, 'error');
+        throw error;
+    } finally {
+        showLoading(false);
+    }
+}
+
+// Show confirmation modal
+function showConfirmModal(title, message, onConfirm) {
+    confirmTitle.textContent = title;
+    confirmMessage.textContent = message;
+    
+    confirmModal.classList.remove('hidden');
+    
+    // Setup button handlers
+    confirmButton.onclick = () => {
+        onConfirm();
+        confirmModal.classList.add('hidden');
+    };
+    
+    cancelButton.onclick = () => {
+        confirmModal.classList.add('hidden');
+    };
+}
+
+// Load and display players
+async function loadPlayers() {
+    try {
+        const players = await apiRequest('/players?select=id,name&order=name');
+        
+        // Update player select dropdown (for adding fines)
+        if (playerSelect) {
+            playerSelect.innerHTML = '';
+            
+            players.forEach(player => {
+                const option = document.createElement('option');
+                option.value = player.id;
+                option.textContent = player.name;
+                playerSelect.appendChild(option);
+            });
+            
+            // Update Select2 if initialized
+            if (window.$ && $.fn.select2) {
+                $(playerSelect).trigger('change');
+            }
+        }
+        
+        // Update players list in the Beheer tab
+        renderPlayersList(players);
+        
+        debug('Players loaded:', players.length);
+    } catch (error) {
+        console.error('Error loading players:', error);
+        showToast('Fout bij laden van spelers', 'error');
+    }
+}
+
+// Load and display reasons
+async function loadReasons() {
+    try {
+        const reasons = await apiRequest('/reasons?select=id,description,amount&order=description');
+        
+        // Update reason select dropdown (for adding fines)
+        if (reasonSelect) {
+            reasonSelect.innerHTML = '<option value="">Selecteer een reden</option>';
+            
+            reasons.forEach(reason => {
+                const option = document.createElement('option');
+                option.value = reason.id;
+                option.textContent = `${reason.description} (${formatCurrency(reason.amount)})`;
+                option.dataset.amount = reason.amount;
+                reasonSelect.appendChild(option);
+            });
+            
+            // Update Select2 if initialized
+            if (window.$ && $.fn.select2) {
+                $(reasonSelect).trigger('change');
+            }
+        }
+        
+        // Update reasons list in the Beheer tab
+        renderReasonsList(reasons);
+        
+        debug('Reasons loaded:', reasons.length);
+    } catch (error) {
+        console.error('Error loading reasons:', error);
+        showToast('Fout bij laden van redenen', 'error');
+    }
+}
+
+// Load recent fines
+async function loadRecentFines() {
+    try {
+        // Get fines with player and reason details, sort by created_at desc
+        const fines = await apiRequest('/fines?select=*,player:player_id(name),reason:reason_id(description,amount)&order=created_at.desc');
+        
+        renderFinesList(fines);
+        
+        debug('Recent fines loaded:', fines.length);
+    } catch (error) {
+        console.error('Error loading fines:', error);
+        showToast('Fout bij laden van recente boetes', 'error');
+    }
+}
+
+// Load all data
+async function loadAllData() {
+    try {
+        showLoading(true);
+        
+        // Refresh cache bust parameter
+        cacheBustParam = Date.now();
+        
+        // Load data in parallel
+        await Promise.all([
+            loadPlayers(),
+            loadReasons(),
+            loadRecentFines()
+        ]);
+        
+        debug('All data loaded successfully');
+    } catch (error) {
+        console.error('Error loading data:', error);
+        showToast('Er is een fout opgetreden bij het laden van de gegevens', 'error');
+    } finally {
+        showLoading(false);
+    }
+}
+
+// Render fines list
+function renderFinesList(fines) {
+    if (!recentFinesEl || !noRecentFinesEl) return;
+    
+    if (fines && fines.length > 0) {
+        noRecentFinesEl.classList.add('hidden');
+        recentFinesEl.innerHTML = ''; // Clear previous fines
+        
+        // Create fine cards for each fine
+        fines.forEach(fine => {
             const fineCard = document.createElement('div');
-            fineCard.className = 'fine-card bg-white p-4 border border-gray-200 rounded-xl shadow-sm hover:bg-gray-50 transition-all mb-3';
+            fineCard.className = 'fine-card bg-white p-4 border border-gray-200 rounded-xl shadow-sm hover:bg-gray-50 transition-all';
             
             fineCard.innerHTML = `
                 <div class="flex justify-between items-center">
@@ -372,480 +391,604 @@ document.addEventListener('DOMContentLoaded', function() {
                         <div class="text-gray-700">${fine.reason?.description || 'Onbekende reden'}</div>
                     </div>
                     <div class="flex items-center">
-                        <div class="font-bold text-primary-600 text-lg mr-4">${formatCurrency(fine.reason?.amount || 0)}</div>
-                        <button data-fine-id="${fine.id}" class="delete-fine-btn text-red-500 hover:text-red-700">
-                            <i class="fas fa-trash"></i>
+                        <div class="font-bold text-primary-600 text-lg mr-3">${formatCurrency(fine.reason?.amount || 0)}</div>
+                        <button class="delete-button text-gray-400 hover:text-red-500" data-id="${fine.id}">
+                            <i class="fas fa-trash-alt"></i>
                         </button>
                     </div>
                 </div>
             `;
             
-            // Add event listener for delete button
-            const deleteBtn = fineCard.querySelector('.delete-fine-btn');
-            deleteBtn.addEventListener('click', async () => {
-                if (confirm('Weet je zeker dat je deze boete wilt verwijderen?')) {
-                    await deleteFine(fine.id);
-                }
+            // Add delete event listener
+            const deleteBtn = fineCard.querySelector('.delete-button');
+            deleteBtn.addEventListener('click', () => {
+                showConfirmModal(
+                    'Boete verwijderen',
+                    `Weet je zeker dat je de boete voor ${fine.player?.name} wilt verwijderen?`,
+                    () => deleteFine(fine.id)
+                );
             });
             
-            container.appendChild(fineCard);
+            recentFinesEl.appendChild(fineCard);
         });
+    } else {
+        noRecentFinesEl.classList.remove('hidden');
+        recentFinesEl.innerHTML = ''; // Clear any partial data
     }
+}
+
+// Render players list
+function renderPlayersList(players) {
+    if (!playersListEl || !noPlayersFoundEl) return;
     
-    function renderPlayersList(players) {
-        const container = document.getElementById('playersList');
-        if (!container) return;
+    if (players && players.length > 0) {
+        playersListEl.innerHTML = ''; // Clear previous players
+        noPlayersFoundEl.classList.add('hidden');
         
-        container.innerHTML = '';
-        
-        if (!players || players.length === 0) {
-            container.innerHTML = `
-                <div class="text-center py-8 text-gray-500">
-                    <i class="fas fa-info-circle text-2xl mb-3"></i>
-                    <p>Geen spelers gevonden</p>
-                </div>
-            `;
-            return;
-        }
-        
-        const addPlayerForm = document.createElement('div');
-        addPlayerForm.className = 'mb-6 p-4 bg-white rounded-xl shadow-sm border border-gray-200';
-        addPlayerForm.innerHTML = `
-            <h3 class="font-semibold text-gray-800 mb-3">Nieuwe speler toevoegen</h3>
-            <div class="flex gap-2">
-                <input type="text" id="newPlayerName" placeholder="Naam van speler" class="flex-1 rounded-lg border-gray-300 focus:border-primary-500 focus:ring focus:ring-primary-200">
-                <button id="addPlayerBtn" class="gradient-bg text-white py-2 px-4 rounded-lg shadow-md hover:shadow-lg transition-all">
-                    <i class="fas fa-plus mr-1"></i> Toevoegen
-                </button>
-            </div>
-        `;
-        container.appendChild(addPlayerForm);
-        
-        // Add event listener for add player button
-        const addPlayerBtn = document.getElementById('addPlayerBtn');
-        const newPlayerNameInput = document.getElementById('newPlayerName');
-        
-        if (addPlayerBtn && newPlayerNameInput) {
-            addPlayerBtn.addEventListener('click', async () => {
-                const playerName = newPlayerNameInput.value.trim();
-                if (playerName) {
-                    const success = await addPlayer(playerName);
-                    if (success) {
-                        newPlayerNameInput.value = '';
-                    }
-                } else {
-                    showToast('Voer een geldige spelernaam in', 'warning');
-                }
-            });
-            
-            // Allow enter key to submit
-            newPlayerNameInput.addEventListener('keypress', async (e) => {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    addPlayerBtn.click();
-                }
-            });
-        }
-        
-        // Player list heading
-        const playersHeading = document.createElement('h3');
-        playersHeading.className = 'font-semibold text-gray-800 mb-3 mt-6';
-        playersHeading.textContent = `Spelers (${players.length})`;
-        container.appendChild(playersHeading);
-        
-        // Create list container
-        const playerListContainer = document.createElement('div');
-        playerListContainer.className = 'space-y-2';
-        container.appendChild(playerListContainer);
-        
-        // Sort players by name and add to list
-        players.sort((a, b) => a.name.localeCompare(b.name)).forEach(player => {
+        players.forEach(player => {
             const playerItem = document.createElement('div');
-            playerItem.className = 'bg-white p-3 rounded-lg border border-gray-200 flex justify-between items-center hover:bg-gray-50 transition-all';
+            playerItem.className = 'flex items-center justify-between bg-white p-3 rounded-lg shadow-sm';
             
             playerItem.innerHTML = `
-                <span class="font-medium text-gray-700">${player.name}</span>
-                <button class="delete-player-btn text-gray-400 hover:text-red-600 transition-colors" data-player-id="${player.id}">
-                    <i class="fas fa-trash"></i>
+                <span class="text-gray-800">${player.name}</span>
+                <button class="delete-player-btn text-gray-400 hover:text-red-500" data-id="${player.id}">
+                    <i class="fas fa-trash-alt"></i>
                 </button>
             `;
             
-            playerListContainer.appendChild(playerItem);
-        });
-        
-        // Add event listeners for delete buttons
-        container.querySelectorAll('.delete-player-btn').forEach(button => {
-            button.addEventListener('click', async function() {
-                const id = this.getAttribute('data-player-id');
-                if (confirm(`Weet je zeker dat je deze speler wilt verwijderen? Alle boetes van deze speler worden ook verwijderd!`)) {
-                    await deletePlayer(id);
-                }
+            // Add delete event listener
+            const deleteBtn = playerItem.querySelector('.delete-player-btn');
+            deleteBtn.addEventListener('click', () => {
+                showConfirmModal(
+                    'Speler verwijderen',
+                    `Weet je zeker dat je ${player.name} wilt verwijderen? Alle bijbehorende boetes worden ook verwijderd.`,
+                    () => deletePlayer(player.id)
+                );
             });
+            
+            playersListEl.appendChild(playerItem);
         });
+    } else {
+        noPlayersFoundEl.classList.remove('hidden');
+        playersListEl.innerHTML = ''; // Clear any partial data
     }
+}
+
+// Render reasons list
+function renderReasonsList(reasons) {
+    if (!reasonsListEl || !noReasonsFoundEl) return;
     
-    function renderReasonsList(reasons) {
-        const container = document.getElementById('reasonsList');
-        if (!container) return;
+    if (reasons && reasons.length > 0) {
+        reasonsListEl.innerHTML = ''; // Clear previous reasons
+        noReasonsFoundEl.classList.add('hidden');
         
-        container.innerHTML = '';
-        
-        if (!reasons || reasons.length === 0) {
-            container.innerHTML = `
-                <div class="text-center py-8 text-gray-500">
-                    <i class="fas fa-info-circle text-2xl mb-3"></i>
-                    <p>Geen redenen gevonden</p>
-                </div>
-            `;
-            return;
-        }
-        
-        const addReasonForm = document.createElement('div');
-        addReasonForm.className = 'mb-6 p-4 bg-white rounded-xl shadow-sm border border-gray-200';
-        addReasonForm.innerHTML = `
-            <h3 class="font-semibold text-gray-800 mb-3">Nieuwe reden toevoegen</h3>
-            <div class="space-y-3">
-                <input type="text" id="newReasonDescription" placeholder="Omschrijving" class="w-full rounded-lg border-gray-300 focus:border-primary-500 focus:ring focus:ring-primary-200">
-                <div class="flex gap-2">
-                    <input type="number" id="newReasonAmount" min="0" step="0.01" placeholder="Bedrag (€)" class="flex-1 rounded-lg border-gray-300 focus:border-primary-500 focus:ring focus:ring-primary-200">
-                    <button id="addReasonBtn" class="gradient-bg text-white py-2 px-4 rounded-lg shadow-md hover:shadow-lg transition-all">
-                        <i class="fas fa-plus mr-1"></i> Toevoegen
-                    </button>
-                </div>
-            </div>
-        `;
-        container.appendChild(addReasonForm);
-        
-        // Add event listener for add reason button
-        const addReasonBtn = document.getElementById('addReasonBtn');
-        const newReasonDescriptionInput = document.getElementById('newReasonDescription');
-        const newReasonAmountInput = document.getElementById('newReasonAmount');
-        
-        if (addReasonBtn && newReasonDescriptionInput && newReasonAmountInput) {
-            addReasonBtn.addEventListener('click', async () => {
-                const description = newReasonDescriptionInput.value.trim();
-                const amountStr = newReasonAmountInput.value.trim();
-                
-                if (!description) {
-                    showToast('Voer een omschrijving in', 'warning');
-                    return;
-                }
-                
-                if (!amountStr) {
-                    showToast('Voer een bedrag in', 'warning');
-                    return;
-                }
-                
-                const amount = parseFloat(amountStr);
-                if (isNaN(amount) || amount < 0) {
-                    showToast('Voer een geldig bedrag in', 'warning');
-                    return;
-                }
-                
-                const success = await addReason(description, amount);
-                if (success) {
-                    newReasonDescriptionInput.value = '';
-                    newReasonAmountInput.value = '';
-                }
-            });
-            
-            // Allow enter key to submit
-            const handleEnterKey = async (e) => {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    addReasonBtn.click();
-                }
-            };
-            
-            newReasonDescriptionInput.addEventListener('keypress', handleEnterKey);
-            newReasonAmountInput.addEventListener('keypress', handleEnterKey);
-        }
-        
-        // Reasons list heading
-        const reasonsHeading = document.createElement('h3');
-        reasonsHeading.className = 'font-semibold text-gray-800 mb-3 mt-6';
-        reasonsHeading.textContent = `Redenen (${reasons.length})`;
-        container.appendChild(reasonsHeading);
-        
-        // Create list container
-        const reasonListContainer = document.createElement('div');
-        reasonListContainer.className = 'space-y-2';
-        container.appendChild(reasonListContainer);
-        
-        // Sort reasons by description and add to list
-        reasons.sort((a, b) => a.description.localeCompare(b.description)).forEach(reason => {
+        reasons.forEach(reason => {
             const reasonItem = document.createElement('div');
-            reasonItem.className = 'bg-white p-3 rounded-lg border border-gray-200 flex justify-between items-center hover:bg-gray-50 transition-all';
+            reasonItem.className = 'flex items-center justify-between bg-white p-3 rounded-lg shadow-sm';
             
             reasonItem.innerHTML = `
                 <div>
-                    <span class="font-medium text-gray-700">${reason.description}</span>
-                    <span class="ml-2 text-primary-600 font-semibold">${formatCurrency(reason.amount)}</span>
+                    <span class="text-gray-800">${reason.description}</span>
+                    <span class="ml-2 text-primary-600 font-medium">${formatCurrency(reason.amount)}</span>
                 </div>
-                <button class="delete-reason-btn text-gray-400 hover:text-red-600 transition-colors" data-reason-id="${reason.id}">
-                    <i class="fas fa-trash"></i>
+                <button class="delete-reason-btn text-gray-400 hover:text-red-500" data-id="${reason.id}">
+                    <i class="fas fa-trash-alt"></i>
                 </button>
             `;
             
-            reasonListContainer.appendChild(reasonItem);
+            // Add delete event listener
+            const deleteBtn = reasonItem.querySelector('.delete-reason-btn');
+            deleteBtn.addEventListener('click', () => {
+                showConfirmModal(
+                    'Reden verwijderen',
+                    `Weet je zeker dat je de reden "${reason.description}" wilt verwijderen? Alle bijbehorende boetes worden ook verwijderd.`,
+                    () => deleteReason(reason.id)
+                );
+            });
+            
+            reasonsListEl.appendChild(reasonItem);
+        });
+    } else {
+        noReasonsFoundEl.classList.remove('hidden');
+        reasonsListEl.innerHTML = ''; // Clear any partial data
+    }
+}
+
+// Add a single player
+async function addPlayer(name) {
+    if (!name || name.trim() === '') {
+        showToast('Voer een naam in voor de speler', 'warning');
+        return;
+    }
+    
+    try {
+        showLoading(true);
+        
+        const player = await apiRequest('/players', {
+            method: 'POST',
+            body: JSON.stringify({
+                name: name.trim()
+            })
         });
         
-        // Add event listeners for delete buttons
-        container.querySelectorAll('.delete-reason-btn').forEach(button => {
-            button.addEventListener('click', async function() {
-                const id = this.getAttribute('data-reason-id');
-                if (confirm(`Weet je zeker dat je deze reden wilt verwijderen? Alle boetes met deze reden worden ook verwijderd!`)) {
-                    await deleteReason(id);
-                }
-            });
+        showToast(`Speler "${name}" toegevoegd`, 'success');
+        playerNameInput.value = ''; // Clear input
+        
+        // Refresh players list
+        await loadPlayers();
+    } catch (error) {
+        console.error('Error adding player:', error);
+        showToast('Fout bij toevoegen van speler', 'error');
+    } finally {
+        showLoading(false);
+    }
+}
+
+// Bulk add players
+async function addBulkPlayers(namesText) {
+    if (!namesText || namesText.trim() === '') {
+        showToast('Voer tenminste één naam in', 'warning');
+        return;
+    }
+    
+    // Split by newline or comma
+    const names = namesText
+        .split(/[\n,]/)
+        .map(name => name.trim())
+        .filter(name => name !== '');
+    
+    if (names.length === 0) {
+        showToast('Geen geldige namen gevonden', 'warning');
+        return;
+    }
+    
+    try {
+        showLoading(true);
+        
+        const promises = names.map(name => 
+            apiRequest('/players', {
+                method: 'POST',
+                body: JSON.stringify({ name })
+            })
+        );
+        
+        await Promise.all(promises);
+        
+        showToast(`${names.length} spelers toegevoegd`, 'success');
+        bulkPlayerNamesInput.value = ''; // Clear input
+        
+        // Refresh players list
+        await loadPlayers();
+    } catch (error) {
+        console.error('Error bulk adding players:', error);
+        showToast('Fout bij bulk toevoegen van spelers', 'error');
+    } finally {
+        showLoading(false);
+    }
+}
+
+// Delete a player
+async function deletePlayer(id) {
+    try {
+        showLoading(true);
+        
+        // Delete all fines for this player first
+        await apiRequest(`/fines?player_id=eq.${id}`, {
+            method: 'DELETE'
         });
+        
+        // Then delete the player
+        await apiRequest(`/players?id=eq.${id}`, {
+            method: 'DELETE'
+        });
+        
+        showToast('Speler verwijderd', 'success');
+        
+        // Refresh data
+        await loadAllData();
+    } catch (error) {
+        console.error('Error deleting player:', error);
+        showToast('Fout bij verwijderen van speler', 'error');
+    } finally {
+        showLoading(false);
+    }
+}
+
+// Add a single reason
+async function addReason(description, amount) {
+    if (!description || description.trim() === '') {
+        showToast('Voer een beschrijving in voor de reden', 'warning');
+        return;
     }
     
-    // CRUD Operations
-    async function addPlayer(name) {
-        try {
-            if (!name || typeof name !== 'string' || name.trim().length === 0) {
-                showToast('Ongeldige spelernaam', 'error');
-                return false;
-            }
-            
-            showLoading(true);
-            debug(`Adding player: ${name}`);
-            
-            const player = await apiRequest('/players', {
-                method: 'POST',
-                body: JSON.stringify({ name: name.trim() })
-            });
-            
-            if (player) {
-                showToast(`Speler "${name}" toegevoegd`, 'success');
-                await loadPlayers();
-                return true;
-            } else {
-                throw new Error('Geen antwoord van server');
-            }
-        } catch (error) {
-            debug(`Failed to add player: ${error.message}`);
-            showToast(`Fout bij toevoegen: ${error.message}`, 'error');
-            return false;
-        } finally {
-            showLoading(false);
+    if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) < 0) {
+        showToast('Voer een geldig bedrag in (groter dan of gelijk aan 0)', 'warning');
+        return;
+    }
+    
+    try {
+        showLoading(true);
+        
+        const reason = await apiRequest('/reasons', {
+            method: 'POST',
+            body: JSON.stringify({
+                description: description.trim(),
+                amount: parseFloat(amount)
+            })
+        });
+        
+        showToast(`Reden "${description}" toegevoegd`, 'success');
+        reasonDescriptionInput.value = ''; // Clear inputs
+        reasonAmountInput.value = '';
+        
+        // Refresh reasons list
+        await loadReasons();
+    } catch (error) {
+        console.error('Error adding reason:', error);
+        showToast('Fout bij toevoegen van reden', 'error');
+    } finally {
+        showLoading(false);
+    }
+}
+
+// Bulk add reasons
+async function addBulkReasons(reasonsText) {
+    if (!reasonsText || reasonsText.trim() === '') {
+        showToast('Voer tenminste één reden in', 'warning');
+        return;
+    }
+    
+    // Split by newline
+    const reasonLines = reasonsText
+        .split('\n')
+        .map(line => line.trim())
+        .filter(line => line !== '');
+    
+    if (reasonLines.length === 0) {
+        showToast('Geen geldige redenen gevonden', 'warning');
+        return;
+    }
+    
+    // Parse each line (format: "description,amount")
+    const reasons = [];
+    const errors = [];
+    
+    reasonLines.forEach((line, index) => {
+        const parts = line.split(',').map(part => part.trim());
+        
+        if (parts.length !== 2) {
+            errors.push(`Regel ${index + 1}: Onjuist formaat (moet zijn "beschrijving,bedrag")`);
+            return;
         }
-    }
-    
-    async function deletePlayer(id) {
-        try {
-            showLoading(true);
-            debug(`Deleting player with ID: ${id}`);
-            
-            // Delete player by ID
-            await apiRequest(`/players?id=eq.${id}`, {
-                method: 'DELETE'
-            });
-            
-            showToast('Speler succesvol verwijderd!', 'success');
-            await loadPlayers();
-            await loadFines();
-            return true;
-        } catch (error) {
-            debug(`Failed to delete player: ${error.message}`);
-            showToast(`Fout bij verwijderen: ${error.message}`, 'error');
-            return false;
-        } finally {
-            showLoading(false);
+        
+        const [description, amountStr] = parts;
+        const amount = parseFloat(amountStr.replace(',', '.'));
+        
+        if (isNaN(amount) || amount < 0) {
+            errors.push(`Regel ${index + 1}: Ongeldig bedrag (moet een nummer zijn >= 0)`);
+            return;
         }
+        
+        reasons.push({ description, amount });
+    });
+    
+    if (errors.length > 0) {
+        showToast(errors[0], 'warning');
+        console.error('Bulk add reasons errors:', errors);
+        return;
     }
     
-    async function addReason(description, amount) {
-        try {
-            if (!description || typeof description !== 'string' || description.trim().length === 0) {
-                showToast('Ongeldige omschrijving', 'error');
-                return false;
-            }
-            
-            if (isNaN(amount) || amount < 0) {
-                showToast('Ongeldig bedrag', 'error');
-                return false;
-            }
-            
-            showLoading(true);
-            debug(`Adding reason: ${description} with amount: ${amount}`);
-            
-            const reason = await apiRequest('/reasons', {
+    try {
+        showLoading(true);
+        
+        const promises = reasons.map(reason => 
+            apiRequest('/reasons', {
                 method: 'POST',
-                body: JSON.stringify({ 
-                    description: description.trim(),
-                    amount: amount 
+                body: JSON.stringify(reason)
+            })
+        );
+        
+        await Promise.all(promises);
+        
+        showToast(`${reasons.length} redenen toegevoegd`, 'success');
+        bulkReasonsInput.value = ''; // Clear input
+        
+        // Refresh reasons list
+        await loadReasons();
+    } catch (error) {
+        console.error('Error bulk adding reasons:', error);
+        showToast('Fout bij bulk toevoegen van redenen', 'error');
+    } finally {
+        showLoading(false);
+    }
+}
+
+// Delete a reason
+async function deleteReason(id) {
+    try {
+        showLoading(true);
+        
+        // Delete all fines with this reason first
+        await apiRequest(`/fines?reason_id=eq.${id}`, {
+            method: 'DELETE'
+        });
+        
+        // Then delete the reason
+        await apiRequest(`/reasons?id=eq.${id}`, {
+            method: 'DELETE'
+        });
+        
+        showToast('Reden verwijderd', 'success');
+        
+        // Refresh data
+        await loadAllData();
+    } catch (error) {
+        console.error('Error deleting reason:', error);
+        showToast('Fout bij verwijderen van reden', 'error');
+    } finally {
+        showLoading(false);
+    }
+}
+
+// Add a fine
+async function addFine(playerIds, reasonId, date) {
+    if (!playerIds || playerIds.length === 0) {
+        showToast('Selecteer minimaal één speler', 'warning');
+        return false;
+    }
+    
+    if (!reasonId) {
+        showToast('Selecteer een reden', 'warning');
+        return false;
+    }
+    
+    try {
+        showLoading(true);
+        
+        // Add a fine for each selected player
+        const finePromises = playerIds.map(playerId => {
+            return apiRequest('/fines', {
+                method: 'POST',
+                body: JSON.stringify({
+                    player_id: playerId,
+                    reason_id: reasonId,
+                    created_at: date || new Date().toISOString().split('T')[0]
                 })
             });
-            
-            if (reason) {
-                showToast(`Reden "${description}" toegevoegd`, 'success');
-                await loadReasons();
-                return true;
-            } else {
-                throw new Error('Geen antwoord van server');
-            }
-        } catch (error) {
-            debug(`Failed to add reason: ${error.message}`);
-            showToast(`Fout bij toevoegen: ${error.message}`, 'error');
-            return false;
-        } finally {
-            showLoading(false);
-        }
-    }
-    
-    async function deleteReason(id) {
-        try {
-            showLoading(true);
-            debug(`Deleting reason with ID: ${id}`);
-            
-            // Delete reason by ID
-            await apiRequest(`/reasons?id=eq.${id}`, {
-                method: 'DELETE'
-            });
-            
-            showToast('Reden succesvol verwijderd!', 'success');
-            await loadReasons();
-            await loadFines();
-            return true;
-        } catch (error) {
-            debug(`Failed to delete reason: ${error.message}`);
-            showToast(`Fout bij verwijderen: ${error.message}`, 'error');
-            return false;
-        } finally {
-            showLoading(false);
-        }
-    }
-    
-    async function deleteFine(id) {
-        try {
-            showLoading(true);
-            debug(`Deleting fine with ID: ${id}`);
-            
-            // Delete fine by ID
-            await apiRequest(`/fines?id=eq.${id}`, {
-                method: 'DELETE'
-            });
-            
-            showToast('Boete succesvol verwijderd!', 'success');
-            await loadFines();
-            return true;
-        } catch (error) {
-            debug(`Failed to delete fine: ${error.message}`);
-            showToast(`Fout bij verwijderen: ${error.message}`, 'error');
-            return false;
-        } finally {
-            showLoading(false);
-        }
-    }
-    
-    // Initialize when DOM is ready
-    function initialize() {
-        debug('Initializing admin panel');
+        });
         
-        // Setup tabs
-        setupTabs();
+        await Promise.all(finePromises);
         
-        // Add event listeners for forms
-        document.getElementById('addFineForm')?.addEventListener('submit', async function(e) {
+        showToast(`${playerIds.length > 1 ? 'Boetes' : 'Boete'} toegevoegd voor ${playerIds.length} ${playerIds.length > 1 ? 'spelers' : 'speler'}`, 'success');
+        
+        // Reset form
+        if (window.$ && $.fn.select2) {
+            $(playerSelect).val(null).trigger('change');
+            $(reasonSelect).val(null).trigger('change');
+        } else {
+            playerSelect.value = '';
+            reasonSelect.value = '';
+        }
+        
+        // Refresh recent fines
+        await loadRecentFines();
+        
+        return true;
+    } catch (error) {
+        console.error('Error adding fine:', error);
+        showToast('Fout bij toevoegen van boete', 'error');
+        return false;
+    } finally {
+        showLoading(false);
+    }
+}
+
+// Delete a fine
+async function deleteFine(id) {
+    try {
+        showLoading(true);
+        
+        await apiRequest(`/fines?id=eq.${id}`, {
+            method: 'DELETE'
+        });
+        
+        showToast('Boete verwijderd', 'success');
+        
+        // Refresh recent fines
+        await loadRecentFines();
+    } catch (error) {
+        console.error('Error deleting fine:', error);
+        showToast('Fout bij verwijderen van boete', 'error');
+    } finally {
+        showLoading(false);
+    }
+}
+
+// Check database connection
+async function checkConnection() {
+    try {
+        showLoading(true);
+        
+        // Try to fetch something simple from the database
+        await apiRequest('/players?limit=1');
+        
+        showToast('Database verbinding succesvol', 'success');
+        return true;
+    } catch (error) {
+        console.error('Connection check failed:', error);
+        showToast('Database verbinding mislukt: ' + error.message, 'error');
+        return false;
+    } finally {
+        showLoading(false);
+    }
+}
+
+// Export all data as JSON file
+async function exportData() {
+    try {
+        showLoading(true);
+        
+        // Fetch all data
+        const [players, reasons, fines] = await Promise.all([
+            apiRequest('/players'),
+            apiRequest('/reasons'),
+            apiRequest('/fines?select=*,player:player_id(name),reason:reason_id(description,amount)')
+        ]);
+        
+        const data = {
+            players,
+            reasons,
+            fines,
+            exportDate: new Date().toISOString()
+        };
+        
+        // Create and download a JSON file
+        const dataStr = JSON.stringify(data, null, 2);
+        const dataBlob = new Blob([dataStr], { type: 'application/json' });
+        const url = URL.createObjectURL(dataBlob);
+        
+        const downloadLink = document.createElement('a');
+        downloadLink.href = url;
+        downloadLink.download = `boetepot_export_${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+        document.body.removeChild(downloadLink);
+        
+        showToast('Data geëxporteerd', 'success');
+    } catch (error) {
+        console.error('Export failed:', error);
+        showToast('Fout bij exporteren: ' + error.message, 'error');
+    } finally {
+        showLoading(false);
+    }
+}
+
+// Reset all data
+async function resetEverything() {
+    try {
+        showLoading(true);
+        
+        // Delete all fines first (due to foreign key constraints)
+        await apiRequest('/fines', {
+            method: 'DELETE'
+        });
+        
+        // Delete all players and reasons
+        await Promise.all([
+            apiRequest('/players', { method: 'DELETE' }),
+            apiRequest('/reasons', { method: 'DELETE' })
+        ]);
+        
+        showToast('Alle data is verwijderd', 'success');
+        
+        // Refresh all data
+        await loadAllData();
+    } catch (error) {
+        console.error('Reset failed:', error);
+        showToast('Fout bij resetten: ' + error.message, 'error');
+    } finally {
+        showLoading(false);
+    }
+}
+
+// Initialize the app
+function initialize() {
+    debug('Initializing app...');
+    
+    // Load all data
+    loadAllData();
+    
+    // Set up event listeners for Fine Form
+    if (addFineForm) {
+        addFineForm.addEventListener('submit', async function(e) {
             e.preventDefault();
             
             // Get selected player IDs (supports multiple selections)
             let playerIds = [];
-            const playerSelect = document.getElementById('playerSelect');
-            
             if (window.$ && $.fn.select2) {
                 playerIds = $(playerSelect).val() || [];
-            } else if (playerSelect) {
+            } else {
                 // Fallback for when Select2 is not available
                 Array.from(playerSelect.selectedOptions).forEach(option => {
                     playerIds.push(option.value);
                 });
             }
             
-            const reasonSelect = document.getElementById('reasonSelect');
-            const reasonId = reasonSelect?.value;
-            const dateInput = document.getElementById('dateInput');
-            const date = dateInput?.value || new Date().toISOString().split('T')[0];
+            const reasonId = reasonSelect.value;
+            const date = dateInput.value || new Date().toISOString().split('T')[0];
             
-            if (playerIds.length === 0) {
-                showToast('Selecteer minimaal één speler', 'warning');
-                return;
-            }
-            
-            if (!reasonId) {
-                showToast('Selecteer een reden voor de boete', 'warning');
-                return;
-            }
-            
-            try {
-                showLoading(true);
-                
-                // Add a fine for each selected player
-                const finePromises = playerIds.map(playerId => {
-                    return apiRequest('/fines', {
-                        method: 'POST',
-                        body: JSON.stringify({
-                            player_id: playerId,
-                            reason_id: reasonId,
-                            created_at: date
-                        })
-                    });
-                });
-                
-                await Promise.all(finePromises);
-                
-                showToast(`${playerIds.length > 1 ? 'Boetes' : 'Boete'} toegevoegd voor ${playerIds.length} ${playerIds.length > 1 ? 'spelers' : 'speler'}`, 'success');
-                
-                // Reset form
-                if (window.$ && $.fn.select2) {
-                    $(playerSelect).val(null).trigger('change');
-                    $(reasonSelect).val(null).trigger('change');
-                } else if (playerSelect && reasonSelect) {
-                    playerSelect.value = '';
-                    reasonSelect.value = '';
-                }
-                
-                if (dateInput) {
-                    dateInput.valueAsDate = new Date();
-                }
-                
-                // Refresh data
-                await loadFines();
-            } catch (error) {
-                console.error('Error adding fines:', error);
-                showToast('Fout bij toevoegen van boetes', 'error');
-            } finally {
-                showLoading(false);
-            }
+            await addFine(playerIds, reasonId, date);
         });
-        
-        // Initialize Select2 for dropdowns if available
-        if (window.$ && $.fn.select2) {
-            $('#playerSelect').select2({
-                placeholder: 'Selecteer speler(s)',
-                allowClear: true,
-                width: '100%',
-                multiple: true
-            });
-            
-            $('#reasonSelect').select2({
-                placeholder: 'Selecteer een reden',
-                allowClear: true,
-                width: '100%'
-            });
-            
-            // Set default date to today
-            document.getElementById('dateInput')?.valueAsDate = new Date();
-        }
-        
-        // Load initial data
-        loadAllData();
-        
-        debug('Admin panel initialized');
     }
     
-    // Start initialization
-    initialize();
-});
+    // Set up event listeners for Player management
+    if (addPlayerBtn) {
+        addPlayerBtn.addEventListener('click', () => {
+            addPlayer(playerNameInput.value);
+        });
+    }
+    
+    if (playerNameInput) {
+        playerNameInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                addPlayer(playerNameInput.value);
+            }
+        });
+    }
+    
+    if (addBulkPlayersBtn) {
+        addBulkPlayersBtn.addEventListener('click', () => {
+            addBulkPlayers(bulkPlayerNamesInput.value);
+        });
+    }
+    
+    // Set up event listeners for Reason management
+    if (addReasonBtn) {
+        addReasonBtn.addEventListener('click', () => {
+            addReason(reasonDescriptionInput.value, reasonAmountInput.value);
+        });
+    }
+    
+    if (reasonDescriptionInput && reasonAmountInput) {
+        const handleEnterKey = (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                addReason(reasonDescriptionInput.value, reasonAmountInput.value);
+            }
+        };
+        
+        reasonDescriptionInput.addEventListener('keypress', handleEnterKey);
+        reasonAmountInput.addEventListener('keypress', handleEnterKey);
+    }
+    
+    if (addBulkReasonsBtn) {
+        addBulkReasonsBtn.addEventListener('click', () => {
+            addBulkReasons(bulkReasonsInput.value);
+        });
+    }
+    
+    // Set up event listeners for Debug & Reset options
+    if (checkConnectionBtn) {
+        checkConnectionBtn.addEventListener('click', checkConnection);
+    }
+    
+    if (exportDataBtn) {
+        exportDataBtn.addEventListener('click', exportData);
+    }
+    
+    if (resetEverythingBtn) {
+        resetEverythingBtn.addEventListener('click', () => {
+            showConfirmModal(
+                'Reset alles',
+                'Weet je ZEKER dat je ALLE data wilt verwijderen? Dit kan niet ongedaan worden gemaakt!',
+                resetEverything
+            );
+        });
+    }
+    
+    debug('Initialization complete');
+}
+
+// Start the app when the DOM is fully loaded
+document.addEventListener('DOMContentLoaded', initialize);
