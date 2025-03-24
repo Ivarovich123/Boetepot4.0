@@ -56,7 +56,7 @@ function debug(message, data = null) {
     if (DEBUG) {
         if (data) {
             console.log(`[DEBUG] ${message}:`, data);
-        } else {
+    } else {
             console.log(`[DEBUG] ${message}`);
         }
     }
@@ -76,11 +76,11 @@ function formatDate(dateString) {
 // Show/hide loading spinner
 function showLoading(show = true) {
     if (loadingSpinner) {
-        if (show) {
+    if (show) {
             loadingSpinner.classList.remove('hidden');
-        } else {
+    } else {
             loadingSpinner.classList.add('hidden');
-        }
+    }
     }
 }
 
@@ -111,9 +111,9 @@ function showToast(message, type = 'info') {
             <span>${message}</span>
         </div>
         <button class="ml-4 text-white hover:text-gray-200">
-            <i class="fas fa-times"></i>
-        </button>
-    `;
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
     
     // Add to DOM
     toastContainer.appendChild(toast);
@@ -299,7 +299,8 @@ async function loadPlayers() {
 // Load and display reasons
 async function loadReasons() {
     try {
-        const reasons = await apiRequest('/reasons?select=id,description,amount&order=description');
+        // Change the query to not assume an amount column exists
+        const reasons = await apiRequest('/reasons?select=id,description&order=description');
         
         // Update reason select dropdown (for adding fines)
         if (reasonSelect) {
@@ -308,8 +309,8 @@ async function loadReasons() {
             reasons.forEach(reason => {
                 const option = document.createElement('option');
                 option.value = reason.id;
-                option.textContent = `${reason.description} (${formatCurrency(reason.amount)})`;
-                option.dataset.amount = reason.amount;
+                // Don't include amount in the display text since it doesn't exist
+                option.textContent = reason.description;
                 reasonSelect.appendChild(option);
             });
             
@@ -332,8 +333,8 @@ async function loadReasons() {
 // Load recent fines
 async function loadRecentFines() {
     try {
-        // Get fines with player and reason details, sort by created_at desc
-        const fines = await apiRequest('/fines?select=*,player:player_id(name),reason:reason_id(description,amount)&order=created_at.desc');
+        // Update query to not assume amount exists in reasons table
+        const fines = await apiRequest('/fines?select=*,player:player_id(name),reason:reason_id(description)&order=created_at.desc');
         
         renderFinesList(fines);
         
@@ -360,7 +361,7 @@ async function loadAllData() {
         ]);
         
         debug('All data loaded successfully');
-    } catch (error) {
+  } catch (error) {
         console.error('Error loading data:', error);
         showToast('Er is een fout opgetreden bij het laden van de gegevens', 'error');
     } finally {
@@ -368,7 +369,7 @@ async function loadAllData() {
     }
 }
 
-// Render fines list
+// Render fines list - update to handle missing amount field
 function renderFinesList(fines) {
     if (!recentFinesEl || !noRecentFinesEl) return;
     
@@ -392,7 +393,7 @@ function renderFinesList(fines) {
                         <div class="text-gray-700">${fine.reason?.description || 'Onbekende reden'}</div>
                     </div>
                     <div class="flex items-center">
-                        <div class="font-bold text-primary-600 text-lg mr-3">${formatCurrency(fine.reason?.amount || 0)}</div>
+                        <div class="font-bold text-primary-600 text-lg mr-3">€0,00</div>
                         <button class="delete-button text-gray-400 hover:text-red-500" data-id="${fine.id}">
                             <i class="fas fa-trash-alt"></i>
                         </button>
@@ -434,7 +435,7 @@ function renderPlayersList(players) {
                 <span class="text-gray-800">${player.name}</span>
                 <button class="delete-player-btn text-gray-400 hover:text-red-500" data-id="${player.id}">
                     <i class="fas fa-trash-alt"></i>
-                </button>
+            </button>
             `;
             
             // Add delete event listener
@@ -455,7 +456,7 @@ function renderPlayersList(players) {
     }
 }
 
-// Render reasons list
+// Render reasons list - update to handle missing amount field
 function renderReasonsList(reasons) {
     if (!reasonsListEl || !noReasonsFoundEl) return;
     
@@ -470,7 +471,6 @@ function renderReasonsList(reasons) {
             reasonItem.innerHTML = `
                 <div>
                     <span class="text-gray-800">${reason.description}</span>
-                    <span class="ml-2 text-primary-600 font-medium">${formatCurrency(reason.amount)}</span>
                 </div>
                 <button class="delete-reason-btn text-gray-400 hover:text-red-500" data-id="${reason.id}">
                     <i class="fas fa-trash-alt"></i>
@@ -499,7 +499,7 @@ function renderReasonsList(reasons) {
 async function addPlayer(name) {
     if (!name || name.trim() === '') {
         showToast('Voer een naam in voor de speler', 'warning');
-        return;
+      return;
     }
     
     try {
@@ -517,7 +517,7 @@ async function addPlayer(name) {
         
         // Refresh players list
         await loadPlayers();
-    } catch (error) {
+  } catch (error) {
         console.error('Error adding player:', error);
         showToast('Fout bij toevoegen van speler', 'error');
     } finally {
@@ -540,16 +540,16 @@ async function addBulkPlayers(namesText) {
     
     if (names.length === 0) {
         showToast('Geen geldige namen gevonden', 'warning');
-        return;
-    }
+    return;
+  }
     
     try {
         showLoading(true);
         
         const promises = names.map(name => 
             apiRequest('/players', {
-                method: 'POST',
-                body: JSON.stringify({ name })
+      method: 'POST',
+      body: JSON.stringify({ name })
             })
         );
         
@@ -560,10 +560,10 @@ async function addBulkPlayers(namesText) {
         
         // Refresh players list
         await loadPlayers();
-    } catch (error) {
+  } catch (error) {
         console.error('Error bulk adding players:', error);
         showToast('Fout bij bulk toevoegen van spelers', 'error');
-    } finally {
+  } finally {
         showLoading(false);
     }
 }
@@ -587,23 +587,18 @@ async function deletePlayer(id) {
         
         // Refresh data
         await loadAllData();
-    } catch (error) {
+  } catch (error) {
         console.error('Error deleting player:', error);
         showToast('Fout bij verwijderen van speler', 'error');
-    } finally {
+  } finally {
         showLoading(false);
     }
 }
 
-// Add a single reason
+// Add a single reason - update to handle database without amount column
 async function addReason(description, amount) {
     if (!description || description.trim() === '') {
         showToast('Voer een beschrijving in voor de reden', 'warning');
-        return;
-    }
-    
-    if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) < 0) {
-        showToast('Voer een geldig bedrag in (groter dan of gelijk aan 0)', 'warning');
         return;
     }
     
@@ -613,8 +608,8 @@ async function addReason(description, amount) {
         const reason = await apiRequest('/reasons', {
             method: 'POST',
             body: JSON.stringify({
-                description: description.trim(),
-                amount: parseFloat(amount)
+                description: description.trim()
+                // Remove amount field from the request since it doesn't exist in the DB
             })
         });
         
@@ -632,7 +627,7 @@ async function addReason(description, amount) {
     }
 }
 
-// Bulk add reasons
+// Bulk add reasons - update to handle database without amount column
 async function addBulkReasons(reasonsText) {
     if (!reasonsText || reasonsText.trim() === '') {
         showToast('Voer tenminste één reden in', 'warning');
@@ -650,32 +645,19 @@ async function addBulkReasons(reasonsText) {
         return;
     }
     
-    // Parse each line (format: "description,amount")
+    // Parse each line - update to ignore the amount portion
     const reasons = [];
-    const errors = [];
     
-    reasonLines.forEach((line, index) => {
-        const parts = line.split(',').map(part => part.trim());
-        
-        if (parts.length !== 2) {
-            errors.push(`Regel ${index + 1}: Onjuist formaat (moet zijn "beschrijving,bedrag")`);
-            return;
+    reasonLines.forEach(line => {
+        // Extract only the description part before any comma
+        const description = line.split(',')[0].trim();
+        if (description) {
+            reasons.push({ description });
         }
-        
-        const [description, amountStr] = parts;
-        const amount = parseFloat(amountStr.replace(',', '.'));
-        
-        if (isNaN(amount) || amount < 0) {
-            errors.push(`Regel ${index + 1}: Ongeldig bedrag (moet een nummer zijn >= 0)`);
-            return;
-        }
-        
-        reasons.push({ description, amount });
     });
     
-    if (errors.length > 0) {
-        showToast(errors[0], 'warning');
-        console.error('Bulk add reasons errors:', errors);
+    if (reasons.length === 0) {
+        showToast('Geen geldige redenen gevonden', 'warning');
         return;
     }
     
@@ -775,7 +757,7 @@ async function addFine(playerIds, reasonId, date) {
         await loadRecentFines();
         
         return true;
-    } catch (error) {
+  } catch (error) {
         console.error('Error adding fine:', error);
         showToast('Fout bij toevoegen van boete', 'error');
         return false;
@@ -815,7 +797,7 @@ async function checkConnection() {
         
         showToast('Database verbinding succesvol', 'success');
         return true;
-    } catch (error) {
+  } catch (error) {
         console.error('Connection check failed:', error);
         showToast('Database verbinding mislukt: ' + error.message, 'error');
         return false;
@@ -859,7 +841,7 @@ async function exportData() {
     } catch (error) {
         console.error('Export failed:', error);
         showToast('Fout bij exporteren: ' + error.message, 'error');
-    } finally {
+  } finally {
         showLoading(false);
     }
 }

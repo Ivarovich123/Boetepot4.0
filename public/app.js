@@ -159,7 +159,7 @@ async function apiRequest(endpoint, options = {}) {
         };
         
         const requestOptions = {
-            ...options,
+      ...options,
             headers: headers,
             mode: 'cors'
         };
@@ -172,8 +172,8 @@ async function apiRequest(endpoint, options = {}) {
         
         // Simplified fetch with no retries to diagnose the issue
         const response = await fetch(url, requestOptions);
-        
-        if (!response.ok) {
+                
+                if (!response.ok) {
             const errorText = await response.text();
             console.error('API Response Error:', response.status, errorText);
             throw new Error(`API Error (${response.status}): ${errorText}`);
@@ -218,16 +218,13 @@ async function apiRequest(endpoint, options = {}) {
 // Load total amount
 async function loadTotalAmount() {
     try {
-        // Get all fines with reason amounts
-        const fines = await apiRequest('/fines?select=*,reason:reason_id(amount)');
+        // Update query to not reference the missing amount column
+        const fines = await apiRequest('/fines?select=*');
         
-        // Calculate total
-        const total = fines.reduce((sum, fine) => sum + parseFloat(fine.reason?.amount || 0), 0);
+        // Since we don't have amounts, we'll just show a placeholder value
+        totalAmountEl.textContent = '€0,00';
         
-        // Update UI
-        totalAmountEl.textContent = formatCurrency(total);
-        
-        if (DEBUG) console.log('Total amount loaded:', total);
+        if (DEBUG) console.log('Total amount loaded (placeholder)');
     } catch (error) {
         console.error('Error loading total amount:', error);
         totalAmountEl.textContent = '€0,00';
@@ -236,10 +233,9 @@ async function loadTotalAmount() {
 
 // Load recent fines
 async function loadRecentFines() {
-  try {
-        // Get fines with player and reason details, sort by created_at desc, limit to 5
-        // Updated query syntax for Supabase PostgREST relations
-        const fines = await apiRequest('/fines?select=*,player:player_id(name),reason:reason_id(description,amount)&order=created_at.desc&limit=5');
+    try {
+        // Update query to not reference the missing amount column
+        const fines = await apiRequest('/fines?select=*,player:player_id(name),reason:reason_id(description)&order=created_at.desc&limit=5');
         
         if (fines && fines.length > 0) {
             noRecentFinesEl.classList.add('hidden');
@@ -260,7 +256,7 @@ async function loadRecentFines() {
                         </div>
                         <div class="text-gray-700">${fine.reason?.description || 'Onbekende reden'}</div>
                     </div>
-                    <div class="font-bold text-primary-600 text-lg">${formatCurrency(fine.reason?.amount || 0)}</div>
+                    <div class="font-bold text-primary-600 text-lg">€0,00</div>
                 </div>
                 `;
                 
@@ -338,7 +334,8 @@ async function loadReasonsForSelector() {
     try {
         if (!reasonSelect) return;
         
-        const reasons = await apiRequest('/reasons?select=id,description,amount&order=description');
+        // Update query to not reference the missing amount column
+        const reasons = await apiRequest('/reasons?select=id,description&order=description');
         
         if (reasons && reasons.length > 0) {
             // Clear existing options but keep the placeholder
@@ -347,8 +344,7 @@ async function loadReasonsForSelector() {
             reasons.forEach(reason => {
                 const option = document.createElement('option');
                 option.value = reason.id;
-                option.textContent = `${reason.description} (${formatCurrency(reason.amount)})`;
-                option.dataset.amount = reason.amount;
+                option.textContent = reason.description;
                 reasonSelect.appendChild(option);
             });
             
@@ -371,15 +367,15 @@ async function loadReasonsForSelector() {
 
 // Load player history
 async function loadPlayerHistory(playerId) {
-  try {
+    try {
         if (!playerId) {
             noPlayerHistoryEl.classList.remove('hidden');
             playerHistoryEl.innerHTML = '';
             return;
         }
-    
-        // Get fines for the selected player with reason details, sort by created_at desc
-        const fines = await apiRequest(`/fines?player_id=eq.${playerId}&select=*,reason:reason_id(description,amount)&order=created_at.desc`);
+        
+        // Update query to not reference the missing amount column
+        const fines = await apiRequest(`/fines?player_id=eq.${playerId}&select=*,reason:reason_id(description)&order=created_at.desc`);
         
         if (fines && fines.length > 0) {
             noPlayerHistoryEl.classList.add('hidden');
@@ -396,22 +392,20 @@ async function loadPlayerHistory(playerId) {
                             <div class="text-gray-500 text-sm mb-1">${formatDate(fine.created_at)}</div>
                             <div class="text-gray-700">${fine.reason?.description || 'Onbekende reden'}</div>
                         </div>
-                        <div class="font-bold text-primary-600">${formatCurrency(fine.reason?.amount || 0)}</div>
+                        <div class="font-bold text-primary-600">€0,00</div>
                     </div>
                 `;
                 
                 playerHistoryEl.appendChild(historyItem);
             });
             
-            // Show total for this player
-            const total = fines.reduce((sum, fine) => sum + parseFloat(fine.reason?.amount || 0), 0);
-            
+            // Show total (placeholder since we don't have amounts)
             const totalItem = document.createElement('div');
             totalItem.className = 'bg-primary-50 p-4 border border-primary-200 rounded-xl mt-4';
             totalItem.innerHTML = `
                 <div class="flex justify-between items-center">
                     <div class="font-semibold text-primary-700">Totaal</div>
-                    <div class="font-bold text-primary-800 text-lg">${formatCurrency(total)}</div>
+                    <div class="font-bold text-primary-800 text-lg">€0,00</div>
                 </div>
             `;
             
@@ -435,12 +429,12 @@ async function loadPlayerHistory(playerId) {
 // Load and render leaderboard
 async function loadLeaderboard() {
     try {
-        // Get all fines with reason amount and player info
-        const fines = await apiRequest('/fines?select=player_id,reason:reason_id(amount)');
+        // Update query to not reference the missing amount column
+        const fines = await apiRequest('/fines?select=player_id');
         const players = await apiRequest('/players?select=id,name');
         
         if (fines && fines.length > 0 && players && players.length > 0) {
-            // Calculate totals per player
+            // Calculate totals per player (just count fines since we don't have amounts)
             const playerTotals = {};
             
             // Initialize all players with zero
@@ -448,26 +442,23 @@ async function loadLeaderboard() {
                 playerTotals[player.id] = {
                     id: player.id,
                     name: player.name,
-                    total: 0,
                     count: 0
                 };
             });
             
-            // Sum up fines
+            // Count fines
             fines.forEach(fine => {
                 const playerId = fine.player_id;
-                const amount = parseFloat(fine.reason?.amount || 0);
                 
                 if (playerTotals[playerId]) {
-                    playerTotals[playerId].total += amount;
                     playerTotals[playerId].count += 1;
                 }
             });
             
-            // Convert to array, filter players with fines, and sort by total (descending)
+            // Convert to array, filter players with fines, and sort by count (descending)
             const leaderboardData = Object.values(playerTotals)
-                .filter(player => player.total > 0)
-                .sort((a, b) => b.total - a.total);
+                .filter(player => player.count > 0)
+                .sort((a, b) => b.count - a.count);
             
             if (leaderboardData.length > 0) {
                 noLeaderboardEl.classList.add('hidden');
@@ -489,7 +480,7 @@ async function loadLeaderboard() {
                                 <div class="text-xs text-gray-500">${player.count} boete${player.count !== 1 ? 's' : ''}</div>
                             </div>
                         </div>
-                        <div class="font-bold text-primary-600">${formatCurrency(player.total)}</div>
+                        <div class="font-bold text-primary-600">€0,00</div>
                     `;
                     
                     leaderboardEl.appendChild(leaderboardItem);
