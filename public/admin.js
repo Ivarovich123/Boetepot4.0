@@ -267,29 +267,34 @@ function showConfirmModal(title, message, onConfirm) {
 // Load and display players
 async function loadPlayers() {
     try {
-        const players = await apiRequest('/players?select=id,name&order=name');
+        const { data, error } = await apiRequest('/players?select=id,name&order=name');
+        
+        if (error) throw error;
         
         // Update player select dropdown (for adding fines)
         if (playerSelect) {
             playerSelect.innerHTML = '';
             
-            players.forEach(player => {
-                const option = document.createElement('option');
-                option.value = player.id;
-                option.textContent = player.name;
-                playerSelect.appendChild(option);
-            });
-            
-            // Update Select2 if initialized
-            if (window.$ && $.fn.select2) {
-                $(playerSelect).trigger('change');
+            if (data && Array.isArray(data)) {
+                data.forEach(player => {
+                    const option = document.createElement('option');
+                    option.value = player.id;
+                    option.textContent = player.name;
+                    playerSelect.appendChild(option);
+                });
+                
+                // Update Select2 if initialized
+                if (window.$ && $.fn.select2) {
+                    $(playerSelect).trigger('change');
+                }
             }
         }
         
         // Update players list in the Beheer tab
-        renderPlayersList(players);
-        
-        debug('Players loaded:', players.length);
+        if (data && Array.isArray(data)) {
+            renderPlayersList(data);
+            debug('Players loaded:', data.length);
+        }
     } catch (error) {
         console.error('Error loading players:', error);
         showToast('Fout bij laden van spelers', 'error');
@@ -300,30 +305,35 @@ async function loadPlayers() {
 async function loadReasons() {
     try {
         // Change the query to not assume an amount column exists
-        const reasons = await apiRequest('/reasons?select=id,description&order=description');
+        const { data, error } = await apiRequest('/reasons?select=id,description&order=description');
+        
+        if (error) throw error;
         
         // Update reason select dropdown (for adding fines)
         if (reasonSelect) {
             reasonSelect.innerHTML = '<option value="">Selecteer een reden</option>';
             
-            reasons.forEach(reason => {
-                const option = document.createElement('option');
-                option.value = reason.id;
-                // Don't include amount in the display text since it doesn't exist
-                option.textContent = reason.description;
-                reasonSelect.appendChild(option);
-            });
-            
-            // Update Select2 if initialized
-            if (window.$ && $.fn.select2) {
-                $(reasonSelect).trigger('change');
+            if (data && Array.isArray(data)) {
+                data.forEach(reason => {
+                    const option = document.createElement('option');
+                    option.value = reason.id;
+                    // Don't include amount in the display text since it doesn't exist
+                    option.textContent = reason.description;
+                    reasonSelect.appendChild(option);
+                });
+                
+                // Update Select2 if initialized
+                if (window.$ && $.fn.select2) {
+                    $(reasonSelect).trigger('change');
+                }
             }
         }
         
         // Update reasons list in the Beheer tab
-        renderReasonsList(reasons);
-        
-        debug('Reasons loaded:', reasons.length);
+        if (data && Array.isArray(data)) {
+            renderReasonsList(data);
+            debug('Reasons loaded:', data.length);
+        }
     } catch (error) {
         console.error('Error loading reasons:', error);
         showToast('Fout bij laden van redenen', 'error');
@@ -345,7 +355,7 @@ async function loadRecentFines() {
             document.getElementById('recentFines').innerHTML = '';
             document.getElementById('noRecentFines').classList.remove('hidden');
         }
-    } catch (error) {
+  } catch (error) {
         console.error('Error loading recent fines:', error);
         showToast('Fout bij laden van recente boetes', 'error');
         document.getElementById('recentFines').innerHTML = '<div class="text-red-500 py-4">Fout bij laden van recente boetes</div>';
@@ -817,11 +827,13 @@ async function checkConnection() {
         showLoading(true);
         
         // Try to fetch something simple from the database
-        await apiRequest('/players?limit=1');
+        const { error } = await apiRequest('/players?limit=1');
+        
+        if (error) throw error;
         
         showToast('Database verbinding succesvol', 'success');
         return true;
-  } catch (error) {
+    } catch (error) {
         console.error('Connection check failed:', error);
         showToast('Database verbinding mislukt: ' + error.message, 'error');
         return false;
@@ -836,16 +848,16 @@ async function exportData() {
         showLoading(true);
         
         // Fetch all data
-        const [players, reasons, fines] = await Promise.all([
+        const [playersResponse, reasonsResponse, finesResponse] = await Promise.all([
             apiRequest('/players'),
             apiRequest('/reasons'),
             apiRequest('/fines?select=*,player:player_id(name),reason:reason_id(description,amount)')
         ]);
         
         const data = {
-            players,
-            reasons,
-            fines,
+            players: playersResponse.data || [],
+            reasons: reasonsResponse.data || [],
+            fines: finesResponse.data || [],
             exportDate: new Date().toISOString()
         };
         
@@ -865,7 +877,7 @@ async function exportData() {
     } catch (error) {
         console.error('Export failed:', error);
         showToast('Fout bij exporteren: ' + error.message, 'error');
-  } finally {
+    } finally {
         showLoading(false);
     }
 }
