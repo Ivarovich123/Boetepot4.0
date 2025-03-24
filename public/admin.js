@@ -16,7 +16,7 @@ const toastContainer = document.getElementById('toastContainer');
 const addFineForm = document.getElementById('addFineForm');
 const playerSelect = document.getElementById('playerSelect');
 const reasonSelect = document.getElementById('reasonSelect');
-const fineAmountInput = document.getElementById('bedrag');
+const fineAmountInput = document.getElementById('fineAmount');
 
 // Player elements
 const playerNameInput = document.getElementById('playerName');
@@ -69,19 +69,8 @@ function formatCurrency(amount) {
 
 // Format date
 function formatDate(dateString) {
-    if (!dateString) return 'Onbekende datum';
-    
-    const date = new Date(dateString);
-    const day = date.getDate();
-    
-    // Dutch month names
-    const monthNames = [
-        'Januari', 'Februari', 'Maart', 'April', 'Mei', 'Juni',
-        'Juli', 'Augustus', 'September', 'Oktober', 'November', 'December'
-    ];
-    
-    const month = monthNames[date.getMonth()];
-    return `${day} ${month}`;
+    const options = { year: 'numeric', month: 'numeric', day: 'numeric' };
+    return new Date(dateString).toLocaleDateString('nl-NL', options);
 }
 
 // Show/hide loading spinner
@@ -130,9 +119,9 @@ function showToast(message, type = 'info') {
     toastContainer.appendChild(toast);
     
     // Animate in
-  setTimeout(() => {
+    setTimeout(() => {
         toast.classList.remove('translate-x-full', 'opacity-0');
-        }, 10);
+    }, 10);
     
     // Setup close button
     const closeBtn = toast.querySelector('button');
@@ -144,7 +133,7 @@ function showToast(message, type = 'info') {
     });
     
     // Auto close after 3 seconds
-        setTimeout(() => {
+    setTimeout(() => {
         if (toast.parentElement) {
             toast.classList.add('translate-x-full', 'opacity-0');
             setTimeout(() => {
@@ -214,18 +203,18 @@ async function apiRequest(endpoint, options = {}) {
         
         // Make the request with fetch
         const response = await fetch(url, requestOptions);
-    
-                if (!response.ok) {
+        
+        if (!response.ok) {
             const errorText = await response.text();
             console.error('API Response Error:', response.status, errorText);
             throw new Error(`API Error (${response.status}): ${errorText}`);
         }
         
         // Parse JSON response
-                const data = await response.json();
+        const data = await response.json();
         debug('API Response Data:', data);
         return { data, error: null };
-  } catch (error) {
+    } catch (error) {
         console.error('API Request Error:', error);
         
         // More detailed error message and logging
@@ -278,20 +267,13 @@ function showConfirmModal(title, message, onConfirm) {
 // Load and display players
 async function loadPlayers() {
     try {
-        const { data, error } = await apiRequest('/players?select=id,name&order=name');
-        
-        if (error) throw error;
-        
-        if (!data) {
-            debug('No player data received');
-            return;
-        }
+        const players = await apiRequest('/players?select=id,name&order=name');
         
         // Update player select dropdown (for adding fines)
         if (playerSelect) {
             playerSelect.innerHTML = '';
             
-            data.forEach(player => {
+            players.forEach(player => {
                 const option = document.createElement('option');
                 option.value = player.id;
                 option.textContent = player.name;
@@ -305,10 +287,10 @@ async function loadPlayers() {
         }
         
         // Update players list in the Beheer tab
-        renderPlayersList(data);
+        renderPlayersList(players);
         
-        debug('Players loaded:', data.length);
-  } catch (error) {
+        debug('Players loaded:', players.length);
+    } catch (error) {
         console.error('Error loading players:', error);
         showToast('Fout bij laden van spelers', 'error');
     }
@@ -317,22 +299,17 @@ async function loadPlayers() {
 // Load and display reasons
 async function loadReasons() {
     try {
-        const { data, error } = await apiRequest('/reasons?select=id,description&order=description');
-        
-        if (error) throw error;
-        
-        if (!data) {
-            debug('No reasons data received');
-            return;
-        }
+        // Change the query to not assume an amount column exists
+        const reasons = await apiRequest('/reasons?select=id,description&order=description');
         
         // Update reason select dropdown (for adding fines)
         if (reasonSelect) {
             reasonSelect.innerHTML = '<option value="">Selecteer een reden</option>';
             
-            data.forEach(reason => {
+            reasons.forEach(reason => {
                 const option = document.createElement('option');
                 option.value = reason.id;
+                // Don't include amount in the display text since it doesn't exist
                 option.textContent = reason.description;
                 reasonSelect.appendChild(option);
             });
@@ -344,10 +321,10 @@ async function loadReasons() {
         }
         
         // Update reasons list in the Beheer tab
-        renderReasonsList(data);
+        renderReasonsList(reasons);
         
-        debug('Reasons loaded:', data.length);
-  } catch (error) {
+        debug('Reasons loaded:', reasons.length);
+    } catch (error) {
         console.error('Error loading reasons:', error);
         showToast('Fout bij laden van redenen', 'error');
     }
@@ -364,7 +341,7 @@ async function loadRecentFines() {
             renderFinesList(data);
             document.getElementById('noRecentFines').classList.add('hidden');
             if (DEBUG) console.log('Recent fines loaded:', data.length);
-                } else {
+        } else {
             document.getElementById('recentFines').innerHTML = '';
             document.getElementById('noRecentFines').classList.remove('hidden');
         }
@@ -401,43 +378,44 @@ async function loadAllData() {
 
 // Render fines list
 function renderFinesList(fines) {
-    const finesListElement = document.getElementById('recentFines');
-    finesListElement.innerHTML = '';
-    
-    if (!fines || fines.length === 0) {
-        finesListElement.innerHTML = '<p class="text-center text-gray-500 py-4">Geen recente boetes gevonden</p>';
-        return;
-    }
+    const finesListEl = document.getElementById('recentFines');
+    finesListEl.innerHTML = ''; // Clear previous content
     
     fines.forEach(fine => {
         const fineElement = document.createElement('div');
-        fineElement.className = 'fine-item bg-white rounded-lg p-4 mb-3 shadow hover:shadow-md transition-shadow';
+        fineElement.className = 'fine-card flex justify-between items-center p-3 bg-white rounded-lg shadow-sm hover:shadow-md transition-all mb-3';
         
-        const amount = fine.amount ? formatCurrency(fine.amount) : '€5,00';
-        const playerName = fine.players ? fine.players.name : 'Onbekende speler';
-        const reasonDesc = fine.reasons ? fine.reasons.description : 'Onbekende reden';
+        // Use the actual fine amount from the object
+        const fineAmount = fine.amount ? formatCurrency(fine.amount) : '€5,00';
         
         fineElement.innerHTML = `
-            <div class="flex justify-between items-center">
-                <div>
-                    <div class="font-medium">${playerName}</div>
-                    <div class="text-sm text-gray-600">${reasonDesc}</div>
-                    <div class="text-xs text-gray-500">${formatDate(fine.date)}</div>
+            <div class="flex-1">
+                <div class="flex flex-col sm:flex-row sm:items-center mb-1">
+                    <span class="font-medium text-gray-800">${fine.players?.name || 'Onbekende speler'}</span>
+                    <span class="hidden sm:inline text-gray-400 mx-2">•</span>
+                    <span class="text-gray-500 text-sm">${fine.reasons?.description || 'Onbekende reden'}</span>
                 </div>
-                <div class="flex items-center">
-                    <span class="font-bold text-primary-600 mr-3">${amount}</span>
-                    <button class="delete-fine-btn text-red-500 hover:text-red-700" data-id="${fine.id}">
-                        <i class="fas fa-trash-alt"></i>
-                    </button>
-                </div>
+                <div class="text-xs text-gray-500">${formatDate(fine.date)}</div>
             </div>
+            <div class="flex items-center">
+                <span class="font-medium text-primary-600 mr-4">${fineAmount}</span>
+                <button class="delete-button text-gray-400 hover:text-red-500 transition-colors" data-id="${fine.id}">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
         `;
         
-        finesListElement.appendChild(fineElement);
-        
         // Add event listener for delete button
-        const deleteBtn = fineElement.querySelector('.delete-fine-btn');
-        deleteBtn.addEventListener('click', () => deleteFine(fine.id));
+        const deleteButton = fineElement.querySelector('.delete-button');
+        deleteButton.addEventListener('click', function() {
+            showConfirmModal(
+                'Boete verwijderen',
+                'Weet je zeker dat je deze boete wilt verwijderen?',
+                () => deleteFine(fine.id)
+            );
+        });
+        
+        finesListEl.appendChild(fineElement);
     });
 }
 
@@ -472,7 +450,7 @@ function renderPlayersList(players) {
             
             playersListEl.appendChild(playerItem);
         });
-        } else {
+    } else {
         noPlayersFoundEl.classList.remove('hidden');
         playersListEl.innerHTML = ''; // Clear any partial data
     }
@@ -521,14 +499,14 @@ function renderReasonsList(reasons) {
 async function addPlayer(name) {
     if (!name || name.trim() === '') {
         showToast('Voer een naam in voor de speler', 'warning');
-    return;
-  }
+      return;
+    }
     
     try {
         showLoading(true);
         
         const player = await apiRequest('/players', {
-      method: 'POST',
+            method: 'POST',
             body: JSON.stringify({
                 name: name.trim()
             })
@@ -542,7 +520,7 @@ async function addPlayer(name) {
   } catch (error) {
         console.error('Error adding player:', error);
         showToast('Fout bij toevoegen van speler', 'error');
-  } finally {
+    } finally {
         showLoading(false);
     }
 }
@@ -551,9 +529,9 @@ async function addPlayer(name) {
 async function addBulkPlayers(namesText) {
     if (!namesText || namesText.trim() === '') {
         showToast('Voer tenminste één naam in', 'warning');
-    return;
-  }
-  
+        return;
+    }
+    
     // Split by newline or comma
     const names = namesText
         .split(/[\n,]/)
@@ -582,7 +560,7 @@ async function addBulkPlayers(namesText) {
         
         // Refresh players list
         await loadPlayers();
-        } catch (error) {
+  } catch (error) {
         console.error('Error bulk adding players:', error);
         showToast('Fout bij bulk toevoegen van spelers', 'error');
   } finally {
@@ -609,7 +587,7 @@ async function deletePlayer(id) {
         
         // Refresh data
         await loadAllData();
-    } catch (error) {
+  } catch (error) {
         console.error('Error deleting player:', error);
         showToast('Fout bij verwijderen van speler', 'error');
   } finally {
@@ -617,86 +595,92 @@ async function deletePlayer(id) {
     }
 }
 
-// Add a single reason
-async function addReason(description) {
-    if (!description) {
-        showToast('Voer een omschrijving in', 'warning');
-        return false;
-    }
-    
-    try {
+// Add a single reason - update to handle database without amount column
+async function addReason(description, amount) {
+    if (!description || description.trim() === '') {
+        showToast('Voer een beschrijving in voor de reden', 'warning');
+    return;
+  }
+  
+  try {
         showLoading(true);
         
-        const { data, error } = await apiRequest('/reasons', {
+        const reason = await apiRequest('/reasons', {
             method: 'POST',
             body: JSON.stringify({
-                description: description
+                description: description.trim()
+                // Remove amount field from the request since it doesn't exist in the DB
             })
         });
         
-        if (error) throw error;
+        showToast(`Reden "${description}" toegevoegd`, 'success');
+        reasonDescriptionInput.value = ''; // Clear inputs
+        reasonAmountInput.value = '';
         
-        document.getElementById('reasonDescription').value = '';
-        
-        showToast('Reden toegevoegd', 'success');
+        // Refresh reasons list
         await loadReasons();
-    return true;
-    } catch (error) {
+  } catch (error) {
         console.error('Error adding reason:', error);
         showToast('Fout bij toevoegen van reden', 'error');
-        return false;
     } finally {
         showLoading(false);
     }
 }
 
-// Add bulk reasons
+// Bulk add reasons - update to handle database without amount column
 async function addBulkReasons(reasonsText) {
-    if (!reasonsText) {
-        showToast('Voer redenen in', 'warning');
-        return false;
+    if (!reasonsText || reasonsText.trim() === '') {
+        showToast('Voer tenminste één reden in', 'warning');
+        return;
+    }
+    
+    // Split by newline
+    const reasonLines = reasonsText
+        .split('\n')
+        .map(line => line.trim())
+        .filter(line => line !== '');
+    
+    if (reasonLines.length === 0) {
+        showToast('Geen geldige redenen gevonden', 'warning');
+        return;
+    }
+    
+    // Parse each line - update to ignore the amount portion
+    const reasons = [];
+    
+    reasonLines.forEach(line => {
+        // Extract only the description part before any comma
+        const description = line.split(',')[0].trim();
+        if (description) {
+            reasons.push({ description });
+        }
+    });
+    
+    if (reasons.length === 0) {
+        showToast('Geen geldige redenen gevonden', 'warning');
+        return;
     }
     
     try {
         showLoading(true);
         
-        // Split by newline or comma
-        const reasonLines = reasonsText.split(/[\n,]+/).map(line => line.trim()).filter(line => line);
-        
-        if (reasonLines.length === 0) {
-            showToast('Geen geldige redenen gevonden', 'warning');
-            return false;
-        }
-        
-        // Process each reason
-        const promises = [];
-        for (const line of reasonLines) {
-            // Simple case: just the description
-            const description = line.trim();
-            
-            if (description) {
-                promises.push(
-                    apiRequest('/reasons', {
-                        method: 'POST',
-                        body: JSON.stringify({
-                            description: description
-                        })
-                    })
-                );
-            }
-        }
+        const promises = reasons.map(reason => 
+            apiRequest('/reasons', {
+                method: 'POST',
+                body: JSON.stringify(reason)
+            })
+        );
         
         await Promise.all(promises);
         
-        document.getElementById('bulkReasons').value = '';
+        showToast(`${reasons.length} redenen toegevoegd`, 'success');
+        bulkReasonsInput.value = ''; // Clear input
         
-        showToast(`${promises.length} redenen toegevoegd`, 'success');
+        // Refresh reasons list
         await loadReasons();
-        return true;
-            } catch (error) {
-        console.error('Error adding bulk reasons:', error);
-        showToast('Fout bij toevoegen van redenen', 'error');
-        return false;
+        } catch (error) {
+        console.error('Error bulk adding reasons:', error);
+        showToast('Fout bij bulk toevoegen van redenen', 'error');
     } finally {
         showLoading(false);
     }
@@ -721,7 +705,7 @@ async function deleteReason(id) {
         
         // Refresh data
         await loadAllData();
-  } catch (error) {
+    } catch (error) {
         console.error('Error deleting reason:', error);
         showToast('Fout bij verwijderen van reden', 'error');
     } finally {
@@ -797,11 +781,11 @@ async function addFine() {
         await loadRecentFines();
         
         return true;
-    } catch (error) {
+  } catch (error) {
         console.error('Error adding fine:', error);
         showToast('Fout bij toevoegen van boete', 'error');
         return false;
-  } finally {
+    } finally {
         showLoading(false);
     }
 }
@@ -886,44 +870,29 @@ async function exportData() {
     }
 }
 
-// Reset everything - Add WHERE clauses to DELETE requests for safety
+// Reset all data
 async function resetEverything() {
     try {
         showLoading(true);
         
-        // Confirm action with the user
-        const confirmed = confirm('WAARSCHUWING: Dit verwijdert ALLE data (spelers, boetes, redenen). Dit kan niet ongedaan worden gemaakt! Weet je zeker dat je door wilt gaan?');
-        
-        if (!confirmed) {
-            debug('Reset canceled by user');
-            return;
-        }
-        
-        debug('Resetting everything...');
-        
-        // Delete all fines (with WHERE clause for safety)
-        await apiRequest('/fines?id=neq.0', {
+        // Delete all fines first (due to foreign key constraints)
+        await apiRequest('/fines', {
             method: 'DELETE'
         });
         
-        // Delete all players (with WHERE clause for safety)
-        await apiRequest('/players?id=neq.0', {
-            method: 'DELETE'
-        });
+        // Delete all players and reasons
+        await Promise.all([
+            apiRequest('/players', { method: 'DELETE' }),
+            apiRequest('/reasons', { method: 'DELETE' })
+        ]);
         
-        // Delete all reasons (with WHERE clause for safety)
-        await apiRequest('/reasons?id=neq.0', {
-            method: 'DELETE'
-        });
+        showToast('Alle data is verwijderd', 'success');
         
-        debug('Reset completed successfully');
-        showToast('Alles gereset! De data is volledig verwijderd.', 'success');
-        
-        // Reload data after reset
+        // Refresh all data
         await loadAllData();
     } catch (error) {
-        console.error('Error resetting data:', error);
-        showToast('Fout bij het resetten van de data', 'error');
+        console.error('Reset failed:', error);
+        showToast('Fout bij resetten: ' + error.message, 'error');
     } finally {
         showLoading(false);
     }
@@ -969,17 +938,20 @@ function initialize() {
     // Set up event listeners for Reason management
     if (addReasonBtn) {
         addReasonBtn.addEventListener('click', () => {
-            addReason(reasonDescriptionInput.value);
+            addReason(reasonDescriptionInput.value, reasonAmountInput.value);
         });
     }
     
-    if (reasonDescriptionInput) {
-        reasonDescriptionInput.addEventListener('keypress', (e) => {
+    if (reasonDescriptionInput && reasonAmountInput) {
+        const handleEnterKey = (e) => {
             if (e.key === 'Enter') {
                 e.preventDefault();
-                addReason(reasonDescriptionInput.value);
+                addReason(reasonDescriptionInput.value, reasonAmountInput.value);
             }
-        });
+        };
+        
+        reasonDescriptionInput.addEventListener('keypress', handleEnterKey);
+        reasonAmountInput.addEventListener('keypress', handleEnterKey);
     }
     
     if (addBulkReasonsBtn) {

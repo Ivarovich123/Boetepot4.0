@@ -324,18 +324,38 @@ async function loadPlayersForSelector() {
                 playerHistorySelectEl.appendChild(option);
             });
             
-            // Initialize Select2 if available
+            // Destroy previous Select2 if exists to prevent duplicate instances
             if (window.$ && $.fn.select2) {
+                try {
+                    $(playerHistorySelectEl).select2('destroy');
+                } catch (e) {
+                    // Ignore if not initialized
+                }
+                
+                // Initialize Select2 with fixed z-index and proper parent
                 $(playerHistorySelectEl).select2({
                     placeholder: 'Selecteer een speler',
                     allowClear: true,
                     width: '100%',
                     dropdownParent: $('#playerHistoryContainer'),
-                    dropdownCssClass: 'select2-dropdown-player-history'
+                    dropdownCssClass: 'select2-dropdown-player-history z-50'
                 }).on('select2:open', function() {
                     // Ensure the dropdown has proper z-index
                     $('.select2-container--open').css('z-index', 9999);
+                    $('.select2-dropdown').css('z-index', 9999);
                 });
+                
+                // Add custom CSS for Select2 dropdown
+                if (!document.getElementById('select2-fixes-style')) {
+                    const style = document.createElement('style');
+                    style.id = 'select2-fixes-style';
+                    style.textContent = `
+                        .select2-container { z-index: 1050 !important; }
+                        .select2-dropdown { z-index: 1051 !important; }
+                        .select2-dropdown-player-history { z-index: 9999 !important; }
+                    `;
+                    document.head.appendChild(style);
+                }
             }
         }
         
