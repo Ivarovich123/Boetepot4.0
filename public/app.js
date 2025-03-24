@@ -159,7 +159,7 @@ async function apiRequest(endpoint, options = {}) {
         };
         
         const requestOptions = {
-      ...options,
+            ...options,
             headers: headers,
             mode: 'cors'
         };
@@ -173,7 +173,7 @@ async function apiRequest(endpoint, options = {}) {
         // Simplified fetch with no retries to diagnose the issue
         const response = await fetch(url, requestOptions);
                 
-                if (!response.ok) {
+        if (!response.ok) {
             const errorText = await response.text();
             console.error('API Response Error:', response.status, errorText);
             throw new Error(`API Error (${response.status}): ${errorText}`);
@@ -182,7 +182,7 @@ async function apiRequest(endpoint, options = {}) {
         // Parse JSON response
         const data = await response.json();
         if (DEBUG) console.log('API Response Data:', data);
-        return data;
+        return { data, error: null };
     } catch (error) {
         console.error('API Request Error:', error);
         
@@ -209,7 +209,7 @@ async function apiRequest(endpoint, options = {}) {
         }
         
         showToast(errorMessage, 'error');
-        throw error;
+        return { data: null, error };
     } finally {
         showLoading(false);
     }
@@ -220,12 +220,12 @@ async function loadTotalAmount() {
     showLoading();
     
     try {
-        const { data: fines, error } = await apiRequest('/fines?select=id');
+        const { data, error } = await apiRequest('/fines?select=id');
         
         if (error) throw error;
         
         // Calculate total based on fixed €5.00 per fine
-        const totalAmount = fines.length * 5.00;
+        const totalAmount = data.length * 5.00;
         totalAmountEl.textContent = formatCurrency(totalAmount);
         
     } catch (error) {
@@ -241,11 +241,11 @@ async function loadRecentFines() {
     showLoading();
     
     try {
-        const { data: fines, error } = await apiRequest('/fines?select=id,date_added,players(name),reasons(description)&order=date_added.desc&limit=5');
+        const { data, error } = await apiRequest('/fines?select=id,created_at,players(name),reasons(description)&order=created_at.desc&limit=5');
         
         if (error) throw error;
         
-        if (!fines || fines.length === 0) {
+        if (!data || data.length === 0) {
             noRecentFinesEl.classList.remove('hidden');
             recentFinesEl.innerHTML = '<div class="text-gray-500 text-center py-4">Geen recente boetes gevonden</div>';
             return;
@@ -255,7 +255,7 @@ async function loadRecentFines() {
         recentFinesEl.innerHTML = ''; // Clear previous fines
         
         // Create fine cards for each fine
-        fines.forEach(fine => {
+        data.forEach(fine => {
             const fineCard = document.createElement('div');
             fineCard.className = 'fine-card';
             
@@ -269,7 +269,7 @@ async function loadRecentFines() {
                     <span class="text-gray-400 mx-2">•</span>
                     <span class="text-gray-500 text-sm">${fine.reasons?.description || 'Onbekende reden'}</span>
                 </div>
-                <div class="text-gray-700">${formatDate(fine.date_added)}</div>
+                <div class="text-gray-700">${formatDate(fine.created_at)}</div>
             </div>
             <div class="font-bold text-primary-600 text-lg">${fineAmount}</div>
             `;
@@ -277,7 +277,7 @@ async function loadRecentFines() {
             recentFinesEl.appendChild(fineCard);
         });
         
-        if (DEBUG) console.log('Recent fines loaded:', fines.length);
+        if (DEBUG) console.log('Recent fines loaded:', data.length);
     } catch (error) {
         console.error('Error loading recent fines:', error);
         noRecentFinesEl.classList.remove('hidden');
@@ -385,35 +385,35 @@ async function loadPlayerHistory(playerId) {
     showLoading();
     
     try {
-        const { data: fines, error } = await apiRequest(`/fines?player_id=eq.${playerId}&select=id,date_added,reasons(description),players(name)&order=date_added.desc`);
+        const { data, error } = await apiRequest(`/fines?player_id=eq.${playerId}&select=id,created_at,reasons(description),players(name)&order=created_at.desc`);
         
         if (error) throw error;
         
-        if (!fines || fines.length === 0) {
+        if (!data || data.length === 0) {
             playerHistoryEl.innerHTML = '<div class="text-gray-500 text-center py-4">Geen boetes gevonden voor deze speler</div>';
             return;
         }
 
         // Calculate total for this player
         const standardAmount = 5.00;
-        const totalFineAmount = fines.length * standardAmount;
+        const totalFineAmount = data.length * standardAmount;
         
         let html = `
             <div class="mb-3 p-3 bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-lg shadow">
                 <h3 class="text-lg font-semibold">Totaal: ${formatCurrency(totalFineAmount)}</h3>
-                <p class="text-sm opacity-90">Aantal boetes: ${fines.length}</p>
+                <p class="text-sm opacity-90">Aantal boetes: ${data.length}</p>
             </div>
             <div class="space-y-2">
         `;
 
-        fines.forEach(fine => {
+        data.forEach(fine => {
             const fineAmount = '€5,00'; // Fixed amount for all fines
             html += `
                 <div class="bg-white p-3 rounded-lg shadow-sm hover:shadow transition-all">
                     <div class="flex justify-between items-center">
                         <div>
                             <p class="font-medium">${fine.reasons?.description || 'Onbekende reden'}</p>
-                            <span class="text-xs text-gray-500">${formatDate(fine.date_added)}</span>
+                            <span class="text-xs text-gray-500">${formatDate(fine.created_at)}</span>
                         </div>
                         <span class="font-medium">${fineAmount}</span>
                     </div>
@@ -563,7 +563,8 @@ if (addFineForm) {
                     body: JSON.stringify({
                         player_id: playerId,
                         reason_id: reasonId,
-                        date_added: date // Changed from created_at to date_added
+                        created_at: date,
+                        amount: 5.00 // Add fixed amount
                     })
                 });
             });

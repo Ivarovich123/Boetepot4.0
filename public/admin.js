@@ -16,6 +16,7 @@ const toastContainer = document.getElementById('toastContainer');
 const addFineForm = document.getElementById('addFineForm');
 const playerSelect = document.getElementById('playerSelect');
 const reasonSelect = document.getElementById('reasonSelect');
+const fineAmountInput = document.getElementById('fineAmount');
 
 // Player elements
 const playerNameInput = document.getElementById('playerName');
@@ -212,7 +213,7 @@ async function apiRequest(endpoint, options = {}) {
         // Parse JSON response
         const data = await response.json();
         debug('API Response Data:', data);
-        return data;
+        return { data, error: null };
     } catch (error) {
         console.error('API Request Error:', error);
         
@@ -239,7 +240,7 @@ async function apiRequest(endpoint, options = {}) {
         }
         
         showToast(errorMessage, 'error');
-        throw error;
+        return { data: null, error };
     } finally {
         showLoading(false);
     }
@@ -332,15 +333,14 @@ async function loadReasons() {
 // Load recent fines
 async function loadRecentFines() {
     try {
-        // Changed the column from created_at to date_added
-        const { data: fines, error } = await apiRequest('/fines?select=id,date_added,players(name),reasons(description)&order=date_added.desc&limit=20');
+        const { data, error } = await apiRequest('/fines?select=id,created_at,players(name),reasons(description)&order=created_at.desc&limit=20');
         
         if (error) throw error;
         
-        if (fines && fines.length > 0) {
-            renderFinesList(fines);
+        if (data && data.length > 0) {
+            renderFinesList(data);
             document.getElementById('noRecentFines').classList.add('hidden');
-            if (DEBUG) console.log('Recent fines loaded:', fines.length);
+            if (DEBUG) console.log('Recent fines loaded:', data.length);
         } else {
             document.getElementById('recentFines').innerHTML = '';
             document.getElementById('noRecentFines').classList.remove('hidden');
@@ -395,7 +395,7 @@ function renderFinesList(fines) {
                     <span class="hidden sm:inline text-gray-400 mx-2">•</span>
                     <span class="text-gray-500 text-sm">${fine.reasons?.description || 'Onbekende reden'}</span>
                 </div>
-                <div class="text-xs text-gray-500">${formatDate(fine.date_added)}</div>
+                <div class="text-xs text-gray-500">${formatDate(fine.created_at)}</div>
             </div>
             <div class="flex items-center">
                 <span class="font-medium text-primary-600 mr-4">${fineAmount}</span>
@@ -726,6 +726,12 @@ async function addFine() {
     
     const reasonId = reasonSelect.value;
     
+    // Get amount from input, default to 5.00 if invalid
+    let amount = 5.00;
+    if (fineAmountInput && !isNaN(parseFloat(fineAmountInput.value))) {
+        amount = parseFloat(fineAmountInput.value);
+    }
+    
     if (selectedPlayerIds.length === 0) {
         showToast('Selecteer minimaal één speler', 'warning');
         return false;
@@ -749,7 +755,8 @@ async function addFine() {
                 body: JSON.stringify({
                     player_id: playerId,
                     reason_id: reasonId,
-                    date_added: currentDate  // Changed from created_at to date_added
+                    created_at: currentDate,
+                    amount: amount
                 })
             });
         });
@@ -763,6 +770,9 @@ async function addFine() {
         } else {
             playerSelect.value = '';
             reasonSelect.value = '';
+        }
+        if (fineAmountInput) {
+            fineAmountInput.value = '5.00'; // Reset to default amount
         }
         
         showToast(`${selectedPlayerIds.length} boete${selectedPlayerIds.length > 1 ? 's' : ''} toegevoegd`, 'success');
