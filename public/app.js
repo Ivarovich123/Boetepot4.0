@@ -234,8 +234,8 @@ async function loadTotalAmount() {
 // Load recent fines
 async function loadRecentFines() {
     try {
-        // Update query to not reference the missing amount column
-        const fines = await apiRequest('/fines?select=*,player:player_id(name),reason:reason_id(description)&order=created_at.desc&limit=5');
+        // Update query to not reference the missing created_at column
+        const fines = await apiRequest('/fines?select=*,player:player_id(name),reason:reason_id(description)&limit=5');
         
         if (fines && fines.length > 0) {
             noRecentFinesEl.classList.add('hidden');
@@ -252,7 +252,7 @@ async function loadRecentFines() {
                         <div class="flex items-center mb-1">
                             <span class="font-medium text-gray-800">${fine.player?.name || 'Onbekend'}</span>
                             <span class="text-gray-400 mx-2">•</span>
-                            <span class="text-gray-500 text-sm">${formatDate(fine.created_at)}</span>
+                            <span class="text-gray-500 text-sm">Vandaag</span>
                         </div>
                         <div class="text-gray-700">${fine.reason?.description || 'Onbekende reden'}</div>
                     </div>
@@ -374,8 +374,8 @@ async function loadPlayerHistory(playerId) {
             return;
         }
         
-        // Update query to not reference the missing amount column
-        const fines = await apiRequest(`/fines?player_id=eq.${playerId}&select=*,reason:reason_id(description)&order=created_at.desc`);
+        // Update query to not reference the missing created_at column
+        const fines = await apiRequest(`/fines?player_id=eq.${playerId}&select=*,reason:reason_id(description)`);
         
         if (fines && fines.length > 0) {
             noPlayerHistoryEl.classList.add('hidden');
@@ -389,7 +389,7 @@ async function loadPlayerHistory(playerId) {
                 historyItem.innerHTML = `
                     <div class="flex justify-between items-center">
                         <div class="flex-1">
-                            <div class="text-gray-500 text-sm mb-1">${formatDate(fine.created_at)}</div>
+                            <div class="text-gray-500 text-sm mb-1">Vandaag</div>
                             <div class="text-gray-700">${fine.reason?.description || 'Onbekende reden'}</div>
                         </div>
                         <div class="font-bold text-primary-600">€0,00</div>

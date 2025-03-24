@@ -333,8 +333,8 @@ async function loadReasons() {
 // Load recent fines
 async function loadRecentFines() {
     try {
-        // Update query to not assume amount exists in reasons table
-        const fines = await apiRequest('/fines?select=*,player:player_id(name),reason:reason_id(description)&order=created_at.desc');
+        // Update query to not reference the missing created_at column
+        const fines = await apiRequest('/fines?select=*,player:player_id(name),reason:reason_id(description)');
         
         renderFinesList(fines);
         
@@ -728,14 +728,14 @@ async function addFine(playerIds, reasonId, date) {
     try {
         showLoading(true);
         
-        // Add a fine for each selected player
+        // Add a fine for each selected player - remove created_at field
         const finePromises = playerIds.map(playerId => {
             return apiRequest('/fines', {
                 method: 'POST',
                 body: JSON.stringify({
                     player_id: playerId,
-                    reason_id: reasonId,
-                    created_at: date || new Date().toISOString().split('T')[0]
+                    reason_id: reasonId
+                    // Remove created_at as it doesn't exist in the DB
                 })
             });
         });
@@ -757,7 +757,7 @@ async function addFine(playerIds, reasonId, date) {
         await loadRecentFines();
         
         return true;
-  } catch (error) {
+    } catch (error) {
         console.error('Error adding fine:', error);
         showToast('Fout bij toevoegen van boete', 'error');
         return false;
