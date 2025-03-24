@@ -68,7 +68,7 @@
         --gradient-secondary: linear-gradient(135deg, #4f46e5, #3730a3);
         --gradient-success: linear-gradient(135deg, #10b981, #059669);
         --gradient-header: linear-gradient(135deg, #0c4a6e, #0284c7);
-        --gradient-card: linear-gradient(180deg, rgba(255,255,255,1) 0%, rgba(249,250,251,1) 100%);
+        --gradient-card: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
     }
     
     body {
@@ -109,6 +109,8 @@
     .card-header h2 {
         display: flex;
         align-items: center;
+        font-size: 1.25rem;
+        line-height: 1.75rem;
     }
     
     .card-header h2::before {
@@ -177,9 +179,9 @@
     
     /* Player history and leaderboard cards */
     .player-card {
-        background-color: white;
+        background-color: #f8fafc;
         border-radius: 0.75rem;
-        padding: 1rem;
+        padding: 1rem 1.25rem;
         margin-bottom: 0.75rem;
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
         transition: all 0.2s ease-in-out;
@@ -187,12 +189,13 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
+        gap: 0.5rem;
     }
     
     .player-card:hover {
         transform: translateY(-2px);
         box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
-        background-color: #fafafa;
+        background-color: #ffffff;
     }
     
     .rank-1 {
@@ -317,7 +320,7 @@
     
     /* Fine card enhancements */
     .fine-card {
-        background-color: white;
+        background-color: #f8fafc;
         border-radius: 0.75rem;
         padding: 1rem 1.25rem;
         margin-bottom: 0.75rem;
@@ -354,10 +357,44 @@
         padding: 0 0.75rem;
         border-radius: 0.5rem;
         border: 1px solid #e5e7eb;
+        background-color: white;
     }
     
     .select2-container--default .select2-selection--single .select2-selection__arrow {
         height: 45px;
+    }
+    
+    .select2-dropdown {
+        border: 1px solid #e5e7eb;
+        border-radius: 0 0 0.5rem 0.5rem;
+        overflow: hidden;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    .select2-container--default .select2-results__option--highlighted[aria-selected] {
+        background-color: var(--primary-500);
+        color: white;
+    }
+    
+    .select2-container--default .select2-results__option {
+        padding: 8px 12px;
+    }
+    
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+        color: #374151;
+        line-height: 2rem;
+    }
+    
+    .select2-container--default .select2-search--dropdown .select2-search__field {
+        border: 1px solid #e5e7eb;
+        border-radius: 0.25rem;
+        padding: 6px 10px;
+        outline: none;
+    }
+    
+    .select2-container--default .select2-search--dropdown .select2-search__field:focus {
+        border-color: var(--primary-500);
+        box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.15);
     }
   </style>
 </head>

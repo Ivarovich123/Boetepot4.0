@@ -267,13 +267,20 @@ function showConfirmModal(title, message, onConfirm) {
 // Load and display players
 async function loadPlayers() {
     try {
-        const players = await apiRequest('/players?select=id,name&order=name');
+        const { data, error } = await apiRequest('/players?select=id,name&order=name');
+        
+        if (error) throw error;
+        
+        if (!data) {
+            debug('No player data received');
+            return;
+        }
         
         // Update player select dropdown (for adding fines)
         if (playerSelect) {
             playerSelect.innerHTML = '';
             
-            players.forEach(player => {
+            data.forEach(player => {
                 const option = document.createElement('option');
                 option.value = player.id;
                 option.textContent = player.name;
@@ -287,9 +294,9 @@ async function loadPlayers() {
         }
         
         // Update players list in the Beheer tab
-        renderPlayersList(players);
+        renderPlayersList(data);
         
-        debug('Players loaded:', players.length);
+        debug('Players loaded:', data.length);
     } catch (error) {
         console.error('Error loading players:', error);
         showToast('Fout bij laden van spelers', 'error');
@@ -299,17 +306,22 @@ async function loadPlayers() {
 // Load and display reasons
 async function loadReasons() {
     try {
-        // Change the query to not assume an amount column exists
-        const reasons = await apiRequest('/reasons?select=id,description&order=description');
+        const { data, error } = await apiRequest('/reasons?select=id,description&order=description');
+        
+        if (error) throw error;
+        
+        if (!data) {
+            debug('No reasons data received');
+            return;
+        }
         
         // Update reason select dropdown (for adding fines)
         if (reasonSelect) {
             reasonSelect.innerHTML = '<option value="">Selecteer een reden</option>';
             
-            reasons.forEach(reason => {
+            data.forEach(reason => {
                 const option = document.createElement('option');
                 option.value = reason.id;
-                // Don't include amount in the display text since it doesn't exist
                 option.textContent = reason.description;
                 reasonSelect.appendChild(option);
             });
@@ -321,9 +333,9 @@ async function loadReasons() {
         }
         
         // Update reasons list in the Beheer tab
-        renderReasonsList(reasons);
+        renderReasonsList(data);
         
-        debug('Reasons loaded:', reasons.length);
+        debug('Reasons loaded:', data.length);
     } catch (error) {
         console.error('Error loading reasons:', error);
         showToast('Fout bij laden van redenen', 'error');
@@ -333,7 +345,7 @@ async function loadReasons() {
 // Load recent fines
 async function loadRecentFines() {
     try {
-        const { data, error } = await apiRequest('/fines?select=id,created_at,players(name),reasons(description)&order=created_at.desc&limit=20');
+        const { data, error } = await apiRequest('/fines?select=id,date,players(name),reasons(description)&order=date.desc&limit=20');
         
         if (error) throw error;
         
@@ -385,8 +397,8 @@ function renderFinesList(fines) {
         const fineElement = document.createElement('div');
         fineElement.className = 'fine-card flex justify-between items-center p-3 bg-white rounded-lg shadow-sm hover:shadow-md transition-all mb-3';
         
-        // Standard amount of €5.00 for all fines
-        const fineAmount = '€5,00';
+        // Use fine amount if available, otherwise default to €5.00
+        const fineAmount = fine.amount ? formatCurrency(fine.amount) : '€5,00';
         
         fineElement.innerHTML = `
             <div class="flex-1">
@@ -395,7 +407,7 @@ function renderFinesList(fines) {
                     <span class="hidden sm:inline text-gray-400 mx-2">•</span>
                     <span class="text-gray-500 text-sm">${fine.reasons?.description || 'Onbekende reden'}</span>
                 </div>
-                <div class="text-xs text-gray-500">${formatDate(fine.created_at)}</div>
+                <div class="text-xs text-gray-500">${formatDate(fine.date)}</div>
             </div>
             <div class="flex items-center">
                 <span class="font-medium text-primary-600 mr-4">${fineAmount}</span>
@@ -755,7 +767,7 @@ async function addFine() {
                 body: JSON.stringify({
                     player_id: playerId,
                     reason_id: reasonId,
-                    created_at: currentDate,
+                    date: currentDate,
                     amount: amount
                 })
             });

@@ -65,8 +65,8 @@
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f9fafb;
-            background-image: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+            background-color: #f1f5f9;
+            background-image: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
         }
         
         .gradient-bg {
@@ -85,7 +85,7 @@
             transition: all 0.3s ease;
             border-radius: 0.75rem;
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-            background: #ffffff;
+            background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
             border: 1px solid rgba(209, 213, 219, 0.3);
             overflow: hidden;
         }
@@ -194,6 +194,15 @@
             background-color: #0ea5e9;
         }
         
+        .select2-container--default .select2-results__option {
+            padding: 8px 12px;
+        }
+        
+        .select2-container--default .select2-selection--single .select2-selection__rendered {
+            color: #374151;
+            line-height: 2rem;
+        }
+        
         /* Modern Form Inputs */
         input[type="text"], 
         input[type="number"],
@@ -204,6 +213,7 @@
             padding: 0.75rem 1rem;
             box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
             transition: all 0.2s ease;
+            background-color: #fff;
         }
         
         input[type="text"]:focus, 
@@ -264,10 +274,16 @@
         .fine-card {
             transition: all 0.2s ease;
             border: 1px solid rgba(209, 213, 219, 0.3);
+            background-color: #f8fafc;
+            border-radius: 0.75rem;
+            padding: 1rem 1.25rem;
+            margin-bottom: 0.75rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+            border-left: 4px solid transparent;
         }
         
         .fine-card:hover {
-            background-color: #f0f9ff;
+            background-color: #fff;
             transform: translateY(-2px);
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
         }
@@ -285,6 +301,25 @@
             background-color: #fff;
             border-color: #0ea5e9;
             box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
+        }
+        
+        /* List styles */
+        #playersList > div, #reasonsList > div {
+            background-color: #f8fafc;
+            border-radius: 0.75rem;
+            padding: 1rem;
+            margin-bottom: 0.5rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        #playersList > div:hover, #reasonsList > div:hover {
+            background-color: #fff;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
     </style>
 </head>

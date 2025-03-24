@@ -220,12 +220,16 @@ async function loadTotalAmount() {
     showLoading();
     
     try {
-        const { data, error } = await apiRequest('/fines?select=id');
+        const { data, error } = await apiRequest('/fines?select=id,amount');
         
         if (error) throw error;
         
-        // Calculate total based on fixed €5.00 per fine
-        const totalAmount = data.length * 5.00;
+        // Calculate total based on amount field or fixed €5.00 per fine if amount is null
+        let totalAmount = 0;
+        if (data && data.length > 0) {
+            totalAmount = data.reduce((sum, fine) => sum + (fine.amount || 5.00), 0);
+        }
+        
         totalAmountEl.textContent = formatCurrency(totalAmount);
         
     } catch (error) {
@@ -241,7 +245,7 @@ async function loadRecentFines() {
     showLoading();
     
     try {
-        const { data, error } = await apiRequest('/fines?select=id,created_at,players(name),reasons(description)&order=created_at.desc&limit=5');
+        const { data, error } = await apiRequest('/fines?select=id,date,amount,players(name),reasons(description)&order=date.desc&limit=5');
         
         if (error) throw error;
         
@@ -259,8 +263,8 @@ async function loadRecentFines() {
             const fineCard = document.createElement('div');
             fineCard.className = 'fine-card';
             
-            // Use standard amount of €5.00
-            const fineAmount = '€5,00';
+            // Use amount if available or default to €5.00
+            const fineAmount = fine.amount ? formatCurrency(fine.amount) : '€5,00';
             
             fineCard.innerHTML = `
             <div class="flex-1">
@@ -269,7 +273,7 @@ async function loadRecentFines() {
                     <span class="text-gray-400 mx-2">•</span>
                     <span class="text-gray-500 text-sm">${fine.reasons?.description || 'Onbekende reden'}</span>
                 </div>
-                <div class="text-gray-700">${formatDate(fine.created_at)}</div>
+                <div class="text-gray-700">${formatDate(fine.date)}</div>
             </div>
             <div class="font-bold text-primary-600 text-lg">${fineAmount}</div>
             `;
@@ -385,7 +389,7 @@ async function loadPlayerHistory(playerId) {
     showLoading();
     
     try {
-        const { data, error } = await apiRequest(`/fines?player_id=eq.${playerId}&select=id,created_at,reasons(description),players(name)&order=created_at.desc`);
+        const { data, error } = await apiRequest(`/fines?player_id=eq.${playerId}&select=id,date,amount,reasons(description),players(name)&order=date.desc`);
         
         if (error) throw error;
         
@@ -394,9 +398,11 @@ async function loadPlayerHistory(playerId) {
             return;
         }
 
-        // Calculate total for this player
-        const standardAmount = 5.00;
-        const totalFineAmount = data.length * standardAmount;
+        // Calculate total for this player using amount field or default
+        let totalFineAmount = 0;
+        data.forEach(fine => {
+            totalFineAmount += fine.amount || 5.00;
+        });
         
         let html = `
             <div class="mb-3 p-3 bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-lg shadow">
@@ -407,13 +413,13 @@ async function loadPlayerHistory(playerId) {
         `;
 
         data.forEach(fine => {
-            const fineAmount = '€5,00'; // Fixed amount for all fines
+            const fineAmount = fine.amount ? formatCurrency(fine.amount) : '€5,00';
             html += `
                 <div class="bg-white p-3 rounded-lg shadow-sm hover:shadow transition-all">
                     <div class="flex justify-between items-center">
                         <div>
                             <p class="font-medium">${fine.reasons?.description || 'Onbekende reden'}</p>
-                            <span class="text-xs text-gray-500">${formatDate(fine.created_at)}</span>
+                            <span class="text-xs text-gray-500">${formatDate(fine.date)}</span>
                         </div>
                         <span class="font-medium">${fineAmount}</span>
                     </div>
@@ -440,7 +446,7 @@ async function loadLeaderboard() {
         const { data: players, error: playersError } = await apiRequest('/players?select=id,name');
         if (playersError) throw playersError;
         
-        const { data: fines, error: finesError } = await apiRequest('/fines?select=id,player_id');
+        const { data: fines, error: finesError } = await apiRequest('/fines?select=id,player_id,amount');
         if (finesError) throw finesError;
         
         if (!players || players.length === 0) {
@@ -459,11 +465,11 @@ async function loadLeaderboard() {
             };
         });
         
-        // Count fines and calculate totals (fixed €5.00 per fine)
+        // Count fines and calculate totals using amount field or default €5.00
         fines.forEach(fine => {
             if (playerFines[fine.player_id]) {
                 playerFines[fine.player_id].count += 1;
-                playerFines[fine.player_id].total += 5.00; // Fixed amount per fine
+                playerFines[fine.player_id].total += fine.amount || 5.00;
             }
         });
         
@@ -484,28 +490,26 @@ async function loadLeaderboard() {
             let medal = '';
             
             if (index === 0) {
-                rankClass = 'bg-yellow-100 border-yellow-300';
+                rankClass = 'rank-1';
                 medal = '<span class="text-yellow-500 mr-2">🥇</span>';
             } else if (index === 1) {
-                rankClass = 'bg-gray-100 border-gray-300';
+                rankClass = 'rank-2';
                 medal = '<span class="text-gray-400 mr-2">🥈</span>';
             } else if (index === 2) {
-                rankClass = 'bg-orange-100 border-orange-300';
+                rankClass = 'rank-3';
                 medal = '<span class="text-orange-500 mr-2">🥉</span>';
             }
             
             html += `
-                <div class="bg-white p-3 rounded-lg shadow-sm hover:shadow transition-all ${rankClass} border-l-4">
-                    <div class="flex justify-between items-center">
-                        <div class="flex items-center">
-                            ${medal}
-                            <div>
-                                <p class="font-medium">${player.name}</p>
-                                <span class="text-xs text-gray-500">${player.count} boete${player.count !== 1 ? 's' : ''}</span>
-                            </div>
+                <div class="player-card ${rankClass}">
+                    <div class="flex items-center">
+                        ${medal}
+                        <div>
+                            <p class="font-medium">${player.name}</p>
+                            <span class="text-xs text-gray-500">${player.count} boete${player.count !== 1 ? 's' : ''}</span>
                         </div>
-                        <span class="font-medium">${formatCurrency(player.total)}</span>
                     </div>
+                    <span class="font-medium">${formatCurrency(player.total)}</span>
                 </div>
             `;
         });
@@ -563,8 +567,8 @@ if (addFineForm) {
                     body: JSON.stringify({
                         player_id: playerId,
                         reason_id: reasonId,
-                        created_at: date,
-                        amount: 5.00 // Add fixed amount
+                        date: date,
+                        amount: 5.00 // Fixed amount or can be changed if needed
                     })
                 });
             });
