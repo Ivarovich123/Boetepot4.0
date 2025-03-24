@@ -241,7 +241,7 @@ async function loadRecentFines() {
     showLoading();
     
     try {
-        const { data: fines, error } = await apiRequest('/fines?select=id,created_at,players(name),reasons(description)&order=created_at.desc&limit=5');
+        const { data: fines, error } = await apiRequest('/fines?select=id,date_added,players(name),reasons(description)&order=date_added.desc&limit=5');
         
         if (error) throw error;
         
@@ -257,23 +257,21 @@ async function loadRecentFines() {
         // Create fine cards for each fine
         fines.forEach(fine => {
             const fineCard = document.createElement('div');
-            fineCard.className = 'fine-card bg-white p-4 border border-gray-200 rounded-xl shadow-sm hover:bg-gray-50 transition-all';
+            fineCard.className = 'fine-card';
             
             // Use standard amount of €5.00
             const fineAmount = '€5,00';
             
             fineCard.innerHTML = `
-            <div class="flex justify-between items-center">
-                <div class="flex-1">
-                    <div class="flex items-center mb-1">
-                        <span class="font-medium text-gray-800">${fine.players?.name || 'Onbekende speler'}</span>
-                        <span class="text-gray-400 mx-2">•</span>
-                        <span class="text-gray-500 text-sm">${fine.reasons?.description || 'Onbekende reden'}</span>
-                    </div>
-                    <div class="text-gray-700">${formatDate(fine.created_at)}</div>
+            <div class="flex-1">
+                <div class="flex items-center mb-1">
+                    <span class="font-medium text-gray-800">${fine.players?.name || 'Onbekende speler'}</span>
+                    <span class="text-gray-400 mx-2">•</span>
+                    <span class="text-gray-500 text-sm">${fine.reasons?.description || 'Onbekende reden'}</span>
                 </div>
-                <div class="font-bold text-primary-600 text-lg">${fineAmount}</div>
+                <div class="text-gray-700">${formatDate(fine.date_added)}</div>
             </div>
+            <div class="font-bold text-primary-600 text-lg">${fineAmount}</div>
             `;
             
             recentFinesEl.appendChild(fineCard);
@@ -387,7 +385,7 @@ async function loadPlayerHistory(playerId) {
     showLoading();
     
     try {
-        const { data: fines, error } = await apiRequest(`/fines?player_id=eq.${playerId}&select=id,created_at,reasons(description),players(name)&order=created_at.desc`);
+        const { data: fines, error } = await apiRequest(`/fines?player_id=eq.${playerId}&select=id,date_added,reasons(description),players(name)&order=date_added.desc`);
         
         if (error) throw error;
         
@@ -415,7 +413,7 @@ async function loadPlayerHistory(playerId) {
                     <div class="flex justify-between items-center">
                         <div>
                             <p class="font-medium">${fine.reasons?.description || 'Onbekende reden'}</p>
-                            <span class="text-xs text-gray-500">${formatDate(fine.created_at)}</span>
+                            <span class="text-xs text-gray-500">${formatDate(fine.date_added)}</span>
                         </div>
                         <span class="font-medium">${fineAmount}</span>
                     </div>
@@ -540,7 +538,10 @@ if (addFineForm) {
         }
         
         const reasonId = reasonSelect.value;
-        const date = dateInput.value || new Date().toISOString().split('T')[0];
+        let date = new Date().toISOString().split('T')[0]; // Default to today
+        if (dateInput && dateInput.value) {
+            date = dateInput.value;
+        }
         
         if (playerIds.length === 0) {
             showToast('Selecteer minimaal één speler', 'warning');
@@ -562,7 +563,7 @@ if (addFineForm) {
                     body: JSON.stringify({
                         player_id: playerId,
                         reason_id: reasonId,
-                        created_at: date
+                        date_added: date // Changed from created_at to date_added
                     })
                 });
             });

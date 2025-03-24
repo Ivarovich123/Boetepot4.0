@@ -68,12 +68,13 @@
         --gradient-secondary: linear-gradient(135deg, #4f46e5, #3730a3);
         --gradient-success: linear-gradient(135deg, #10b981, #059669);
         --gradient-header: linear-gradient(135deg, #0c4a6e, #0284c7);
+        --gradient-card: linear-gradient(180deg, rgba(255,255,255,1) 0%, rgba(249,250,251,1) 100%);
     }
     
     body {
         font-family: 'Inter', sans-serif;
-        background-color: #f9fafb;
-        background-image: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+        background-color: #f1f5f9;
+        background-image: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
         color: #1f2937;
         line-height: 1.5;
     }
@@ -81,16 +82,17 @@
     /* Card styles */
     .card {
         background-color: #ffffff;
+        background-image: var(--gradient-card);
         border-radius: 1rem;
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.08);
         overflow: hidden;
         transition: transform 0.3s ease, box-shadow 0.3s ease;
-        border: 1px solid rgba(209, 213, 219, 0.1);
+        border: 1px solid rgba(209, 213, 219, 0.2);
     }
     
     .card:hover {
         transform: translateY(-5px);
-        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 10px 10px -5px rgba(0, 0, 0, 0.08);
     }
     
     .card-header {
@@ -98,6 +100,26 @@
         padding: 1rem 1.5rem;
         background-image: var(--gradient-primary);
         color: white;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    
+    .card-header h2 {
+        display: flex;
+        align-items: center;
+    }
+    
+    .card-header h2::before {
+        content: "";
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        background-color: white;
+        border-radius: 50%;
+        margin-right: 10px;
+        box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.2);
     }
     
     .card-body {
@@ -108,7 +130,12 @@
     .app-header {
         background-image: var(--gradient-header);
         color: white;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        box-shadow: 0 4px 15px -3px rgba(0, 0, 0, 0.15), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+        padding: 1rem 1.5rem;
+        position: sticky;
+        top: 0;
+        z-index: 40;
+        backdrop-filter: blur(8px);
     }
     
     /* Animated elements */
@@ -154,14 +181,18 @@
         border-radius: 0.75rem;
         padding: 1rem;
         margin-bottom: 0.75rem;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
         transition: all 0.2s ease-in-out;
         border-left: 4px solid transparent;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
     }
     
     .player-card:hover {
         transform: translateY(-2px);
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
+        background-color: #fafafa;
     }
     
     .rank-1 {
@@ -184,11 +215,15 @@
         background-image: var(--gradient-primary);
         color: white;
         border-radius: 1rem;
-        padding: 1.5rem;
+        padding: 2rem 1.5rem;
         text-align: center;
         position: relative;
         overflow: hidden;
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        box-shadow: 0 15px 25px -5px rgba(14, 165, 233, 0.3), 0 10px 10px -5px rgba(14, 165, 233, 0.2);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
     }
     
     .total-box::before {
@@ -198,9 +233,25 @@
         left: -50%;
         width: 200%;
         height: 200%;
-        background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 60%);
-        opacity: 0.6;
+        background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0) 70%);
+        opacity: 0.8;
         pointer-events: none;
+    }
+    
+    .total-box h2 {
+        font-size: 1.25rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 0.75rem;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .total-box #totalAmount {
+        font-size: 3rem;
+        font-weight: 700;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        position: relative;
+        z-index: 10;
     }
     
     /* Player selector styling */
@@ -263,6 +314,51 @@
     .fine-list-item:nth-child(3) { animation-delay: 0.3s; }
     .fine-list-item:nth-child(4) { animation-delay: 0.4s; }
     .fine-list-item:nth-child(5) { animation-delay: 0.5s; }
+    
+    /* Fine card enhancements */
+    .fine-card {
+        background-color: white;
+        border-radius: 0.75rem;
+        padding: 1rem 1.25rem;
+        margin-bottom: 0.75rem;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+        transition: all 0.2s ease-in-out;
+        border-left: 4px solid var(--primary-400);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .fine-card:hover {
+        background-color: var(--primary-50);
+        transform: translateY(-2px);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
+    }
+    
+    /* Responsive improvements */
+    @media (max-width: 640px) {
+        .total-box #totalAmount {
+            font-size: 2.5rem;
+        }
+        
+        .card-header h2 {
+            font-size: 1.25rem;
+        }
+    }
+    
+    /* Select2 customization */
+    .select2-container--default .select2-selection--single {
+        height: 45px;
+        display: flex;
+        align-items: center;
+        padding: 0 0.75rem;
+        border-radius: 0.5rem;
+        border: 1px solid #e5e7eb;
+    }
+    
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 45px;
+    }
   </style>
 </head>
 
@@ -287,6 +383,9 @@
         <div class="text-3xl mr-3 animate-bounce-slow">🐷</div>
         <h1 class="text-xl font-bold">Boetepot</h1>
       </div>
+      <a href="admin.html" class="px-4 py-2 rounded-lg bg-white text-primary-600 font-medium hover:bg-primary-50 transition-all shadow-sm border border-white/20">
+        <i class="fas fa-cog mr-1"></i> Admin
+      </a>
     </div>
   </header>
   

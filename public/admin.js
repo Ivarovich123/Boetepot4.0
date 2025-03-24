@@ -332,15 +332,23 @@ async function loadReasons() {
 // Load recent fines
 async function loadRecentFines() {
     try {
-        // Update query to not reference the missing created_at column
-        const fines = await apiRequest('/fines?select=*,player:player_id(name),reason:reason_id(description)');
+        // Changed the column from created_at to date_added
+        const { data: fines, error } = await apiRequest('/fines?select=id,date_added,players(name),reasons(description)&order=date_added.desc&limit=20');
         
-        renderFinesList(fines);
+        if (error) throw error;
         
-        debug('Recent fines loaded:', fines.length);
+        if (fines && fines.length > 0) {
+            renderFinesList(fines);
+            document.getElementById('noRecentFines').classList.add('hidden');
+            if (DEBUG) console.log('Recent fines loaded:', fines.length);
+        } else {
+            document.getElementById('recentFines').innerHTML = '';
+            document.getElementById('noRecentFines').classList.remove('hidden');
+        }
     } catch (error) {
-        console.error('Error loading fines:', error);
+        console.error('Error loading recent fines:', error);
         showToast('Fout bij laden van recente boetes', 'error');
+        document.getElementById('recentFines').innerHTML = '<div class="text-red-500 py-4">Fout bij laden van recente boetes</div>';
     }
 }
 
@@ -368,57 +376,47 @@ async function loadAllData() {
     }
 }
 
-// Render fines list - update to handle missing amount field
+// Render fines list
 function renderFinesList(fines) {
-    if (!recentFinesEl || !noRecentFinesEl) return;
+    const finesListEl = document.getElementById('recentFines');
+    finesListEl.innerHTML = ''; // Clear previous content
     
-    if (fines && fines.length > 0) {
-        noRecentFinesEl.classList.add('hidden');
-        recentFinesEl.innerHTML = ''; // Clear previous fines
+    fines.forEach(fine => {
+        const fineElement = document.createElement('div');
+        fineElement.className = 'fine-card flex justify-between items-center p-3 bg-white rounded-lg shadow-sm hover:shadow-md transition-all mb-3';
         
-        // Create fine cards for each fine
-        fines.forEach(fine => {
-            const fineCard = document.createElement('div');
-            fineCard.className = 'fine-card bg-white p-4 border border-gray-200 rounded-xl shadow-sm hover:bg-gray-50 transition-all';
-            
-            // Use a fixed standard amount of €5.00 for all fines
-            const fineAmount = '€5,00';
-            
-            fineCard.innerHTML = `
-                <div class="flex justify-between items-center">
-                    <div class="flex-1">
-                        <div class="flex items-center mb-1">
-                            <span class="font-medium text-gray-800">${fine.player?.name || 'Onbekend'}</span>
-                            <span class="text-gray-400 mx-2">•</span>
-                            <span class="text-gray-500 text-sm">Vandaag</span>
-                        </div>
-                        <div class="text-gray-700">${fine.reason?.description || 'Onbekende reden'}</div>
-                    </div>
-                    <div class="flex items-center">
-                        <div class="font-bold text-primary-600 text-lg mr-3">${fineAmount}</div>
-                        <button class="delete-button text-gray-400 hover:text-red-500" data-id="${fine.id}">
-                            <i class="fas fa-trash-alt"></i>
-                        </button>
-                    </div>
+        // Standard amount of €5.00 for all fines
+        const fineAmount = '€5,00';
+        
+        fineElement.innerHTML = `
+            <div class="flex-1">
+                <div class="flex flex-col sm:flex-row sm:items-center mb-1">
+                    <span class="font-medium text-gray-800">${fine.players?.name || 'Onbekende speler'}</span>
+                    <span class="hidden sm:inline text-gray-400 mx-2">•</span>
+                    <span class="text-gray-500 text-sm">${fine.reasons?.description || 'Onbekende reden'}</span>
                 </div>
-            `;
-            
-            // Add delete event listener
-            const deleteBtn = fineCard.querySelector('.delete-button');
-            deleteBtn.addEventListener('click', () => {
-                showConfirmModal(
-                    'Boete verwijderen',
-                    `Weet je zeker dat je de boete voor ${fine.player?.name} wilt verwijderen?`,
-                    () => deleteFine(fine.id)
-                );
-            });
-            
-            recentFinesEl.appendChild(fineCard);
+                <div class="text-xs text-gray-500">${formatDate(fine.date_added)}</div>
+            </div>
+            <div class="flex items-center">
+                <span class="font-medium text-primary-600 mr-4">${fineAmount}</span>
+                <button class="delete-button text-gray-400 hover:text-red-500 transition-colors" data-id="${fine.id}">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        `;
+        
+        // Add event listener for delete button
+        const deleteButton = fineElement.querySelector('.delete-button');
+        deleteButton.addEventListener('click', function() {
+            showConfirmModal(
+                'Boete verwijderen',
+                'Weet je zeker dat je deze boete wilt verwijderen?',
+                () => deleteFine(fine.id)
+            );
         });
-    } else {
-        noRecentFinesEl.classList.remove('hidden');
-        recentFinesEl.innerHTML = ''; // Clear any partial data
-    }
+        
+        finesListEl.appendChild(fineElement);
+    });
 }
 
 // Render players list
@@ -717,54 +715,66 @@ async function deleteReason(id) {
 
 // Add a fine
 async function addFine() {
-    const selectedPlayers = $(playerSelect).select2('data');
-    const selectedReasonId = reasonSelect.value;
-
-    if (selectedPlayers.length === 0) {
-        showToast('Selecteer ten minste één speler', 'error');
-        return;
+    // Get selected player IDs
+    let selectedPlayerIds = [];
+    if ($.fn.select2) {
+        selectedPlayerIds = $('#playerSelect').val() || [];
+    } else {
+        const selectedOptions = playerSelect.selectedOptions;
+        selectedPlayerIds = Array.from(selectedOptions).map(option => option.value);
     }
-
-    if (!selectedReasonId) {
-        showToast('Selecteer een reden', 'error');
-        return;
+    
+    const reasonId = reasonSelect.value;
+    
+    if (selectedPlayerIds.length === 0) {
+        showToast('Selecteer minimaal één speler', 'warning');
+        return false;
     }
-
-    showLoading();
-
+    
+    if (!reasonId) {
+        showToast('Selecteer een reden', 'warning');
+        return false;
+    }
+    
     try {
-        // Process each selected player
-        for (const player of selectedPlayers) {
-            const playerId = player.id;
-            
-            try {
-                const { data, error } = await apiRequest('/fines', {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        player_id: playerId,
-                        reason_id: selectedReasonId,
-                    })
-                });
-
-                if (error) throw error;
-            } catch (err) {
-                console.error('Error adding fine for player', playerId, err);
-                // Continue with next player even if one fails
-            }
-        }
-
-        showToast(`Boete${selectedPlayers.length > 1 ? 's' : ''} succesvol toegevoegd!`, 'success');
+        showLoading(true);
+        
+        // Current date in ISO format (YYYY-MM-DD)
+        const currentDate = new Date().toISOString().split('T')[0];
+        
+        // Add a fine for each selected player
+        const finePromises = selectedPlayerIds.map(playerId => {
+            return apiRequest('/fines', {
+                method: 'POST',
+                body: JSON.stringify({
+                    player_id: playerId,
+                    reason_id: reasonId,
+                    date_added: currentDate  // Changed from created_at to date_added
+                })
+            });
+        });
+        
+        await Promise.all(finePromises);
         
         // Reset form
-        $(playerSelect).val(null).trigger('change');
-        reasonSelect.value = '';
+        if ($.fn.select2) {
+            $('#playerSelect').val(null).trigger('change');
+            $('#reasonSelect').val(null).trigger('change');
+        } else {
+            playerSelect.value = '';
+            reasonSelect.value = '';
+        }
         
-        // Reload fines
-        loadRecentFines();
+        showToast(`${selectedPlayerIds.length} boete${selectedPlayerIds.length > 1 ? 's' : ''} toegevoegd`, 'success');
         
+        // Refresh fines list
+        await loadRecentFines();
+        
+        return true;
     } catch (error) {
         console.error('Error adding fine:', error);
-        showToast('Er is een fout opgetreden bij het toevoegen van de boete', 'error');
+        showToast('Fout bij toevoegen van boete', 'error');
+        return false;
     } finally {
         showLoading(false);
     }
