@@ -382,7 +382,7 @@ async function loadPlayersForSelector() {
         }
         
         if (DEBUG) console.log('Players loaded for selector:', data.length);
-  } catch (error) {
+    } catch (error) {
         console.error('Error loading players for selector:', error);
         showToast('Fout bij laden van spelers', 'error');
     }
@@ -394,13 +394,15 @@ async function loadReasonsForSelector() {
         if (!reasonSelect) return;
         
         // Update query to not reference the missing amount column
-        const reasons = await apiRequest('/reasons?select=id,description&order=description');
+        const { data, error } = await apiRequest('/reasons?select=id,description&order=description');
         
-        if (reasons && reasons.length > 0) {
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
             // Clear existing options but keep the placeholder
             reasonSelect.innerHTML = '<option value="">Selecteer een reden</option>';
             
-            reasons.forEach(reason => {
+            data.forEach(reason => {
                 const option = document.createElement('option');
                 option.value = reason.id;
                 option.textContent = reason.description;
@@ -416,9 +418,9 @@ async function loadReasonsForSelector() {
                 });
             }
             
-            if (DEBUG) console.log('Reasons loaded for selector:', reasons.length);
+            if (DEBUG) console.log('Reasons loaded for selector:', data.length);
         }
-  } catch (error) {
+    } catch (error) {
         console.error('Error loading reasons for selector:', error);
         if (reasonSelect) reasonSelect.innerHTML = '<option value="">Fout bij laden redenen</option>';
     }
