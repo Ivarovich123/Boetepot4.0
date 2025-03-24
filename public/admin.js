@@ -69,8 +69,19 @@ function formatCurrency(amount) {
 
 // Format date
 function formatDate(dateString) {
-    const options = { year: 'numeric', month: 'numeric', day: 'numeric' };
-    return new Date(dateString).toLocaleDateString('nl-NL', options);
+    if (!dateString) return 'Onbekende datum';
+    
+    const date = new Date(dateString);
+    const day = date.getDate();
+    
+    // Dutch month names
+    const monthNames = [
+        'Januari', 'Februari', 'Maart', 'April', 'Mei', 'Juni',
+        'Juli', 'Augustus', 'September', 'Oktober', 'November', 'December'
+    ];
+    
+    const month = monthNames[date.getMonth()];
+    return `${day} ${month}`;
 }
 
 // Show/hide loading spinner
@@ -357,7 +368,7 @@ async function loadRecentFines() {
             document.getElementById('recentFines').innerHTML = '';
             document.getElementById('noRecentFines').classList.remove('hidden');
         }
-    } catch (error) {
+  } catch (error) {
         console.error('Error loading recent fines:', error);
         showToast('Fout bij laden van recente boetes', 'error');
         document.getElementById('recentFines').innerHTML = '<div class="text-red-500 py-4">Fout bij laden van recente boetes</div>';
@@ -412,9 +423,9 @@ function renderFinesList(fines) {
             <div class="flex items-center">
                 <span class="font-medium text-primary-600 mr-4">${fineAmount}</span>
                 <button class="delete-button text-gray-400 hover:text-red-500 transition-colors" data-id="${fine.id}">
-                    <i class="fas fa-trash"></i>
-                </button>
-            </div>
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
         `;
         
         // Add event listener for delete button
@@ -501,7 +512,7 @@ function renderReasonsList(reasons) {
             
             reasonsListEl.appendChild(reasonItem);
         });
-    } else {
+        } else {
         noReasonsFoundEl.classList.remove('hidden');
         reasonsListEl.innerHTML = ''; // Clear any partial data
     }
@@ -607,92 +618,86 @@ async function deletePlayer(id) {
     }
 }
 
-// Add a single reason - update to handle database without amount column
-async function addReason(description, amount) {
-    if (!description || description.trim() === '') {
-        showToast('Voer een beschrijving in voor de reden', 'warning');
-        return;
+// Add a single reason
+async function addReason(description) {
+    if (!description) {
+        showToast('Voer een omschrijving in', 'warning');
+        return false;
     }
     
     try {
         showLoading(true);
         
-        const reason = await apiRequest('/reasons', {
+        const { data, error } = await apiRequest('/reasons', {
             method: 'POST',
             body: JSON.stringify({
-                description: description.trim()
-                // Remove amount field from the request since it doesn't exist in the DB
+                description: description
             })
         });
         
-        showToast(`Reden "${description}" toegevoegd`, 'success');
-        reasonDescriptionInput.value = ''; // Clear inputs
-        reasonAmountInput.value = '';
+        if (error) throw error;
         
-        // Refresh reasons list
+        document.getElementById('reasonDescription').value = '';
+        
+        showToast('Reden toegevoegd', 'success');
         await loadReasons();
+        return true;
     } catch (error) {
         console.error('Error adding reason:', error);
         showToast('Fout bij toevoegen van reden', 'error');
+        return false;
     } finally {
         showLoading(false);
     }
 }
 
-// Bulk add reasons - update to handle database without amount column
+// Add bulk reasons
 async function addBulkReasons(reasonsText) {
-    if (!reasonsText || reasonsText.trim() === '') {
-        showToast('Voer tenminste één reden in', 'warning');
-        return;
-    }
-    
-    // Split by newline
-    const reasonLines = reasonsText
-        .split('\n')
-        .map(line => line.trim())
-        .filter(line => line !== '');
-    
-    if (reasonLines.length === 0) {
-        showToast('Geen geldige redenen gevonden', 'warning');
-        return;
-    }
-    
-    // Parse each line - update to ignore the amount portion
-    const reasons = [];
-    
-    reasonLines.forEach(line => {
-        // Extract only the description part before any comma
-        const description = line.split(',')[0].trim();
-        if (description) {
-            reasons.push({ description });
-        }
-    });
-    
-    if (reasons.length === 0) {
-        showToast('Geen geldige redenen gevonden', 'warning');
-        return;
+    if (!reasonsText) {
+        showToast('Voer redenen in', 'warning');
+        return false;
     }
     
     try {
         showLoading(true);
         
-        const promises = reasons.map(reason => 
-            apiRequest('/reasons', {
-                method: 'POST',
-                body: JSON.stringify(reason)
-            })
-        );
+        // Split by newline or comma
+        const reasonLines = reasonsText.split(/[\n,]+/).map(line => line.trim()).filter(line => line);
+        
+        if (reasonLines.length === 0) {
+            showToast('Geen geldige redenen gevonden', 'warning');
+            return false;
+        }
+        
+        // Process each reason
+        const promises = [];
+        for (const line of reasonLines) {
+            // Simple case: just the description
+            const description = line.trim();
+            
+            if (description) {
+                promises.push(
+                    apiRequest('/reasons', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            description: description
+                        })
+                    })
+                );
+            }
+        }
         
         await Promise.all(promises);
         
-        showToast(`${reasons.length} redenen toegevoegd`, 'success');
-        bulkReasonsInput.value = ''; // Clear input
+        document.getElementById('bulkReasons').value = '';
         
-        // Refresh reasons list
+        showToast(`${promises.length} redenen toegevoegd`, 'success');
         await loadReasons();
+        return true;
     } catch (error) {
-        console.error('Error bulk adding reasons:', error);
-        showToast('Fout bij bulk toevoegen van redenen', 'error');
+        console.error('Error adding bulk reasons:', error);
+        showToast('Fout bij toevoegen van redenen', 'error');
+        return false;
     } finally {
         showLoading(false);
     }
@@ -793,7 +798,7 @@ async function addFine() {
         await loadRecentFines();
         
         return true;
-    } catch (error) {
+  } catch (error) {
         console.error('Error adding fine:', error);
         showToast('Fout bij toevoegen van boete', 'error');
         return false;
@@ -950,20 +955,17 @@ function initialize() {
     // Set up event listeners for Reason management
     if (addReasonBtn) {
         addReasonBtn.addEventListener('click', () => {
-            addReason(reasonDescriptionInput.value, reasonAmountInput.value);
+            addReason(reasonDescriptionInput.value);
         });
     }
     
-    if (reasonDescriptionInput && reasonAmountInput) {
-        const handleEnterKey = (e) => {
+    if (reasonDescriptionInput) {
+        reasonDescriptionInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
                 e.preventDefault();
-                addReason(reasonDescriptionInput.value, reasonAmountInput.value);
+                addReason(reasonDescriptionInput.value);
             }
-        };
-        
-        reasonDescriptionInput.addEventListener('keypress', handleEnterKey);
-        reasonAmountInput.addEventListener('keypress', handleEnterKey);
+        });
     }
     
     if (addBulkReasonsBtn) {

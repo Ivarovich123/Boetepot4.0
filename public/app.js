@@ -103,8 +103,19 @@ function formatCurrency(amount) {
 
 // Format date
 function formatDate(dateString) {
-    const options = { year: 'numeric', month: 'numeric', day: 'numeric' };
-    return new Date(dateString).toLocaleDateString('nl-NL', options);
+    if (!dateString) return 'Onbekende datum';
+    
+    const date = new Date(dateString);
+    const day = date.getDate();
+    
+    // Dutch month names
+    const monthNames = [
+        'Januari', 'Februari', 'Maart', 'April', 'Mei', 'Juni',
+        'Juli', 'Augustus', 'September', 'Oktober', 'November', 'December'
+    ];
+    
+    const month = monthNames[date.getMonth()];
+    return `${day} ${month}`;
 }
 
 // Add cache busting parameter to URL - Fixed to use a simple timestamp approach
@@ -159,7 +170,7 @@ async function apiRequest(endpoint, options = {}) {
         };
         
         const requestOptions = {
-            ...options,
+      ...options,
             headers: headers,
             mode: 'cors'
         };
@@ -173,7 +184,7 @@ async function apiRequest(endpoint, options = {}) {
         // Simplified fetch with no retries to diagnose the issue
         const response = await fetch(url, requestOptions);
                 
-        if (!response.ok) {
+                if (!response.ok) {
             const errorText = await response.text();
             console.error('API Response Error:', response.status, errorText);
             throw new Error(`API Error (${response.status}): ${errorText}`);
@@ -245,7 +256,7 @@ async function loadRecentFines() {
     showLoading();
     
     try {
-        const { data, error } = await apiRequest('/fines?select=id,date,amount,players(name),reasons(description)&order=date.desc&limit=5');
+        const { data, error } = await apiRequest('/fines?select=id,date,amount,players(name),reasons(description)&order=date.desc&limit=10');
         
         if (error) throw error;
         
@@ -292,54 +303,39 @@ async function loadRecentFines() {
 // Load players for selectors (both history and multi-select)
 async function loadPlayersForSelector() {
     try {
-        const players = await apiRequest('/players?select=id,name&order=name');
+        const { data, error } = await apiRequest('/players?select=id,name&order=name');
         
-        if (players && players.length > 0) {
-            // Update player history dropdown
-            playerHistorySelectEl.innerHTML = '<option value="">Selecteer een speler</option>';
-            
-            // Also update multi-select player dropdown if exists
-            if (playerSelect) playerSelect.innerHTML = '';
-            
-            players.forEach(player => {
-                // Add to player history dropdown
-                const option1 = document.createElement('option');
-                option1.value = player.id;
-                option1.textContent = player.name;
-                playerHistorySelectEl.appendChild(option1);
-                
-                // Add to multi-select player dropdown if exists
-                if (playerSelect) {
-                    const option2 = document.createElement('option');
-                    option2.value = player.id;
-                    option2.textContent = player.name;
-                    playerSelect.appendChild(option2);
-                }
-            });
-            
-            // Refresh Select2 if initialized
-            if (window.$ && $.fn.select2) {
-                $(playerHistorySelectEl).select2({
-                    placeholder: 'Selecteer een speler',
-                    allowClear: true,
-                    width: '100%',
-                });
-                
-                if (playerSelect) {
-                    $(playerSelect).select2({
-                        placeholder: 'Selecteer speler(s)',
-                        allowClear: true,
-                        width: '100%',
-                    });
-                }
-            }
-            
-            if (DEBUG) console.log('Players loaded for selector:', players.length);
+        if (error) throw error;
+        
+        if (!data || data.length === 0) {
+            if (DEBUG) console.log('No players found for selector');
+            return;
         }
+        
+        // Clear previous options except for the default one
+        playerHistorySelectEl.innerHTML = '<option value="">-- Kies een speler --</option>';
+        
+        // Add new options
+        data.forEach(player => {
+            const option = document.createElement('option');
+            option.value = player.id;
+            option.textContent = player.name;
+            playerHistorySelectEl.appendChild(option);
+        });
+        
+        // Initialize Select2 if available
+        if (window.$ && $.fn.select2) {
+            $(playerHistorySelectEl).select2({
+                placeholder: 'Selecteer een speler',
+                allowClear: true,
+                width: '100%'
+            });
+        }
+        
+        if (DEBUG) console.log('Players loaded for selector:', data.length);
     } catch (error) {
         console.error('Error loading players for selector:', error);
-        playerHistorySelectEl.innerHTML = '<option value="">Fout bij laden spelers</option>';
-        if (playerSelect) playerSelect.innerHTML = '<option value="">Fout bij laden spelers</option>';
+        showToast('Fout bij laden van spelers', 'error');
     }
 }
 
@@ -373,7 +369,7 @@ async function loadReasonsForSelector() {
             
             if (DEBUG) console.log('Reasons loaded for selector:', reasons.length);
         }
-    } catch (error) {
+  } catch (error) {
         console.error('Error loading reasons for selector:', error);
         if (reasonSelect) reasonSelect.innerHTML = '<option value="">Fout bij laden redenen</option>';
     }
@@ -389,7 +385,7 @@ async function loadPlayerHistory(playerId) {
     showLoading();
     
     try {
-        const { data, error } = await apiRequest(`/fines?player_id=eq.${playerId}&select=id,date,amount,reasons(description),players(name)&order=date.desc`);
+        const { data, error } = await apiRequest(`/fines?player_id=eq.${playerId}&select=id,date,amount,reasons(description),players(name)&order=date.desc&limit=100`);
         
         if (error) throw error;
         
@@ -453,7 +449,7 @@ async function loadLeaderboard() {
             leaderboardEl.innerHTML = '<div class="text-gray-500 text-center py-4">Geen spelers gevonden</div>';
             return;
         }
-
+        
         // Group fines by player
         const playerFines = {};
         players.forEach(player => {
@@ -593,7 +589,7 @@ if (addFineForm) {
                 loadLeaderboard()
             ]);
             
-        } catch (error) {
+    } catch (error) {
             console.error('Error adding fines:', error);
             showToast('Fout bij toevoegen van boetes', 'error');
         } finally {
