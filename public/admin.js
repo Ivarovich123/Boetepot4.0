@@ -174,9 +174,8 @@ async function apiRequest(endpoint, options = {}) {
         // Build the full URL
         let url = SUPABASE_URL + finalEndpoint;
         
-        // Add cache busting
+        // Add cache busting to headers instead of URL params to avoid PostgREST trying to interpret it as a filter
         const timestamp = Date.now();
-        url += (url.includes('?') ? '&' : '?') + `_=${timestamp}`;
         
         debug('Attempting API Request to:', url);
         
@@ -185,7 +184,9 @@ async function apiRequest(endpoint, options = {}) {
             'apikey': SUPABASE_KEY,
             'Authorization': `Bearer ${SUPABASE_KEY}`,
             'Content-Type': 'application/json',
-            'Prefer': 'return=representation'
+            'Prefer': 'return=representation',
+            'Cache-Control': 'no-cache',
+            'X-Cache-Bust': timestamp.toString() // Add cache busting as a custom header
         };
         
         const requestOptions = {
