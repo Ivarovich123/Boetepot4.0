@@ -356,7 +356,7 @@ async function loadReasons() {
 // Load recent fines
 async function loadRecentFines() {
     try {
-        const { data, error } = await apiRequest('/fines?select=id,date,players(name),reasons(description)&order=date.desc&limit=20');
+        const { data, error } = await apiRequest('/fines?select=id,date,amount,players(name),reasons(description)&order=date.desc&limit=20');
         
         if (error) throw error;
         
@@ -368,7 +368,7 @@ async function loadRecentFines() {
             document.getElementById('recentFines').innerHTML = '';
             document.getElementById('noRecentFines').classList.remove('hidden');
         }
-  } catch (error) {
+    } catch (error) {
         console.error('Error loading recent fines:', error);
         showToast('Fout bij laden van recente boetes', 'error');
         document.getElementById('recentFines').innerHTML = '<div class="text-red-500 py-4">Fout bij laden van recente boetes</div>';
@@ -401,15 +401,20 @@ async function loadAllData() {
 
 // Render fines list
 function renderFinesList(fines) {
-    const finesListEl = document.getElementById('recentFines');
-    finesListEl.innerHTML = ''; // Clear previous content
+    const finesListElement = document.getElementById('recentFines');
+    finesListElement.innerHTML = '';
+    
+    if (!fines || fines.length === 0) {
+        finesListElement.innerHTML = '<p class="text-center text-gray-500 py-4">Geen recente boetes gevonden</p>';
+        return;
+    }
     
     fines.forEach(fine => {
         const fineElement = document.createElement('div');
         fineElement.className = 'fine-card flex justify-between items-center p-3 bg-white rounded-lg shadow-sm hover:shadow-md transition-all mb-3';
         
-        // Use fine amount if available or default to €5.00
-        const fineAmount = fine.amount ? formatCurrency(fine.amount) : '€5,00';
+        // Use the correct amount from the fine record
+        const amount = fine.amount ? formatCurrency(fine.amount) : '€5,00';
         
         fineElement.innerHTML = `
             <div class="flex-1">
@@ -421,7 +426,7 @@ function renderFinesList(fines) {
                 <div class="text-xs text-gray-500">${formatDate(fine.date)}</div>
             </div>
             <div class="flex items-center">
-                <span class="font-medium text-primary-600 mr-4">${fineAmount}</span>
+                <span class="font-medium text-primary-600 mr-4">${amount}</span>
                 <button class="delete-button text-gray-400 hover:text-red-500 transition-colors" data-id="${fine.id}">
                     <i class="fas fa-trash"></i>
                 </button>
@@ -438,7 +443,7 @@ function renderFinesList(fines) {
             );
         });
         
-        finesListEl.appendChild(fineElement);
+        finesListElement.appendChild(fineElement);
     });
 }
 
