@@ -174,9 +174,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 endpoint = '/' + endpoint;
             }
             
-            // Fix format for foreign key queries (nested relations)
-            endpoint = endpoint.replace(/\(([^)]+)\)/g, '.select=$1');
-            
             // Make sure query parameters are properly formatted
             let url = SUPABASE_URL + endpoint;
             
