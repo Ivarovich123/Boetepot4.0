@@ -408,7 +408,7 @@ function renderFinesList(fines) {
         const fineElement = document.createElement('div');
         fineElement.className = 'fine-card flex justify-between items-center p-3 bg-white rounded-lg shadow-sm hover:shadow-md transition-all mb-3';
         
-        // Use fine amount if available, otherwise default to €5.00
+        // Use fine amount if available or default to €5.00
         const fineAmount = fine.amount ? formatCurrency(fine.amount) : '€5,00';
         
         fineElement.innerHTML = `
@@ -423,9 +423,9 @@ function renderFinesList(fines) {
             <div class="flex items-center">
                 <span class="font-medium text-primary-600 mr-4">${fineAmount}</span>
                 <button class="delete-button text-gray-400 hover:text-red-500 transition-colors" data-id="${fine.id}">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </div>
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
         `;
         
         // Add event listener for delete button
@@ -887,29 +887,44 @@ async function exportData() {
     }
 }
 
-// Reset all data
+// Reset everything - Add WHERE clauses to DELETE requests for safety
 async function resetEverything() {
     try {
         showLoading(true);
         
-        // Delete all fines first (due to foreign key constraints)
-        await apiRequest('/fines', {
+        // Confirm action with the user
+        const confirmed = confirm('WAARSCHUWING: Dit verwijdert ALLE data (spelers, boetes, redenen). Dit kan niet ongedaan worden gemaakt! Weet je zeker dat je door wilt gaan?');
+        
+        if (!confirmed) {
+            debug('Reset canceled by user');
+            return;
+        }
+        
+        debug('Resetting everything...');
+        
+        // Delete all fines (with WHERE clause for safety)
+        await apiRequest('/fines?id=neq.0', {
             method: 'DELETE'
         });
         
-        // Delete all players and reasons
-        await Promise.all([
-            apiRequest('/players', { method: 'DELETE' }),
-            apiRequest('/reasons', { method: 'DELETE' })
-        ]);
+        // Delete all players (with WHERE clause for safety)
+        await apiRequest('/players?id=neq.0', {
+            method: 'DELETE'
+        });
         
-        showToast('Alle data is verwijderd', 'success');
+        // Delete all reasons (with WHERE clause for safety)
+        await apiRequest('/reasons?id=neq.0', {
+            method: 'DELETE'
+        });
         
-        // Refresh all data
+        debug('Reset completed successfully');
+        showToast('Alles gereset! De data is volledig verwijderd.', 'success');
+        
+        // Reload data after reset
         await loadAllData();
     } catch (error) {
-        console.error('Reset failed:', error);
-        showToast('Fout bij resetten: ' + error.message, 'error');
+        console.error('Error resetting data:', error);
+        showToast('Fout bij het resetten van de data', 'error');
     } finally {
         showLoading(false);
     }

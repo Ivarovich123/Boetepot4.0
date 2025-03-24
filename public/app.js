@@ -300,7 +300,7 @@ async function loadRecentFines() {
     }
 }
 
-// Load players for selectors (both history and multi-select)
+// Load players for dropdown selector
 async function loadPlayersForSelector() {
     try {
         const { data, error } = await apiRequest('/players?select=id,name&order=name');
@@ -313,23 +313,48 @@ async function loadPlayersForSelector() {
         }
         
         // Clear previous options except for the default one
-        playerHistorySelectEl.innerHTML = '<option value="">-- Kies een speler --</option>';
-        
-        // Add new options
-        data.forEach(player => {
-            const option = document.createElement('option');
-            option.value = player.id;
-            option.textContent = player.name;
-            playerHistorySelectEl.appendChild(option);
-        });
-        
-        // Initialize Select2 if available
-        if (window.$ && $.fn.select2) {
-            $(playerHistorySelectEl).select2({
-                placeholder: 'Selecteer een speler',
-                allowClear: true,
-                width: '100%'
+        if (playerHistorySelectEl) {
+            playerHistorySelectEl.innerHTML = '<option value="">-- Kies een speler --</option>';
+            
+            // Add new options
+            data.forEach(player => {
+                const option = document.createElement('option');
+                option.value = player.id;
+                option.textContent = player.name;
+                playerHistorySelectEl.appendChild(option);
             });
+            
+            // Initialize Select2 if available
+            if (window.$ && $.fn.select2) {
+                $(playerHistorySelectEl).select2({
+                    placeholder: 'Selecteer een speler',
+                    allowClear: true,
+                    width: '100%',
+                    dropdownParent: $(playerHistorySelectEl).parent()
+                });
+            }
+        }
+        
+        // Also update the player select for adding fines if it exists
+        if (playerSelect) {
+            playerSelect.innerHTML = '';
+            
+            data.forEach(player => {
+                const option = document.createElement('option');
+                option.value = player.id;
+                option.textContent = player.name;
+                playerSelect.appendChild(option);
+            });
+            
+            // Initialize Select2 for multi-select if available
+            if (window.$ && $.fn.select2) {
+                $(playerSelect).select2({
+                    placeholder: 'Selecteer speler(s)',
+                    allowClear: true,
+                    width: '100%',
+                    dropdownParent: $(playerSelect).parent()
+                });
+            }
         }
         
         if (DEBUG) console.log('Players loaded for selector:', data.length);
@@ -600,10 +625,19 @@ if (addFineForm) {
 
 // Event listener for player history selector
 if (playerHistorySelectEl) {
-    playerHistorySelectEl.addEventListener('change', function() {
-        const playerId = this.value;
-        loadPlayerHistory(playerId);
-    });
+    // Use jQuery for Select2 integration if available
+    if (window.$ && $.fn.select2) {
+        $(playerHistorySelectEl).on('change', function() {
+            const playerId = $(this).val();
+            loadPlayerHistory(playerId);
+        });
+    } else {
+        // Fallback to standard event listener
+        playerHistorySelectEl.addEventListener('change', function() {
+            const playerId = this.value;
+            loadPlayerHistory(playerId);
+        });
+    }
 }
 
 // Initialize the app
