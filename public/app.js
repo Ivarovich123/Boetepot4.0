@@ -123,97 +123,85 @@ async function apiRequest(endpoint, options = {}) {
             endpoint = '/' + endpoint;
         }
         
-        // Add the REST API path prefix
-        if (!endpoint.startsWith('/rest/v1')) {
-            endpoint = '/rest/v1' + endpoint;
-        }
+        // Fix the endpoint format - CRITICAL CHANGE
+        // Supabase REST API expects: /rest/v1/tablename
+        let finalEndpoint = endpoint;
         
-        // Make sure query parameters are properly formatted
-        let url = SUPABASE_URL + endpoint;
+        // Extract the table name from the endpoint
+        const pathParts = endpoint.split('?')[0].split('/');
+        const tableName = pathParts[pathParts.length - 1];
         
-        // Apply cache busting
-        const timestamp = Date.now();
-        const separator = url.includes('?') ? '&' : '?';
-        url = `${url}${separator}cachebust=${timestamp}`;
-        
-        if (DEBUG) console.log('Attempting API Request to:', url);
-        
-        const defaultOptions = {
-            headers: {
-                'apikey': SUPABASE_KEY,
-                'Authorization': `Bearer ${SUPABASE_KEY}`,
-                'Content-Type': 'application/json',
-                'Prefer': 'return=representation'
-            },
-            mode: 'cors',
-            credentials: 'omit' // Don't send cookies for CORS
-        };
-        
-        const requestOptions = { ...defaultOptions, ...options };
-        
-        // Add retry logic for network issues
-        let retries = 3;
-        let response = null;
-        
-        while (retries > 0) {
-            try {
-                if (DEBUG) console.log(`API request attempt ${4-retries}/3`);
-                response = await fetch(url, requestOptions);
-                break; // If successful, exit the retry loop
-            } catch (fetchError) {
-                console.error(`Fetch attempt ${4-retries} failed:`, fetchError);
-                retries--;
-                if (retries === 0) throw fetchError;
-                // Wait before retrying (exponential backoff)
-                const waitTime = (4 - retries) * 1000;
-                console.log(`Retrying in ${waitTime/1000} seconds...`);
-                await new Promise(resolve => setTimeout(resolve, waitTime));
+        if (!endpoint.includes('/rest/v1/')) {
+            finalEndpoint = `/rest/v1/${tableName}`;
+            
+            // Append query parameters if they exist
+            if (endpoint.includes('?')) {
+                finalEndpoint += endpoint.substring(endpoint.indexOf('?'));
             }
         }
         
-        if (!response) {
-            throw new Error('Network error after multiple retries');
-        }
-                
+        // Build the full URL
+        let url = SUPABASE_URL + finalEndpoint;
+        
+        // Add cache busting
+        const timestamp = Date.now();
+        url += (url.includes('?') ? '&' : '?') + `_=${timestamp}`;
+        
+        if (DEBUG) console.log('Attempting API Request to:', url);
+        
+        // Headers are CRITICAL for Supabase
+        const headers = {
+            'apikey': SUPABASE_KEY,
+            'Authorization': `Bearer ${SUPABASE_KEY}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=representation'
+        };
+        
+        const requestOptions = {
+            ...options,
+            headers: headers,
+            mode: 'cors'
+        };
+        
+        if (DEBUG) console.log('Request options:', JSON.stringify({
+            method: requestOptions.method || 'GET',
+            headers: Object.keys(requestOptions.headers),
+            mode: requestOptions.mode
+        }));
+        
+        // Simplified fetch with no retries to diagnose the issue
+        const response = await fetch(url, requestOptions);
+        
         if (!response.ok) {
             const errorText = await response.text();
             console.error('API Response Error:', response.status, errorText);
             throw new Error(`API Error (${response.status}): ${errorText}`);
         }
         
-        // Parse JSON
+        // Parse JSON response
         const data = await response.json();
         if (DEBUG) console.log('API Response Data:', data);
         return data;
     } catch (error) {
         console.error('API Request Error:', error);
         
-        // More detailed error message to help with debugging
-        let errorMessage = 'Fout bij verbinden met de database. ';
+        // More detailed error message and logging
+        let errorMessage = 'Database connection error: ';
         
-        if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
-            errorMessage += 'Controleer uw internetverbinding en API-instellingen. Mogelijke oorzaken: CORS-restricties, ongeldige API-sleutel, of Supabase-server niet bereikbaar.';
+        if (error.message.includes('Failed to fetch')) {
+            errorMessage += 'Cannot reach the database server. This might be due to CORS issues, network problems, or an incorrect API URL.';
             
-            // Log detailed debugging information
-            console.log('Debug info:');
-            console.log('API Base URL:', SUPABASE_URL);
-            console.log('API Key (masked):', SUPABASE_KEY.substring(0, 15) + '...');
-            console.log('Headers:', options.headers);
+            console.log('Diagnostic info:');
+            console.log('- API URL:', SUPABASE_URL);
+            console.log('- API Key (first 10 chars):', SUPABASE_KEY.substring(0, 10) + '...');
+            console.log('- Browser:', navigator.userAgent);
             
-            // Check if in development mode
-            if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-                console.log('Development environment detected - check for CORS issues');
-                
-                // Attempt a simple ping test to see if Supabase is accessible
-                fetch(`${SUPABASE_URL}/health`, {
-                    method: 'GET',
-                    headers: { 'apikey': SUPABASE_KEY },
-                    mode: 'cors'
-                }).then(r => {
-                    console.log('Health check succeeded');
-                }).catch(e => {
-                    console.log('Health check failed:', e);
-                });
+            // Try a direct fetch to Supabase health endpoint
+            try {
+                const healthCheck = await fetch(`${SUPABASE_URL}/rest/v1/?apikey=${SUPABASE_KEY}`);
+                console.log('Health check response:', healthCheck.status, healthCheck.statusText);
+            } catch (e) {
+                console.log('Health check failed completely:', e.message);
             }
         } else {
             errorMessage += error.message;
