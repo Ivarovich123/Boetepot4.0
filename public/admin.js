@@ -16,7 +16,6 @@ const toastContainer = document.getElementById('toastContainer');
 const addFineForm = document.getElementById('addFineForm');
 const playerSelect = document.getElementById('playerSelect');
 const reasonSelect = document.getElementById('reasonSelect');
-const dateInput = document.getElementById('dateInput');
 
 // Player elements
 const playerNameInput = document.getElementById('playerName');
@@ -382,18 +381,21 @@ function renderFinesList(fines) {
             const fineCard = document.createElement('div');
             fineCard.className = 'fine-card bg-white p-4 border border-gray-200 rounded-xl shadow-sm hover:bg-gray-50 transition-all';
             
+            // Use a fixed standard amount of €5.00 for all fines
+            const fineAmount = '€5,00';
+            
             fineCard.innerHTML = `
                 <div class="flex justify-between items-center">
                     <div class="flex-1">
                         <div class="flex items-center mb-1">
                             <span class="font-medium text-gray-800">${fine.player?.name || 'Onbekend'}</span>
                             <span class="text-gray-400 mx-2">•</span>
-                            <span class="text-gray-500 text-sm">${formatDate(fine.created_at)}</span>
+                            <span class="text-gray-500 text-sm">Vandaag</span>
                         </div>
                         <div class="text-gray-700">${fine.reason?.description || 'Onbekende reden'}</div>
                     </div>
                     <div class="flex items-center">
-                        <div class="font-bold text-primary-600 text-lg mr-3">€0,00</div>
+                        <div class="font-bold text-primary-600 text-lg mr-3">${fineAmount}</div>
                         <button class="delete-button text-gray-400 hover:text-red-500" data-id="${fine.id}">
                             <i class="fas fa-trash-alt"></i>
                         </button>
@@ -714,53 +716,55 @@ async function deleteReason(id) {
 }
 
 // Add a fine
-async function addFine(playerIds, reasonId, date) {
-    if (!playerIds || playerIds.length === 0) {
-        showToast('Selecteer minimaal één speler', 'warning');
-        return false;
+async function addFine() {
+    const selectedPlayers = $(playerSelect).select2('data');
+    const selectedReasonId = reasonSelect.value;
+
+    if (selectedPlayers.length === 0) {
+        showToast('Selecteer ten minste één speler', 'error');
+        return;
     }
-    
-    if (!reasonId) {
-        showToast('Selecteer een reden', 'warning');
-        return false;
+
+    if (!selectedReasonId) {
+        showToast('Selecteer een reden', 'error');
+        return;
     }
-    
+
+    showLoading();
+
     try {
-        showLoading(true);
-        
-        // Add a fine for each selected player - remove created_at field
-        const finePromises = playerIds.map(playerId => {
-            return apiRequest('/fines', {
-                method: 'POST',
-                body: JSON.stringify({
-                    player_id: playerId,
-                    reason_id: reasonId
-                    // Remove created_at as it doesn't exist in the DB
-                })
-            });
-        });
-        
-        await Promise.all(finePromises);
-        
-        showToast(`${playerIds.length > 1 ? 'Boetes' : 'Boete'} toegevoegd voor ${playerIds.length} ${playerIds.length > 1 ? 'spelers' : 'speler'}`, 'success');
+        // Process each selected player
+        for (const player of selectedPlayers) {
+            const playerId = player.id;
+            
+            try {
+                const { data, error } = await apiRequest('/fines', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        player_id: playerId,
+                        reason_id: selectedReasonId,
+                    })
+                });
+
+                if (error) throw error;
+            } catch (err) {
+                console.error('Error adding fine for player', playerId, err);
+                // Continue with next player even if one fails
+            }
+        }
+
+        showToast(`Boete${selectedPlayers.length > 1 ? 's' : ''} succesvol toegevoegd!`, 'success');
         
         // Reset form
-        if (window.$ && $.fn.select2) {
-            $(playerSelect).val(null).trigger('change');
-            $(reasonSelect).val(null).trigger('change');
-        } else {
-            playerSelect.value = '';
-            reasonSelect.value = '';
-        }
+        $(playerSelect).val(null).trigger('change');
+        reasonSelect.value = '';
         
-        // Refresh recent fines
-        await loadRecentFines();
+        // Reload fines
+        loadRecentFines();
         
-        return true;
     } catch (error) {
         console.error('Error adding fine:', error);
-        showToast('Fout bij toevoegen van boete', 'error');
-        return false;
+        showToast('Er is een fout opgetreden bij het toevoegen van de boete', 'error');
     } finally {
         showLoading(false);
     }
@@ -883,24 +887,9 @@ function initialize() {
     
     // Set up event listeners for Fine Form
     if (addFineForm) {
-        addFineForm.addEventListener('submit', async function(e) {
+        addFineForm.addEventListener('submit', (e) => {
             e.preventDefault();
-            
-            // Get selected player IDs (supports multiple selections)
-            let playerIds = [];
-            if (window.$ && $.fn.select2) {
-                playerIds = $(playerSelect).val() || [];
-            } else {
-                // Fallback for when Select2 is not available
-                Array.from(playerSelect.selectedOptions).forEach(option => {
-                    playerIds.push(option.value);
-                });
-            }
-            
-            const reasonId = reasonSelect.value;
-            const date = dateInput.value || new Date().toISOString().split('T')[0];
-            
-            await addFine(playerIds, reasonId, date);
+            addFine();
         });
     }
     

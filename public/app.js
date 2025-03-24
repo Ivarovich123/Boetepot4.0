@@ -217,61 +217,73 @@ async function apiRequest(endpoint, options = {}) {
 
 // Load total amount
 async function loadTotalAmount() {
+    showLoading();
+    
     try {
-        // Update query to not reference the missing amount column
-        const fines = await apiRequest('/fines?select=*');
+        const { data: fines, error } = await apiRequest('/fines?select=id');
         
-        // Since we don't have amounts, we'll just show a placeholder value
-        totalAmountEl.textContent = '€0,00';
+        if (error) throw error;
         
-        if (DEBUG) console.log('Total amount loaded (placeholder)');
+        // Calculate total based on fixed €5.00 per fine
+        const totalAmount = fines.length * 5.00;
+        totalAmountEl.textContent = formatCurrency(totalAmount);
+        
     } catch (error) {
         console.error('Error loading total amount:', error);
         totalAmountEl.textContent = '€0,00';
+    } finally {
+        showLoading(false);
     }
 }
 
 // Load recent fines
 async function loadRecentFines() {
+    showLoading();
+    
     try {
-        // Update query to not reference the missing created_at column
-        const fines = await apiRequest('/fines?select=*,player:player_id(name),reason:reason_id(description)&limit=5');
+        const { data: fines, error } = await apiRequest('/fines?select=id,created_at,players(name),reasons(description)&order=created_at.desc&limit=5');
         
-        if (fines && fines.length > 0) {
-            noRecentFinesEl.classList.add('hidden');
-            recentFinesEl.innerHTML = ''; // Clear previous fines
-            
-            // Create fine cards for each fine
-            fines.forEach(fine => {
-                const fineCard = document.createElement('div');
-                fineCard.className = 'fine-card bg-white p-4 border border-gray-200 rounded-xl shadow-sm hover:bg-gray-50 transition-all';
-                
-                fineCard.innerHTML = `
-                <div class="flex justify-between items-center">
-                    <div class="flex-1">
-                        <div class="flex items-center mb-1">
-                            <span class="font-medium text-gray-800">${fine.player?.name || 'Onbekend'}</span>
-                            <span class="text-gray-400 mx-2">•</span>
-                            <span class="text-gray-500 text-sm">Vandaag</span>
-                        </div>
-                        <div class="text-gray-700">${fine.reason?.description || 'Onbekende reden'}</div>
-                    </div>
-                    <div class="font-bold text-primary-600 text-lg">€0,00</div>
-                </div>
-                `;
-                
-                recentFinesEl.appendChild(fineCard);
-            });
-            
-            if (DEBUG) console.log('Recent fines loaded:', fines.length);
-        } else {
+        if (error) throw error;
+        
+        if (!fines || fines.length === 0) {
             noRecentFinesEl.classList.remove('hidden');
-            if (DEBUG) console.log('No recent fines found');
+            recentFinesEl.innerHTML = '<div class="text-gray-500 text-center py-4">Geen recente boetes gevonden</div>';
+            return;
         }
+
+        noRecentFinesEl.classList.add('hidden');
+        recentFinesEl.innerHTML = ''; // Clear previous fines
+        
+        // Create fine cards for each fine
+        fines.forEach(fine => {
+            const fineCard = document.createElement('div');
+            fineCard.className = 'fine-card bg-white p-4 border border-gray-200 rounded-xl shadow-sm hover:bg-gray-50 transition-all';
+            
+            // Use standard amount of €5.00
+            const fineAmount = '€5,00';
+            
+            fineCard.innerHTML = `
+            <div class="flex justify-between items-center">
+                <div class="flex-1">
+                    <div class="flex items-center mb-1">
+                        <span class="font-medium text-gray-800">${fine.players?.name || 'Onbekende speler'}</span>
+                        <span class="text-gray-400 mx-2">•</span>
+                        <span class="text-gray-500 text-sm">${fine.reasons?.description || 'Onbekende reden'}</span>
+                    </div>
+                    <div class="text-gray-700">${formatDate(fine.created_at)}</div>
+                </div>
+                <div class="font-bold text-primary-600 text-lg">${fineAmount}</div>
+            </div>
+            `;
+            
+            recentFinesEl.appendChild(fineCard);
+        });
+        
+        if (DEBUG) console.log('Recent fines loaded:', fines.length);
     } catch (error) {
         console.error('Error loading recent fines:', error);
         noRecentFinesEl.classList.remove('hidden');
-        recentFinesEl.innerHTML = ''; // Clear any partial data
+        recentFinesEl.innerHTML = '<div class="text-red-500 text-center py-4">Fout bij laden van recente boetes</div>';
     }
 }
 
@@ -367,136 +379,147 @@ async function loadReasonsForSelector() {
 
 // Load player history
 async function loadPlayerHistory(playerId) {
+    if (!playerId) {
+        playerHistoryEl.innerHTML = '<div class="text-gray-500 text-center py-4">Selecteer een speler om geschiedenis te zien</div>';
+        return;
+    }
+
+    showLoading();
+    
     try {
-        if (!playerId) {
-            noPlayerHistoryEl.classList.remove('hidden');
-            playerHistoryEl.innerHTML = '';
+        const { data: fines, error } = await apiRequest(`/fines?player_id=eq.${playerId}&select=id,created_at,reasons(description),players(name)&order=created_at.desc`);
+        
+        if (error) throw error;
+        
+        if (!fines || fines.length === 0) {
+            playerHistoryEl.innerHTML = '<div class="text-gray-500 text-center py-4">Geen boetes gevonden voor deze speler</div>';
             return;
         }
+
+        // Calculate total for this player
+        const standardAmount = 5.00;
+        const totalFineAmount = fines.length * standardAmount;
         
-        // Update query to not reference the missing created_at column
-        const fines = await apiRequest(`/fines?player_id=eq.${playerId}&select=*,reason:reason_id(description)`);
-        
-        if (fines && fines.length > 0) {
-            noPlayerHistoryEl.classList.add('hidden');
-            playerHistoryEl.innerHTML = ''; // Clear previous history
-            
-            // Create history items
-            fines.forEach(fine => {
-                const historyItem = document.createElement('div');
-                historyItem.className = 'bg-white p-4 border border-gray-200 rounded-xl shadow-sm hover:bg-gray-50 transition-all';
-                
-                historyItem.innerHTML = `
+        let html = `
+            <div class="mb-3 p-3 bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-lg shadow">
+                <h3 class="text-lg font-semibold">Totaal: ${formatCurrency(totalFineAmount)}</h3>
+                <p class="text-sm opacity-90">Aantal boetes: ${fines.length}</p>
+            </div>
+            <div class="space-y-2">
+        `;
+
+        fines.forEach(fine => {
+            const fineAmount = '€5,00'; // Fixed amount for all fines
+            html += `
+                <div class="bg-white p-3 rounded-lg shadow-sm hover:shadow transition-all">
                     <div class="flex justify-between items-center">
-                        <div class="flex-1">
-                            <div class="text-gray-500 text-sm mb-1">Vandaag</div>
-                            <div class="text-gray-700">${fine.reason?.description || 'Onbekende reden'}</div>
+                        <div>
+                            <p class="font-medium">${fine.reasons?.description || 'Onbekende reden'}</p>
+                            <span class="text-xs text-gray-500">${formatDate(fine.created_at)}</span>
                         </div>
-                        <div class="font-bold text-primary-600">€0,00</div>
+                        <span class="font-medium">${fineAmount}</span>
                     </div>
-                `;
-                
-                playerHistoryEl.appendChild(historyItem);
-            });
-            
-            // Show total (placeholder since we don't have amounts)
-            const totalItem = document.createElement('div');
-            totalItem.className = 'bg-primary-50 p-4 border border-primary-200 rounded-xl mt-4';
-            totalItem.innerHTML = `
-                <div class="flex justify-between items-center">
-                    <div class="font-semibold text-primary-700">Totaal</div>
-                    <div class="font-bold text-primary-800 text-lg">€0,00</div>
                 </div>
             `;
-            
-            playerHistoryEl.appendChild(totalItem);
-            
-            if (DEBUG) console.log('Player history loaded:', fines.length);
-        } else {
-            noPlayerHistoryEl.textContent = 'Geen boetes gevonden voor deze speler';
-            noPlayerHistoryEl.classList.remove('hidden');
-            playerHistoryEl.innerHTML = ''; // Clear any partial data
-            if (DEBUG) console.log('No history found for player');
-        }
+        });
+
+        html += '</div>';
+        playerHistoryEl.innerHTML = html;
+        
     } catch (error) {
         console.error('Error loading player history:', error);
-        noPlayerHistoryEl.textContent = 'Fout bij laden van speler geschiedenis';
-        noPlayerHistoryEl.classList.remove('hidden');
-        playerHistoryEl.innerHTML = ''; // Clear any partial data
+        playerHistoryEl.innerHTML = '<div class="text-red-500 text-center py-4">Fout bij laden van speler geschiedenis</div>';
+    } finally {
+        showLoading(false);
     }
 }
 
 // Load and render leaderboard
 async function loadLeaderboard() {
+    showLoading();
+    
     try {
-        // Update query to not reference the missing amount column
-        const fines = await apiRequest('/fines?select=player_id');
-        const players = await apiRequest('/players?select=id,name');
+        const { data: players, error: playersError } = await apiRequest('/players?select=id,name');
+        if (playersError) throw playersError;
         
-        if (fines && fines.length > 0 && players && players.length > 0) {
-            // Calculate totals per player (just count fines since we don't have amounts)
-            const playerTotals = {};
+        const { data: fines, error: finesError } = await apiRequest('/fines?select=id,player_id');
+        if (finesError) throw finesError;
+        
+        if (!players || players.length === 0) {
+            leaderboardEl.innerHTML = '<div class="text-gray-500 text-center py-4">Geen spelers gevonden</div>';
+            return;
+        }
+
+        // Group fines by player
+        const playerFines = {};
+        players.forEach(player => {
+            playerFines[player.id] = {
+                id: player.id,
+                name: player.name,
+                count: 0,
+                total: 0
+            };
+        });
+        
+        // Count fines and calculate totals (fixed €5.00 per fine)
+        fines.forEach(fine => {
+            if (playerFines[fine.player_id]) {
+                playerFines[fine.player_id].count += 1;
+                playerFines[fine.player_id].total += 5.00; // Fixed amount per fine
+            }
+        });
+        
+        // Sort by total amount
+        const sortedPlayers = Object.values(playerFines)
+            .filter(player => player.count > 0)
+            .sort((a, b) => b.total - a.total);
             
-            // Initialize all players with zero
-            players.forEach(player => {
-                playerTotals[player.id] = {
-                    id: player.id,
-                    name: player.name,
-                    count: 0
-                };
-            });
+        if (sortedPlayers.length === 0) {
+            leaderboardEl.innerHTML = '<div class="text-gray-500 text-center py-4">Nog geen boetes uitgedeeld</div>';
+            return;
+        }
+
+        let html = '<div class="space-y-2">';
+        
+        sortedPlayers.forEach((player, index) => {
+            let rankClass = '';
+            let medal = '';
             
-            // Count fines
-            fines.forEach(fine => {
-                const playerId = fine.player_id;
-                
-                if (playerTotals[playerId]) {
-                    playerTotals[playerId].count += 1;
-                }
-            });
+            if (index === 0) {
+                rankClass = 'bg-yellow-100 border-yellow-300';
+                medal = '<span class="text-yellow-500 mr-2">🥇</span>';
+            } else if (index === 1) {
+                rankClass = 'bg-gray-100 border-gray-300';
+                medal = '<span class="text-gray-400 mr-2">🥈</span>';
+            } else if (index === 2) {
+                rankClass = 'bg-orange-100 border-orange-300';
+                medal = '<span class="text-orange-500 mr-2">🥉</span>';
+            }
             
-            // Convert to array, filter players with fines, and sort by count (descending)
-            const leaderboardData = Object.values(playerTotals)
-                .filter(player => player.count > 0)
-                .sort((a, b) => b.count - a.count);
-            
-            if (leaderboardData.length > 0) {
-                noLeaderboardEl.classList.add('hidden');
-                leaderboardEl.innerHTML = ''; // Clear previous leaderboard
-                
-                // Create leaderboard items
-                leaderboardData.forEach((player, index) => {
-                    const rank = index + 1;
-                    const leaderboardItem = document.createElement('div');
-                    leaderboardItem.className = 'flex items-center justify-between p-3 bg-white rounded-xl shadow-sm hover:bg-gray-50 transition-all mb-2';
-                    
-                    const rankClass = rank <= 3 ? `leaderboard-rank-${rank}` : 'bg-gray-400 text-white';
-                    
-                    leaderboardItem.innerHTML = `
+            html += `
+                <div class="bg-white p-3 rounded-lg shadow-sm hover:shadow transition-all ${rankClass} border-l-4">
+                    <div class="flex justify-between items-center">
                         <div class="flex items-center">
-                            <div class="leaderboard-rank ${rankClass} mr-3">${rank}</div>
+                            ${medal}
                             <div>
-                                <div class="font-medium text-gray-800">${player.name}</div>
-                                <div class="text-xs text-gray-500">${player.count} boete${player.count !== 1 ? 's' : ''}</div>
+                                <p class="font-medium">${player.name}</p>
+                                <span class="text-xs text-gray-500">${player.count} boete${player.count !== 1 ? 's' : ''}</span>
                             </div>
                         </div>
-                        <div class="font-bold text-primary-600">€0,00</div>
-                    `;
-                    
-                    leaderboardEl.appendChild(leaderboardItem);
-                });
-            } else {
-                noLeaderboardEl.classList.remove('hidden');
-                leaderboardEl.innerHTML = '';
-            }
-        } else {
-            noLeaderboardEl.classList.remove('hidden');
-            leaderboardEl.innerHTML = '';
-        }
+                        <span class="font-medium">${formatCurrency(player.total)}</span>
+                    </div>
+                </div>
+            `;
+        });
+        
+        html += '</div>';
+        leaderboardEl.innerHTML = html;
+        
     } catch (error) {
         console.error('Error loading leaderboard:', error);
-        noLeaderboardEl.classList.remove('hidden');
-        leaderboardEl.innerHTML = '';
+        leaderboardEl.innerHTML = '<div class="text-red-500 text-center py-4">Fout bij laden van ranglijst</div>';
+    } finally {
+        showLoading(false);
     }
 }
 
