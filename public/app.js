@@ -104,8 +104,8 @@ function formatCurrency(amount) {
 // Format date
 function formatDate(dateString) {
     if (!dateString) return 'Onbekende datum';
-    
-    const date = new Date(dateString);
+        
+        const date = new Date(dateString);
     const day = date.getDate();
     
     // Dutch month names
@@ -251,12 +251,12 @@ async function loadTotalAmount() {
     }
 }
 
-// Load recent fines
+// Load recent fines with most recent first
 async function loadRecentFines() {
     showLoading();
     
     try {
-        const { data, error } = await apiRequest('/fines?select=id,date,amount,players(name),reasons(description)&order=date.desc&limit=10');
+        const { data, error } = await apiRequest('/fines?select=id,date,amount,players(name),reasons(description)&order=date.desc,id.desc&limit=5');
         
         if (error) throw error;
         
@@ -287,7 +287,7 @@ async function loadRecentFines() {
                 <div class="text-gray-700">${formatDate(fine.date)}</div>
             </div>
             <div class="font-bold text-primary-600 text-lg">${fineAmount}</div>
-            `;
+        `;
             
             recentFinesEl.appendChild(fineCard);
         });
@@ -330,7 +330,11 @@ async function loadPlayersForSelector() {
                     placeholder: 'Selecteer een speler',
                     allowClear: true,
                     width: '100%',
-                    dropdownParent: $(playerHistorySelectEl).parent()
+                    dropdownParent: $('#playerHistoryContainer'),
+                    dropdownCssClass: 'select2-dropdown-player-history'
+                }).on('select2:open', function() {
+                    // Ensure the dropdown has proper z-index
+                    $('.select2-container--open').css('z-index', 9999);
                 });
             }
         }
@@ -358,7 +362,7 @@ async function loadPlayersForSelector() {
         }
         
         if (DEBUG) console.log('Players loaded for selector:', data.length);
-    } catch (error) {
+  } catch (error) {
         console.error('Error loading players for selector:', error);
         showToast('Fout bij laden van spelers', 'error');
     }
@@ -404,7 +408,7 @@ async function loadReasonsForSelector() {
 async function loadPlayerHistory(playerId) {
     if (!playerId) {
         playerHistoryEl.innerHTML = '<div class="text-gray-500 text-center py-4">Selecteer een speler om geschiedenis te zien</div>';
-        return;
+      return;
     }
 
     showLoading();
@@ -413,12 +417,12 @@ async function loadPlayerHistory(playerId) {
         const { data, error } = await apiRequest(`/fines?player_id=eq.${playerId}&select=id,date,amount,reasons(description),players(name)&order=date.desc&limit=100`);
         
         if (error) throw error;
-        
+    
         if (!data || data.length === 0) {
             playerHistoryEl.innerHTML = '<div class="text-gray-500 text-center py-4">Geen boetes gevonden voor deze speler</div>';
-            return;
-        }
-
+      return;
+    }
+    
         // Calculate total for this player using amount field or default
         let totalFineAmount = 0;
         data.forEach(fine => {
@@ -437,7 +441,7 @@ async function loadPlayerHistory(playerId) {
             const fineAmount = fine.amount ? formatCurrency(fine.amount) : '€5,00';
             html += `
                 <div class="bg-white p-3 rounded-lg shadow-sm hover:shadow transition-all">
-                    <div class="flex justify-between items-center">
+                <div class="flex justify-between items-center">
                         <div>
                             <p class="font-medium">${fine.reasons?.description || 'Onbekende reden'}</p>
                             <span class="text-xs text-gray-500">${formatDate(fine.date)}</span>
@@ -635,7 +639,7 @@ if (playerHistorySelectEl) {
         // Fallback to standard event listener
         playerHistorySelectEl.addEventListener('change', function() {
             const playerId = this.value;
-            loadPlayerHistory(playerId);
+        loadPlayerHistory(playerId);
         });
     }
 }
