@@ -123,11 +123,18 @@ async function apiRequest(endpoint, options = {}) {
             endpoint = '/' + endpoint;
         }
         
+        // Add the REST API path prefix
+        if (!endpoint.startsWith('/rest/v1')) {
+            endpoint = '/rest/v1' + endpoint;
+        }
+        
         // Make sure query parameters are properly formatted
         let url = SUPABASE_URL + endpoint;
         
         // Apply cache busting
-        url = addCacheBust(url);
+        const timestamp = Date.now();
+        const separator = url.includes('?') ? '&' : '?';
+        url = `${url}${separator}cachebust=${timestamp}`;
         
         if (DEBUG) console.log('Attempting API Request to:', url);
         

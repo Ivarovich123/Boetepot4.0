@@ -174,11 +174,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 endpoint = '/' + endpoint;
             }
             
+            // Add the REST API path prefix
+            if (!endpoint.startsWith('/rest/v1')) {
+                endpoint = '/rest/v1' + endpoint;
+            }
+            
             // Make sure query parameters are properly formatted
             let url = SUPABASE_URL + endpoint;
             
             // Apply cache busting
-            url = addCacheBuster(url);
+            const timestamp = Date.now();
+            const separator = url.includes('?') ? '&' : '?';
+            url = `${url}${separator}cachebust=${timestamp}`;
             
             if (DEBUG) console.log('API Request to:', url);
             
