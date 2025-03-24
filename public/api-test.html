@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>API Test</title>
+</head>
+<body>
+  <h1>Supabase API Connection Test</h1>
+  <div id="result">Testing connection...</div>
+  
+  <script>
+    // Simple script to test Supabase API connection
+    const SUPABASE_URL = 'https://jvhgdidaoasgxqqixywl.supabase.co/rest/v1';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp2aGdkaWRhb2FzZ3hxcWl4eXdsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI1MDA3OTYsImV4cCI6MjA1ODA3Njc5Nn0.2qrrNC2bKichC63SvUhNgXlcG0ElViRsqM5CYU3QSfg';
+    const resultElement = document.getElementById('result');
+    
+    // Add some debug info
+    const debugElement = document.createElement('pre');
+    document.body.appendChild(debugElement);
+    debugElement.textContent = `Testing connection to:\nURL: ${SUPABASE_URL}\nKey: ${SUPABASE_KEY.substring(0, 15)}...`;
+    
+    // Make a simple fetch request to the players endpoint
+    fetch(`${SUPABASE_URL}/players?select=*`, {
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`
+      }
+    })
+    .then(response => {
+      debugElement.textContent += `\n\nResponse status: ${response.status}`;
+      if (!response.ok) {
+        throw new Error(`API request failed with status ${response.status}`);
+      }
+      return response.json();
+    })
+    .then(data => {
+      resultElement.textContent = 'Connection successful! Data retrieved.';
+      resultElement.style.color = 'green';
+      debugElement.textContent += `\n\nData: ${JSON.stringify(data, null, 2)}`;
+    })
+    .catch(error => {
+      resultElement.textContent = `Connection failed: ${error.message}`;
+      resultElement.style.color = 'red';
+      debugElement.textContent += `\n\nError: ${error.message}`;
+    });
+  </script>
+</body>
+</html> 

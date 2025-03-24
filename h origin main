@@ -1,0 +1,5 @@
+[33m467ffd5[m[33m ([m[1;36mHEAD -> [m[1;32mmain[m[33m)[m Update design with modern gradients and colors, update Supabase URLs
+[33mb22187b[m[33m ([m[1;31morigin/main[m[33m)[m UI improvements and API connection fixes: Remove piggybank, add multiple player selection, improve CORS handling
+[33mdf65e02[m Fix API connection issues with proper cache-busting and improved error handling
+[33m42407f3[m Restructure app with improved admin and app interfaces
+[33ma4aa37d[m Fixed image loading and improved mobile responsiveness

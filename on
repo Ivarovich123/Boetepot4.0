@@ -1,0 +1,234 @@
+warning: in the working copy of 'public/admin.js', LF will be replaced by CRLF the next time Git touches it
+[1mdiff --git a/public/admin.js b/public/admin.js[m
+[1mindex a31d60d..ae4b55c 100644[m
+[1m--- a/public/admin.js[m
+[1m+++ b/public/admin.js[m
+[36m@@ -228,13 +228,16 @@[m [mfunction formatDate(dateString) {[m
+         try {[m
+             // Ensure endpoint does not start with slash when appending to API path[m
+             const path = endpoint.startsWith('/') ? endpoint.substring(1) : endpoint;[m
+[31m-            const url = `/api/${path}`;[m
+[32m+[m[32m            const url = `${API_BASE_URL}/${path}`;[m
+             [m
+             const options = {[m
+                 method,[m
+                 headers: {[m
+                     'Content-Type': 'application/json',[m
+[31m-                    'Accept': 'application/json'[m
+[32m+[m[32m                    'Accept': 'application/json',[m
+[32m+[m[32m                    'apikey': SUPABASE_KEY,[m
+[32m+[m[32m                    'Authorization': `Bearer ${SUPABASE_KEY}`,[m
+[32m+[m[32m                    'Prefer': 'return=representation'[m
+                 }[m
+             };[m
+             [m
+[36m@@ -601,204 +604,15 @@[m [mfunction formatDate(dateString) {[m
+         }[m
+     }[m
+     [m
+[31m-    async function addReason(data) {[m
+[31m-        try {[m
+[31m-            await apiRequest('/reasons', 'POST', data);[m
+[31m-            showToast('Reden succesvol toegevoegd!', 'success');[m
+[31m-            await loadReasons(); // Reload reasons[m
+[31m-            return true;[m
+[31m-  } catch (error) {[m
+[31m-            debug(`Failed to add reason: ${error.message}`);[m
+[31m-            return false;[m
+[31m-        }[m
+[31m-    }[m
+[31m-    [m
+     async function deleteReason(id) {[m
+         try {[m
+             await apiRequest(`/reasons/${id}`, 'DELETE');[m
+             showToast('Reden succesvol verwijderd!', 'success');[m
+[31m-            await Promise.all([loadReasons(), loadFines()]); // Reload reasons and fines[m
+[32m+[m[32m            await loadReasons(); // Reload reasons[m
+             return true;[m
+[31m-            } catch (error) {[m
+[32m+[m[32m        } catch (error) {[m
+             debug(`Failed to delete reason: ${error.message}`);[m
+             return false;[m
+         }[m
+     }[m
+[31m-    [m
+[31m-    async function resetAllData() {[m
+[31m-        try {[m
+[31m-            await apiRequest('/reset', 'POST');[m
+[31m-            showToast('Alle data succesvol gereset!', 'success');[m
+[31m-            await loadAllData(); // Reload all data[m
+[31m-            return true;[m
+[31m-  } catch (error) {[m
+[31m-            debug(`Failed to reset data: ${error.message}`);[m
+[31m-            return false;[m
+[31m-        }[m
+[31m-    }[m
+[31m-    [m
+[31m-    // Event Listeners[m
+[31m-    function setupEventListeners() {[m
+[31m-        // Theme toggle[m
+[31m-        themeToggle.addEventListener('click', toggleTheme);[m
+[31m-        [m
+[31m-        // Add Fine Form[m
+[31m-        const addFineForm = document.getElementById('addFineForm');[m
+[31m-        if (addFineForm) {[m
+[31m-            addFineForm.addEventListener('submit', async function(e) {[m
+[31m-                e.preventDefault();[m
+[31m-                [m
+[31m-                const playerId = document.getElementById('playerSelect').value;[m
+[31m-                const reasonId = document.getElementById('reasonSelect').value;[m
+[31m-                const amount = document.getElementById('amount').value;[m
+[31m-                [m
+[31m-                if (!playerId) {[m
+[31m-                    showToast('Selecteer een speler!', 'error');[m
+[31m-                    return;[m
+[31m-                }[m
+[31m-                [m
+[31m-                if (!reasonId) {[m
+[31m-                    showToast('Selecteer een reden!', 'error');[m
+[31m-                    return;[m
+[31m-                }[m
+[31m-                [m
+[31m-                if (!amount || isNaN(amount) || parseFloat(amount) <= 0) {[m
+[31m-                    showToast('Voer een geldig bedrag in!', 'error');[m
+[31m-                    return;[m
+[31m-                }[m
+[31m-                [m
+[31m-                const success = await addFine({[m
+[31m-                    player_id: playerId,[m
+[31m-                    reason_id: reasonId,[m
+[31m-                    amount: parseFloat(amount)[m
+[31m-                });[m
+[31m-                [m
+[31m-                if (success) {[m
+[31m-                    // Reset form[m
+[31m-                    document.getElementById('playerSelect').value = '';[m
+[31m-                    document.getElementById('reasonSelect').value = '';[m
+[31m-                    document.getElementById('amount').value = '';[m
+[31m-                    [m
+[31m-                    // Reset Select2[m
+[31m-                    try {[m
+[31m-                        $('#playerSelect').val('').trigger('change');[m
+[31m-                        $('#reasonSelect').val('').trigger('change');[m
+[31m-  } catch (error) {[m
+[31m-                        debug(`Error resetting Select2: ${error.message}`);[m
+[31m-                    }[m
+[31m-                }[m
+[31m-            });[m
+[31m-        }[m
+[31m-        [m
+[31m-        // Add Player Form[m
+[31m-        const addPlayerForm = document.getElementById('addPlayerForm');[m
+[31m-        if (addPlayerForm) {[m
+[31m-            addPlayerForm.addEventListener('submit', async function(e) {[m
+[31m-                e.preventDefault();[m
+[31m-                [m
+[31m-                const playerName = document.getElementById('playerName').value.trim();[m
+[31m-                [m
+[31m-                if (!playerName) {[m
+[31m-                    showToast('Voer een geldige naam in!', 'error');[m
+[31m-        return;[m
+[31m-    }[m
+[31m-    [m
+[31m-                const success = await addPlayer({[m
+[31m-                    name: playerName[m
+[31m-                });[m
+[31m-                [m
+[31m-                if (success) {[m
+[31m-                    // Reset form[m
+[31m-                    document.getElementById('playerName').value = '';[m
+[31m-                }[m
+[31m-            });[m
+[31m-        }[m
+[31m-        [m
+[31m-        // Add Reason Form[m
+[31m-        const addReasonForm = document.getElementById('addReasonForm');[m
+[31m-        if (addReasonForm) {[m
+[31m-            addReasonForm.addEventListener('submit', async function(e) {[m
+[31m-                e.preventDefault();[m
+[31m-                [m
+[31m-                const reasonDescription = document.getElementById('reasonDescription').value.trim();[m
+[31m-                [m
+[31m-                if (!reasonDescription) {[m
+[31m-                    showToast('Voer een geldige beschrijving in!', 'error');[m
+[31m-        return;[m
+[31m-    }[m
+[31m-    [m
+[31m-                const success = await addReason({[m
+[31m-                    description: reasonDescription[m
+[31m-                });[m
+[31m-                [m
+[31m-                if (success) {[m
+[31m-                    // Reset form[m
+[31m-                    document.getElementById('reasonDescription').value = '';[m
+[31m-                }[m
+[31m-            });[m
+[31m-        }[m
+[31m-        [m
+[31m-        // Reset Button[m
+[31m-        const resetButton = document.getElementById('resetButton');[m
+[31m-        if (resetButton) {[m
+[31m-            resetButton.addEventListener('click', async function() {[m
+[31m-                if (confirm('WAARSCHUWING: Dit zal ALLE data verwijderen! Weet je zeker dat je door wilt gaan?')) {[m
+[31m-                    if (confirm('Dit is je laatste kans! Alle boetes, spelers en redenen worden verwijderd. Dit kan niet ongedaan worden gemaakt!')) {[m
+[31m-                        await resetAllData();[m
+[31m-                    }[m
+[31m-                }[m
+[31m-            });[m
+[31m-        }[m
+[31m-        [m
+[31m-        // Manual Load Button[m
+[31m-        const manualLoadButton = document.getElementById('manualLoadButton');[m
+[31m-        if (manualLoadButton) {[m
+[31m-            manualLoadButton.addEventListener('click', loadAllData);[m
+[31m-        }[m
+[31m-        [m
+[31m-        // Clear Storage Button[m
+[31m-        const clearStorageButton = document.getElementById('clearStorageButton');[m
+[31m-        if (clearStorageButton) {[m
+[31m-            clearStorageButton.addEventListener('click', function() {[m
+[31m-                if (confirm('Weet je zeker dat je alle lokale opslag wilt wissen?')) {[m
+[31m-                    localStorage.clear();[m
+[31m-                    showToast('Lokale opslag gewist!', 'info');[m
+[31m-                    setTimeout(() => {[m
+[31m-                        location.reload();[m
+[31m-                    }, 1500);[m
+[31m-                }[m
+[31m-            });[m
+[31m-        }[m
+[31m-    }[m
+[31m-    [m
+[31m-    // Initialization[m
+[31m-    function init() {[m
+[31m-        debug('Initializing admin panel...');[m
+[31m-        [m
+[31m-        // Initialize theme[m
+[31m-        initTheme();[m
+[31m-        [m
+[31m-        // Setup tabs[m
+[31m-        setupTabs();[m
+[31m-        [m
+[31m-        // Load data[m
+[31m-        loadAllData();[m
+[31m-        [m
+[31m-        // Setup event listeners[m
+[31m-        setupEventListeners();[m
+[31m-        [m
+[31m-        debug('Initialization complete');[m
+[31m-    }[m
+[31m-    [m
+[31m-    // Start the application[m
+[31m-    init();[m
+[31m-}); [m
+[31m-[m
+[31m-// Fix the loading spinner function[m
+[31m-function showLoadingSpinner() {[m
+[31m-    showLoading(true);[m
+[31m-}[m
+[31m-[m
+[31m-function hideLoadingSpinner() {[m
+[31m-    showLoading(false);[m
+[31m-} [m
+\ No newline at end of file[m
+[32m+[m[32m});[m
+\ No newline at end of file[m
