@@ -1,25 +1,11 @@
 {
   "version": 2,
-  "public": true,
-  "cleanUrls": true,
-  "trailingSlash": false,
   "builds": [
     { "src": "server.js", "use": "@vercel/node" },
     { "src": "boetepot-react/package.json", "use": "@vercel/static-build", "config": { "distDir": "dist" } }
   ],
   "routes": [
     { "src": "/api/(.*)", "dest": "/server.js" },
-    { 
-      "src": "/assets/(.*)", 
-      "dest": "/boetepot-react/dist/assets/$1" 
-    },
-    { 
-      "src": "/(.*)\\.(.+)", 
-      "dest": "/boetepot-react/dist/$1.$2" 
-    },
-    { 
-      "src": "/(.*)", 
-      "dest": "/boetepot-react/dist/index.html" 
-    }
+    { "src": "/(.*)", "dest": "/boetepot-react/dist/index.html" }
   ]
 }
