@@ -337,7 +337,7 @@ async function loadPlayersForSelector() {
                     placeholder: 'Selecteer een speler',
                     allowClear: true,
                     width: '100%',
-                    dropdownParent: $('#playerHistoryContainer'),
+                    dropdownParent: $(playerHistorySelectEl).parent(),
                     dropdownCssClass: 'select2-dropdown-player-history z-50'
                 }).on('select2:open', function() {
                     // Ensure the dropdown has proper z-index
