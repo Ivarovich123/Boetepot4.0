@@ -1,22 +1,37 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { formatCurrency } from '../utils/format'
 import api from '../utils/api'
 import { Fine, Player, Reason } from '../types'
 import toast from 'react-hot-toast'
+import { useAuth } from '../context/AuthContext'
 
 export const Route = createFileRoute('/admin')({
   component: AdminPage,
 })
 
 function AdminPage() {
+  const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
   const queryClient = useQueryClient()
   const [selectedPlayer, setSelectedPlayer] = useState('')
   const [selectedReason, setSelectedReason] = useState('')
   const [amount, setAmount] = useState('')
   const [newPlayerName, setNewPlayerName] = useState('')
   const [newReasonDescription, setNewReasonDescription] = useState('')
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!isAuthenticated) {
+      navigate({ to: '/login' });
+    }
+  }, [isAuthenticated, navigate]);
+
+  // If not authenticated, don't render anything
+  if (!isAuthenticated) {
+    return null;
+  }
 
   const { data: players, isLoading: isLoadingPlayers } = useQuery({
     queryKey: ['players'],
