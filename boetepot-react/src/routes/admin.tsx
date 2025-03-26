@@ -1,22 +1,37 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { formatCurrency } from '../utils/format'
 import api from '../utils/api'
 import { Fine, Player, Reason } from '../types'
 import toast from 'react-hot-toast'
+import { useAuth } from '../context/AuthContext'
 
 export const Route = createFileRoute('/admin')({
   component: AdminPage,
 })
 
 function AdminPage() {
+  const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
   const queryClient = useQueryClient()
   const [selectedPlayer, setSelectedPlayer] = useState('')
   const [selectedReason, setSelectedReason] = useState('')
   const [amount, setAmount] = useState('')
   const [newPlayerName, setNewPlayerName] = useState('')
   const [newReasonDescription, setNewReasonDescription] = useState('')
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!isAuthenticated) {
+      navigate({ to: '/login' });
+    }
+  }, [isAuthenticated, navigate]);
+
+  // If not authenticated, don't render anything
+  if (!isAuthenticated) {
+    return null;
+  }
 
   const { data: players, isLoading: isLoadingPlayers } = useQuery({
     queryKey: ['players'],
@@ -160,7 +175,7 @@ function AdminPage() {
               required
             >
               <option value="">Selecteer een speler</option>
-              {players?.map((player) => (
+              {players?.map((player: Player) => (
                 <option key={player.id} value={player.id}>
                   {player.name}
                 </option>
@@ -179,7 +194,7 @@ function AdminPage() {
               required
             >
               <option value="">Selecteer een reden</option>
-              {reasons?.map((reason) => (
+              {reasons?.map((reason: Reason) => (
                 <option key={reason.id} value={reason.id}>
                   {reason.description}
                 </option>
@@ -272,7 +287,7 @@ function AdminPage() {
       <section className="rounded-lg border bg-card p-6 shadow-sm">
         <h2 className="mb-4 text-xl font-semibold">Recente Boetes</h2>
         <div className="space-y-4">
-          {recentFines?.map((fine) => (
+          {recentFines?.map((fine: Fine) => (
             <div
               key={fine.id}
               className="flex items-center justify-between rounded-lg border bg-card p-4 shadow-sm"
@@ -297,4 +312,4 @@ function AdminPage() {
       </section>
     </div>
   )
-} 
+}
