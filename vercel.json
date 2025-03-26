@@ -1,4 +1,7 @@
 {
   "buildCommand": "cd boetepot-react && npm install && npm run build",
-  "outputDirectory": "boetepot-react/dist"
+  "outputDirectory": "boetepot-react/dist",
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
 }
