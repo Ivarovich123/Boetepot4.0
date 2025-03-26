@@ -1,7 +1,16 @@
 {
-  "buildCommand": "cd boetepot-react && npm install && npm install -g typescript && npm run build",
-  "outputDirectory": "boetepot-react/dist",
-  "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
+  "version": 2,
+  "builds": [
+    { 
+      "src": "boetepot-react/package.json", 
+      "use": "@vercel/static-build",
+      "config": { 
+        "distDir": "dist",
+        "buildCommand": "cd .. && cd boetepot-react && npm install && npm run build"
+      }
+    }
+  ],
+  "routes": [
+    { "src": "/(.*)", "dest": "/boetepot-react/dist/index.html" }
   ]
 }
