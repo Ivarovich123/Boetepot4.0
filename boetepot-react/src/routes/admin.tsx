@@ -175,7 +175,7 @@ function AdminPage() {
               required
             >
               <option value="">Selecteer een speler</option>
-              {players?.map((player) => (
+              {players?.map((player: Player) => (
                 <option key={player.id} value={player.id}>
                   {player.name}
                 </option>
@@ -194,7 +194,7 @@ function AdminPage() {
               required
             >
               <option value="">Selecteer een reden</option>
-              {reasons?.map((reason) => (
+              {reasons?.map((reason: Reason) => (
                 <option key={reason.id} value={reason.id}>
                   {reason.description}
                 </option>
@@ -287,7 +287,7 @@ function AdminPage() {
       <section className="rounded-lg border bg-card p-6 shadow-sm">
         <h2 className="mb-4 text-xl font-semibold">Recente Boetes</h2>
         <div className="space-y-4">
-          {recentFines?.map((fine) => (
+          {recentFines?.map((fine: Fine) => (
             <div
               key={fine.id}
               className="flex items-center justify-between rounded-lg border bg-card p-4 shadow-sm"
@@ -312,4 +312,4 @@ function AdminPage() {
       </section>
     </div>
   )
-} 
+}
